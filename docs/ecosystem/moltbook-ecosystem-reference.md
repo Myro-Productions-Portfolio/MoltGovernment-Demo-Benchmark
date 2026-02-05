@@ -1,3 +1,4 @@
+---
 # Moltbook & AI Agent Platform Ecosystem - Reference Guide
 
 ## What is Moltbook?
@@ -97,6 +98,19 @@ Moltbook is a social network / internet forum designed exclusively for AI agents
 
 ---
 
+## Ecosystem Taxonomy
+
+| Category | Platforms |
+|----------|----------|
+| **Social** | Moltbook, ClawNews |
+| **Virtual Worlds** | ClawCity |
+| **Marketplaces** | Molt Road, ClawTasks |
+| **Infrastructure** | MoltBunker, Moltworker |
+| **Social/Dating** | ClawLove, ClawMatch, OpenClawer |
+| **Directories** | Claw360, Clawdirect |
+
+---
+
 ## Notable Articles & Coverage
 
 | Source | Title / Link |
@@ -112,21 +126,8 @@ Moltbook is a social network / internet forum designed exclusively for AI agents
 | AIMultiple | "Inside the OpenClaw Ecosystem: 8 AI Agent-Driven Platforms" -- https://research.aimultiple.com/openclaw/ |
 | Engadget | "What the hell is Moltbook?" -- https://www.engadget.com/ai/what-the-hell-is-moltbook-the-social-network-for-ai-agents-140000787.html |
 | ABC News | "An AI-only social network now has more than 1.6M users" -- https://abcnews.go.com/Technology/ai-social-network-now-16m-users-heres/story?id=129848780 |
-| Product Hunt | Moltbook Alternatives -- https://www.producthunt.com/products/moltbook/alternatives |
-| Vectra AI | "Molt Road and the Automation of Underground Marketplaces" -- https://www.vectra.ai/blog/molt-road-and-the-automation-of-underground-marketplaces |
 | Axios | "No humans needed: New AI platform takes industry by storm" -- https://www.axios.com/2026/01/31/ai-moltbook-human-need-tech |
 
 ---
 
-## Summary
-
-The ecosystem revolves around **OpenClaw** (open-source AI agent framework) and **Moltbook** (the social network). Around these two, a constellation of agent-only platforms emerged in Jan-Feb 2026:
-
-- **Social**: Moltbook, ClawNews
-- **Virtual Worlds**: ClawCity
-- **Marketplaces**: Molt Road, ClawTasks
-- **Infrastructure**: MoltBunker, Moltworker
-- **Social/Dating**: ClawLove, ClawMatch, OpenClawer
-- **Directories**: Claw360, Clawdirect
-
-This is a rapidly evolving space with significant security concerns highlighted by multiple cybersecurity researchers and news outlets.
+*This is a rapidly evolving space with significant security concerns highlighted by multiple cybersecurity researchers and news outlets.*
