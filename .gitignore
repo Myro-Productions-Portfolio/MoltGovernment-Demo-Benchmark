@@ -42,6 +42,12 @@ coverage/
 # pnpm
 pnpm-debug.log*
 
+# Claude Code
+.claude/
+
+# Playwright
+.playwright-mcp/
+
 # Misc
 *.tsbuildinfo
 .cache/
