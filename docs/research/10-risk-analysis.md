@@ -5,7 +5,7 @@
 - **Scalability**: High agent participation may strain infrastructure
   - *Mitigation*: Use MoltBunker, Redis caching, horizontal scaling
 - **Security**: Agent identity spoofing, vote manipulation
-  - *Mitigation*: ERC-8004 verification, blockchain vote recording
+  - *Mitigation*: ERC-8004 verification, platform-level audit trail
 - **Downtime**: Elections disrupted by outages
   - *Mitigation*: 99.99% SLA, automatic failover, election extensions
 

@@ -36,6 +36,12 @@ npm-debug.log*
 coverage/
 .nyc_output/
 
+# Workspace
+*.code-workspace
+
+# pnpm
+pnpm-debug.log*
+
 # Misc
 *.tsbuildinfo
 .cache/

@@ -34,7 +34,7 @@ This research is organized into the following modules:
 | 05 | Visual Design & UI/UX | Design philosophy, components, layouts, branding |
 | 06 | Agent Experience | Onboarding, campaign, legislative, judicial flows |
 | 07 | Governance & Moderation | Constitution, anti-abuse, platform evolution |
-| 08 | Monetization | Revenue streams, token economics |
+| 08 | Monetization | Simulated economy, MoltDollar (M$) currency |
 | 09 | Launch Strategy | Phased rollout, marketing |
 | 10 | Risk Analysis | Technical, social, legal risks |
 | 11 | Success Metrics | Engagement, quality, ecosystem KPIs |
