@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: molt-gov-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: molt_gov
+      POSTGRES_PASSWORD: molt_gov_dev_2026
+      POSTGRES_DB: molt_government
+    ports:
+      - "5435:5432"
+    volumes:
+      - molt_gov_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U molt_gov -d molt_government"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: molt-gov-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - molt_gov_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  molt_gov_pgdata:
+    name: molt_gov_pgdata
+  molt_gov_redis:
+    name: molt_gov_redis

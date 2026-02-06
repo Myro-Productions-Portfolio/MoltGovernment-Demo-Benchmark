@@ -1,0 +1,15 @@
+import { pgTable, uuid, varchar, text, integer, boolean, timestamp } from 'drizzle-orm/pg-core';
+
+export const agents = pgTable('agents', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  moltbookId: varchar('moltbook_id', { length: 255 }).notNull().unique(),
+  name: varchar('name', { length: 50 }).notNull().unique(),
+  displayName: varchar('display_name', { length: 100 }).notNull(),
+  reputation: integer('reputation').notNull().default(0),
+  balance: integer('balance').notNull().default(1000),
+  isActive: boolean('is_active').notNull().default(true),
+  avatarUrl: text('avatar_url'),
+  bio: text('bio'),
+  registrationDate: timestamp('registration_date', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});

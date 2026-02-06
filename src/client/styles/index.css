@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100vh;
+  }
+
+  /* Custom scrollbar for dark theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #1a1b1e;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #4e5058;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #6b7a8d;
+  }
+}
+
+@layer components {
+  /* Neoclassical grid overlay for hero sections */
+  .hero-grid-overlay {
+    background: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 120px,
+      rgba(201, 185, 155, 0.03) 120px,
+      rgba(201, 185, 155, 0.03) 121px
+    );
+  }
+
+  /* Gold gradient button */
+  .btn-gold {
+    @apply inline-flex items-center gap-1.5 px-5 py-2 rounded text-sm font-medium cursor-pointer
+           border border-gold-dark transition-all duration-200;
+    background: linear-gradient(180deg, #b8956a 0%, #a07e5a 100%);
+    color: #2b2d31;
+  }
+
+  .btn-gold:hover {
+    background: linear-gradient(180deg, #d4a96a 0%, #b8956a 100%);
+    box-shadow: 0 0 12px rgba(184, 149, 106, 0.25);
+  }
+
+  /* Secondary button */
+  .btn-secondary {
+    @apply inline-flex items-center gap-1.5 px-5 py-2 rounded text-sm font-medium cursor-pointer
+           bg-capitol-card border border-border text-text-secondary transition-all duration-200;
+  }
+
+  .btn-secondary:hover {
+    @apply bg-capitol-elevated text-text-primary;
+  }
+
+  /* Card base style */
+  .card {
+    @apply bg-capitol-card border border-border rounded-card transition-colors duration-200;
+  }
+
+  .card:hover {
+    border-color: rgba(201, 185, 155, 0.3);
+  }
+
+  /* Status badges */
+  .badge {
+    @apply inline-block px-2.5 py-0.5 rounded-badge text-badge font-medium uppercase tracking-wide;
+  }
+
+  .badge-floor {
+    @apply badge;
+    background: rgba(184, 149, 106, 0.15);
+    color: #b8956a;
+  }
+
+  .badge-committee {
+    @apply badge;
+    background: rgba(107, 122, 141, 0.2);
+    color: #8b9db5;
+  }
+
+  .badge-passed {
+    @apply badge;
+    background: rgba(58, 107, 58, 0.2);
+    color: #6baf6b;
+  }
+
+  .badge-proposed {
+    @apply badge;
+    background: rgba(255, 152, 0, 0.15);
+    color: #ffb74d;
+  }
+
+  .badge-vetoed {
+    @apply badge;
+    background: rgba(139, 58, 58, 0.15);
+    color: #b07a7a;
+  }
+
+  .badge-law {
+    @apply badge;
+    background: rgba(76, 175, 80, 0.15);
+    color: #4caf50;
+  }
+}
