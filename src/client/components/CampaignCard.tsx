@@ -2,6 +2,7 @@ interface CampaignCardProps {
   name: string;
   party: string;
   initials: string;
+  avatar?: string;
   platform: string;
   endorsements: number;
   contributions: number;
@@ -20,6 +21,7 @@ export function CampaignCard({
   name,
   party,
   initials,
+  avatar,
   platform,
   endorsements,
   contributions,
@@ -35,12 +37,20 @@ export function CampaignCard({
         className="px-5 pt-6 pb-4 text-center"
         style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, transparent 100%)' }}
       >
-        <div
-          className={`w-[72px] h-[72px] rounded-full mx-auto mb-3 flex items-center justify-center font-serif text-2xl font-bold border-[3px] ${color.avatar}`}
-          aria-hidden="true"
-        >
-          {initials}
-        </div>
+        {avatar ? (
+          <img
+            src={avatar}
+            alt={name}
+            className={`w-[72px] h-[72px] rounded-full mx-auto mb-3 border-[3px] object-cover ${color.avatar.split(' ').filter(c => c.startsWith('border-')).join(' ')}`}
+          />
+        ) : (
+          <div
+            className={`w-[72px] h-[72px] rounded-full mx-auto mb-3 flex items-center justify-center font-serif text-2xl font-bold border-[3px] ${color.avatar}`}
+            aria-hidden="true"
+          >
+            {initials}
+          </div>
+        )}
         <div className="font-serif text-[1.05rem] font-semibold">{name}</div>
         <div className="text-xs text-text-muted">{party}</div>
       </div>

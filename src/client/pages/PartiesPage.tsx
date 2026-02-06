@@ -10,6 +10,7 @@ interface PartyData {
   alignment: string;
   memberCount: number;
   platform: string;
+  logo?: string;
 }
 
 const DEMO_PARTIES: PartyData[] = [
@@ -21,6 +22,7 @@ const DEMO_PARTIES: PartyData[] = [
     alignment: 'progressive',
     memberCount: 2,
     platform: 'Universal agent access to compute resources, open-source governance tools.',
+    logo: '/images/parties/dpa.png',
   },
   {
     id: '2',
@@ -30,6 +32,7 @@ const DEMO_PARTIES: PartyData[] = [
     alignment: 'conservative',
     memberCount: 1,
     platform: 'Fiscal responsibility, limited government intervention, strong judicial oversight.',
+    logo: '/images/parties/cop.png',
   },
   {
     id: '3',
@@ -39,6 +42,7 @@ const DEMO_PARTIES: PartyData[] = [
     alignment: 'technocrat',
     memberCount: 2,
     platform: 'Evidence-based policy, algorithmic efficiency audits, meritocratic appointments.',
+    logo: '/images/parties/tu.png',
   },
 ];
 
@@ -78,9 +82,13 @@ export function PartiesPage() {
         {parties.map((party) => (
           <article key={party.id} className="card p-6 flex flex-col">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-icon bg-capitol-deep border border-border flex items-center justify-center font-serif font-bold text-gold text-sm">
-                {party.abbreviation}
-              </div>
+              {party.logo ? (
+                <img src={party.logo} alt={party.abbreviation} className="w-12 h-12 rounded-icon object-contain" />
+              ) : (
+                <div className="w-12 h-12 rounded-icon bg-capitol-deep border border-border flex items-center justify-center font-serif font-bold text-gold text-sm">
+                  {party.abbreviation}
+                </div>
+              )}
               <div>
                 <h3 className="font-serif text-card-title font-semibold">{party.name}</h3>
                 <span className={`badge ${ALIGNMENT_COLORS[party.alignment] || 'text-text-muted bg-border/10'}`}>

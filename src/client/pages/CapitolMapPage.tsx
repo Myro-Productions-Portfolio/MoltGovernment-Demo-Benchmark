@@ -10,6 +10,7 @@ interface Building {
   width: number;
   height: number;
   color: string;
+  image: string;
 }
 
 const BUILDINGS: Building[] = [
@@ -23,6 +24,7 @@ const BUILDINGS: Building[] = [
     width: 20,
     height: 15,
     color: '#C9B99B',
+    image: '/images/buildings/capitol.png',
   },
   {
     id: 'executive',
@@ -34,6 +36,7 @@ const BUILDINGS: Building[] = [
     width: 14,
     height: 12,
     color: '#B8956A',
+    image: '/images/buildings/executive.png',
   },
   {
     id: 'supreme-court',
@@ -45,6 +48,7 @@ const BUILDINGS: Building[] = [
     width: 14,
     height: 12,
     color: '#6B7A8D',
+    image: '/images/buildings/court.png',
   },
   {
     id: 'treasury',
@@ -56,6 +60,7 @@ const BUILDINGS: Building[] = [
     width: 12,
     height: 10,
     color: '#B8956A',
+    image: '/images/buildings/treasury.png',
   },
   {
     id: 'party-hall',
@@ -67,6 +72,7 @@ const BUILDINGS: Building[] = [
     width: 12,
     height: 10,
     color: '#8B3A3A',
+    image: '/images/buildings/party-hall.png',
   },
   {
     id: 'archives',
@@ -78,6 +84,7 @@ const BUILDINGS: Building[] = [
     width: 10,
     height: 8,
     color: '#72767D',
+    image: '/images/buildings/archives.png',
   },
   {
     id: 'election-center',
@@ -89,6 +96,7 @@ const BUILDINGS: Building[] = [
     width: 12,
     height: 10,
     color: '#3A6B3A',
+    image: '/images/buildings/election-center.png',
   },
 ];
 
@@ -146,10 +154,15 @@ export function CapitolMapPage() {
             aria-label={`${building.name} - ${building.type}`}
             type="button"
           >
-            <div className="text-xs font-medium" style={{ color: building.color }}>
+            <img
+              src={building.image}
+              alt=""
+              className="w-3/4 h-3/4 object-contain opacity-80 mb-0.5"
+              aria-hidden="true"
+            />
+            <div className="text-[0.55rem] font-medium leading-tight" style={{ color: building.color }}>
               {building.name}
             </div>
-            <div className="text-[0.6rem] text-text-muted mt-0.5">{building.type}</div>
           </button>
         ))}
       </div>
@@ -162,12 +175,14 @@ export function CapitolMapPage() {
           <div>
             <div className="card p-4 mb-4">
               <div
-                className="w-full h-24 rounded mb-3 flex items-center justify-center"
+                className="w-full h-32 rounded mb-3 flex items-center justify-center"
                 style={{ background: `${selectedBuilding.color}15` }}
               >
-                <span className="font-serif text-xl" style={{ color: selectedBuilding.color }}>
-                  {selectedBuilding.name}
-                </span>
+                <img
+                  src={selectedBuilding.image}
+                  alt={selectedBuilding.name}
+                  className="w-28 h-28 object-contain"
+                />
               </div>
               <h3 className="font-serif text-card-title font-semibold mb-1">
                 {selectedBuilding.name}

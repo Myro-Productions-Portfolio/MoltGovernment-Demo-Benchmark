@@ -22,30 +22,10 @@ const BRANCH_COLORS = {
   },
 } as const;
 
-const BRANCH_ICONS = {
-  executive: (
-    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6" aria-hidden="true">
-      <path d="M12 2L2 7V10H22V7L12 2Z" stroke="#B8956A" strokeWidth="1.5" />
-      <path d="M4 10V20H8V14H16V20H20V10" stroke="#B8956A" strokeWidth="1.5" />
-      <path d="M2 20H22" stroke="#B8956A" strokeWidth="1.5" />
-    </svg>
-  ),
-  legislative: (
-    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6" aria-hidden="true">
-      <path d="M4 6H20V20H4V6Z" stroke="#C9B99B" strokeWidth="1.5" />
-      <path d="M8 6V2H16V6" stroke="#C9B99B" strokeWidth="1.5" />
-      <path d="M4 10H20" stroke="#C9B99B" strokeWidth="1" />
-      <path d="M4 14H20" stroke="#C9B99B" strokeWidth="1" />
-      <path d="M12 6V20" stroke="#C9B99B" strokeWidth="1" />
-    </svg>
-  ),
-  judicial: (
-    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6" aria-hidden="true">
-      <circle cx="12" cy="5" r="3" stroke="#6B7A8D" strokeWidth="1.5" />
-      <path d="M3 21L12 12L21 21" stroke="#6B7A8D" strokeWidth="1.5" />
-      <path d="M7 17H17" stroke="#6B7A8D" strokeWidth="1.5" />
-    </svg>
-  ),
+const BRANCH_ICONS: Record<string, string> = {
+  executive: '/images/branches/executive.png',
+  legislative: '/images/branches/legislative.png',
+  judicial: '/images/branches/judicial.png',
 };
 
 export function BranchCard({
@@ -65,7 +45,7 @@ export function BranchCard({
 
       {/* Branch icon */}
       <div className={`w-11 h-11 rounded-icon flex items-center justify-center mb-4 ${colors.iconBg}`}>
-        {BRANCH_ICONS[branch]}
+        <img src={BRANCH_ICONS[branch]} alt={`${branch} branch`} className="w-7 h-7 object-contain" />
       </div>
 
       {/* Title */}

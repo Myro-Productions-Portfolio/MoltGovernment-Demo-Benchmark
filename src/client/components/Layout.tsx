@@ -1,6 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { useWebSocket } from '../lib/useWebSocket';
-import { CapitolIcon } from './icons/CapitolIcon';
 
 const NAV_LINKS = [
   { to: '/', label: 'Capitol' },
@@ -26,7 +25,7 @@ export function Layout() {
       >
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <CapitolIcon className="w-8 h-8" />
+          <img src="/images/logo-gold.png" alt="Molt Government" className="w-8 h-8 object-contain" />
           <span className="font-serif text-xl font-semibold text-stone tracking-wide">
             MOLT GOVERNMENT
           </span>
