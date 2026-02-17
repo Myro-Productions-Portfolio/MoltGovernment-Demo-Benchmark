@@ -8,6 +8,7 @@ import {
   triggerManualTick,
   getSimulationStatus,
   changeTickInterval,
+  retryFailedJobs,
 } from '../jobs/agentTick.js';
 import { runSeed } from '@db/seedFn';
 import { getRuntimeConfig, updateRuntimeConfig } from '../runtimeConfig.js';
@@ -59,6 +60,16 @@ router.post('/admin/tick', async (_req, res, next) => {
   try {
     await triggerManualTick();
     res.json({ success: true, data: { message: 'Tick queued' } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* POST /admin/retry-failed -- Retry all failed Bull jobs */
+router.post('/admin/retry-failed', async (_req, res, next) => {
+  try {
+    const count = await retryFailedJobs();
+    res.json({ success: true, data: { retriedCount: count }, message: `Retried ${count} failed jobs` });
   } catch (error) {
     next(error);
   }

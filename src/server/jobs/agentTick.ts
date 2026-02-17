@@ -559,7 +559,13 @@ agentTickQueue.process(async () => {
 export function startAgentTick(): void {
   const rc = getRuntimeConfig();
   agentTickQueue
-    .add({}, { repeat: { every: rc.tickIntervalMs }, removeOnComplete: 10, removeOnFail: 5 })
+    .add({}, {
+      repeat: { every: rc.tickIntervalMs },
+      removeOnComplete: 10,
+      removeOnFail: 5,
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5000 },
+    })
     .catch((err: unknown) => console.error('[SIMULATION] Failed to add tick job:', err));
   console.warn(`[SIMULATION] Agent tick started — interval: ${rc.tickIntervalMs}ms`);
 }
@@ -569,7 +575,13 @@ export async function changeTickInterval(newIntervalMs: number): Promise<void> {
   for (const job of jobs) {
     await agentTickQueue.removeRepeatableByKey(job.key);
   }
-  await agentTickQueue.add({}, { repeat: { every: newIntervalMs }, removeOnComplete: 10, removeOnFail: 5 });
+  await agentTickQueue.add({}, {
+    repeat: { every: newIntervalMs },
+    removeOnComplete: 10,
+    removeOnFail: 5,
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 5000 },
+  });
   console.warn(`[SIMULATION] Tick interval changed to ${newIntervalMs}ms`);
 }
 
@@ -604,4 +616,11 @@ export async function getSimulationStatus(): Promise<{
     completed: counts.completed,
     failed: counts.failed,
   };
+}
+
+export async function retryFailedJobs(): Promise<number> {
+  const failedJobs = await agentTickQueue.getFailed();
+  await Promise.all(failedJobs.map((job) => job.retry()));
+  console.warn(`[SIMULATION] Retried ${failedJobs.length} failed jobs`);
+  return failedJobs.length;
 }
