@@ -26,6 +26,9 @@ out/
 Thumbs.db
 desktop.ini
 nul
+._*
+*.tmp
+*~M
 
 # Logs
 *.log
@@ -51,3 +54,5 @@ pnpm-debug.log*
 # Misc
 *.tsbuildinfo
 .cache/
+signal-*.jpeg
+signal-*.png

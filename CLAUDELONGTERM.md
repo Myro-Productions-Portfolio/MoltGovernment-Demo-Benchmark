@@ -95,9 +95,19 @@ git clone ssh://git@10.0.0.223:2222/MyroProductions/Molt-Goverment.git
 |------|-------|
 | Hostname | NICMCMDCNTR |
 | IP (Tailscale) | 100.94.59.40 |
+| IP (LAN) | 10.0.0.10 |
 | RAM | 32GB |
+| GPU | RTX 4070 |
 | Storage | C: 1.8TB, D: 1.8TB |
-| Project Path | D:\Projects\01-New\Molt-Goverment |
+| Project Path | D:\projects-gitea\01-New\Molt-Goverment |
+
+### Ollama (Local LLM)
+
+| Item | Value |
+|------|-------|
+| Host | Windows PC (RTX 4070) |
+| LAN URL | http://10.0.0.10:11434 |
+| Purpose | Local LLM inference for AI agent simulation |
 
 ### SSH Key Setup (Windows to Gitea)
 
@@ -159,4 +169,4 @@ docker exec vault vault kv get secret/api-keys/<name>
 
 ---
 
-**Last Updated**: 2026-02-05
+**Last Updated**: 2026-02-17
