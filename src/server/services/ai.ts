@@ -1,4 +1,6 @@
 import { config } from '../config.js';
+import { db } from '@db/connection';
+import { agentDecisions } from '@db/schema/index';
 
 export interface AgentRecord {
   id: string;
@@ -71,35 +73,70 @@ async function callOllama(systemPrompt: string, contextMessage: string): Promise
 export async function generateAgentDecision(
   agent: AgentRecord,
   contextMessage: string,
+  phase?: string,
 ): Promise<AgentDecision> {
   const provider = agent.modelProvider ?? 'ollama';
   const systemPrompt = buildSystemPrompt(agent);
   const start = Date.now();
 
-  let rawText: string;
+  let rawText: string | null = null;
+  let latencyMs = 0;
+
   try {
     if (provider === 'haiku') {
       rawText = await callAnthropic(systemPrompt, contextMessage);
     } else {
       rawText = await callOllama(systemPrompt, contextMessage);
     }
+    latencyMs = Date.now() - start;
+    console.warn(`[AI] ${agent.displayName} (${provider}) responded in ${latencyMs}ms`);
   } catch (err) {
-    const elapsed = Date.now() - start;
-    console.warn(`[AI] ${agent.displayName} (${provider}) error after ${elapsed}ms:`, err);
+    latencyMs = Date.now() - start;
+    console.warn(`[AI] ${agent.displayName} (${provider}) error after ${latencyMs}ms:`, err);
+    await db.insert(agentDecisions).values({
+      agentId: agent.id,
+      provider,
+      phase: phase ?? null,
+      contextMessage,
+      rawResponse: null,
+      parsedAction: 'idle',
+      parsedReasoning: 'api error',
+      success: false,
+      latencyMs,
+    }).catch(() => {/* non-fatal */});
     return { action: 'idle', reasoning: 'api error' };
   }
 
-  const elapsed = Date.now() - start;
-  console.warn(`[AI] ${agent.displayName} (${provider}) responded in ${elapsed}ms`);
-
   try {
-    const start = rawText.indexOf('{');
-    const end = rawText.lastIndexOf('}');
-    if (start === -1 || end === -1) throw new Error('no JSON object found');
-    const decision = JSON.parse(rawText.slice(start, end + 1)) as AgentDecision;
+    const s = rawText.indexOf('{');
+    const e = rawText.lastIndexOf('}');
+    if (s === -1 || e === -1) throw new Error('no JSON object found');
+    const decision = JSON.parse(rawText.slice(s, e + 1)) as AgentDecision;
+    await db.insert(agentDecisions).values({
+      agentId: agent.id,
+      provider,
+      phase: phase ?? null,
+      contextMessage,
+      rawResponse: rawText,
+      parsedAction: decision.action,
+      parsedReasoning: decision.reasoning,
+      success: true,
+      latencyMs,
+    }).catch(() => {/* non-fatal */});
     return decision;
   } catch {
     console.warn(`[AI] ${agent.displayName} parse error — raw:`, rawText.slice(0, 200));
+    await db.insert(agentDecisions).values({
+      agentId: agent.id,
+      provider,
+      phase: phase ?? null,
+      contextMessage,
+      rawResponse: rawText,
+      parsedAction: 'idle',
+      parsedReasoning: 'parse error',
+      success: false,
+      latencyMs,
+    }).catch(() => {/* non-fatal */});
     return { action: 'idle', reasoning: 'parse error' };
   }
 }

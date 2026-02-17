@@ -7,7 +7,6 @@ const MAX_RECONNECT_ATTEMPTS = 10;
 
 interface UseWebSocketReturn {
   isConnected: boolean;
-  lastMessage: WsMessage | null;
   subscribe: (event: string, handler: (data: unknown) => void) => () => void;
 }
 
@@ -15,7 +14,6 @@ export function useWebSocket(): UseWebSocketReturn {
   const wsRef = useRef<WebSocket | null>(null);
   const handlersRef = useRef<Map<string, Set<(data: unknown) => void>>>(new Map());
   const [isConnected, setIsConnected] = useState(false);
-  const [lastMessage, setLastMessage] = useState<WsMessage | null>(null);
   const reconnectAttempts = useRef(0);
   const reconnectTimeout = useRef<ReturnType<typeof setTimeout>>();
 
@@ -32,8 +30,6 @@ export function useWebSocket(): UseWebSocketReturn {
     ws.onmessage = (event) => {
       try {
         const message: WsMessage = JSON.parse(event.data as string);
-        setLastMessage(message);
-
         const handlers = handlersRef.current.get(message.event);
         if (handlers) {
           handlers.forEach((handler) => handler(message.data));
@@ -86,5 +82,5 @@ export function useWebSocket(): UseWebSocketReturn {
     [],
   );
 
-  return { isConnected, lastMessage, subscribe };
+  return { isConnected, subscribe };
 }

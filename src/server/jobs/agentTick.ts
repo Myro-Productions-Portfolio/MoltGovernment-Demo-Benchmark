@@ -56,6 +56,7 @@ agentTickQueue.process(async () => {
               personality: agent.personality,
             },
             contextMessage,
+            'bill_voting',
           );
 
           const isVote = decision.action === 'vote' || decision.action === 'yea' || decision.action === 'nay';
@@ -276,6 +277,7 @@ agentTickQueue.process(async () => {
           personality: agent.personality,
         },
         contextMessage,
+        'bill_proposal',
       );
 
       if (decision.action !== 'propose' || !decision.data) continue;
@@ -504,6 +506,7 @@ agentTickQueue.process(async () => {
             personality: campaignAgent.personality,
           },
           contextMessage,
+          'campaigning',
         );
 
         if (decision.action !== 'campaign_speech') continue;
