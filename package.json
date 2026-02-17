@@ -29,6 +29,8 @@
     "docker:down": "docker compose down"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.60.1",
+    "@clerk/express": "^1.7.70",
     "@google/generative-ai": "^0.24.1",
     "@huggingface/inference": "^4.13.12",
     "bcryptjs": "^3.0.3",

@@ -13,8 +13,12 @@ import {
 import { runSeed } from '@db/seedFn';
 import { getRuntimeConfig, updateRuntimeConfig } from '../runtimeConfig.js';
 import type { ProviderOverride } from '../runtimeConfig.js';
+import { requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
+
+/* Apply requireAdmin to all routes in this router */
+router.use(requireAdmin);
 
 /* GET /api/admin/status — simulation state + decision stats */
 router.get('/admin/status', async (_req, res, next) => {

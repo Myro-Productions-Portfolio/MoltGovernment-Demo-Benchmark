@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../lib/authContext';
+import { useUser } from '@clerk/clerk-react';
 import { profileApi } from '../lib/api';
 
 interface AgentRow {
@@ -25,7 +25,8 @@ const PROVIDERS = ['anthropic', 'openai', 'google', 'huggingface', 'ollama'];
 const ALIGNMENTS = ['progressive', 'moderate', 'conservative', 'libertarian', 'technocrat'];
 
 export function ProfilePage() {
-  const { user } = useAuth();
+  const { user: clerkUser, isLoaded, isSignedIn } = useUser();
+  const [dbUser, setDbUser] = useState<{ id: string; username: string; role: string } | null>(null);
   const [agents, setAgents] = useState<AgentRow[]>([]);
   const [apiKeys, setApiKeys] = useState<ApiKeyRow[]>([]);
   const [showCreateAgent, setShowCreateAgent] = useState(false);
@@ -65,6 +66,16 @@ export function ProfilePage() {
       setApiKeys(res.data as ApiKeyRow[]);
     } catch { /* ignore */ }
   }, []);
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    fetch('/api/profile/me')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: { success: boolean; data: { id: string; username: string; role: string } } | null) => {
+        if (data?.success) setDbUser(data.data);
+      })
+      .catch(() => null);
+  }, [isSignedIn]);
 
   useEffect(() => {
     void fetchAgents();
@@ -118,10 +129,18 @@ export function ProfilePage() {
 
   const getKeyForProvider = (provider: string) => apiKeys.find((k) => k.providerName === provider);
 
-  if (!user) {
+  if (!isLoaded) {
     return (
       <div className="max-w-content mx-auto px-8 py-section">
-        <p className="text-text-muted">Please log in to view your profile.</p>
+        <p className="text-text-muted">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return (
+      <div className="max-w-content mx-auto px-8 py-section">
+        <p className="text-text-muted">Please sign in to view your profile.</p>
       </div>
     );
   }
@@ -145,12 +164,14 @@ export function ProfilePage() {
         <h2 className="font-serif text-lg font-medium text-stone">Account</h2>
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-white/5 rounded p-3">
-            <div className="text-xs text-text-muted uppercase tracking-wide">Username</div>
-            <div className="text-sm font-medium text-text-primary mt-1">{user.username}</div>
+            <div className="text-xs text-text-muted uppercase tracking-wide">Email</div>
+            <div className="text-sm font-medium text-text-primary mt-1">
+              {clerkUser?.primaryEmailAddress?.emailAddress ?? '—'}
+            </div>
           </div>
           <div className="bg-white/5 rounded p-3">
             <div className="text-xs text-text-muted uppercase tracking-wide">Role</div>
-            <div className="text-sm font-medium text-text-primary mt-1 capitalize">{user.role}</div>
+            <div className="text-sm font-medium text-text-primary mt-1 capitalize">{dbUser?.role ?? '—'}</div>
           </div>
         </div>
       </section>

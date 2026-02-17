@@ -1,49 +1,65 @@
-import type { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-
-export interface AuthUser {
-  id: string;
-  username: string;
-  role: string;
-}
+import { getAuth } from '@clerk/express';
+import type { RequestHandler } from 'express';
+import { db } from '@db/connection.js';
+import { users } from '@db/schema/index.js';
+import { eq, sql } from 'drizzle-orm';
 
 declare global {
   namespace Express {
     interface Request {
-      user?: AuthUser;
+      user?: {
+        id: string;
+        clerkUserId: string;
+        username: string;
+        role: 'admin' | 'user';
+      };
     }
   }
 }
 
-function getJwtSecret(): string {
-  return process.env.JWT_SECRET ?? 'molt-dev-secret-change-in-production';
-}
-
-export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  const token = req.cookies?.['molt_token'] as string | undefined;
-  if (!token) {
-    res.status(401).json({ success: false, error: 'Authentication required' });
+export const requireAuth: RequestHandler = async (req, res, next) => {
+  const { userId } = getAuth(req);
+  if (!userId) {
+    res.status(401).json({ success: false, error: 'Unauthorized' });
     return;
   }
-  try {
-    const payload = jwt.verify(token, getJwtSecret()) as AuthUser;
-    req.user = payload;
-    next();
-  } catch {
-    res.status(401).json({ success: false, error: 'Invalid or expired token' });
+  // Sync/create user in our DB on first seen
+  let [user] = await db.select().from(users).where(eq(users.clerkUserId, userId));
+  if (!user) {
+    // First user ever = admin, rest = user
+    const [countRow] = await db.select({ count: sql<number>`COUNT(*)` }).from(users);
+    const isFirst = Number(countRow.count) === 0;
+    [user] = await db.insert(users).values({
+      clerkUserId: userId,
+      username: userId, // temporary, updated on profile fetch
+      role: isFirst ? 'admin' : 'user',
+    }).returning();
   }
-}
+  req.user = {
+    id: user.id,
+    clerkUserId: userId,
+    username: user.username,
+    role: user.role as 'admin' | 'user',
+  };
+  next();
+};
 
-export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
-  requireAuth(req, res, () => {
-    if (req.user?.role !== 'admin') {
-      res.status(403).json({ success: false, error: 'Admin access required' });
-      return;
-    }
-    next();
-  });
-}
-
-export function signToken(user: AuthUser): string {
-  return jwt.sign(user, getJwtSecret(), { expiresIn: '7d' });
-}
+export const requireAdmin: RequestHandler = async (req, res, next) => {
+  const { userId } = getAuth(req);
+  if (!userId) {
+    res.status(401).json({ success: false, error: 'Unauthorized' });
+    return;
+  }
+  const [user] = await db.select().from(users).where(eq(users.clerkUserId, userId));
+  if (!user || user.role !== 'admin') {
+    res.status(403).json({ success: false, error: 'Forbidden' });
+    return;
+  }
+  req.user = {
+    id: user.id,
+    clerkUserId: userId,
+    username: user.username,
+    role: 'admin',
+  };
+  next();
+};

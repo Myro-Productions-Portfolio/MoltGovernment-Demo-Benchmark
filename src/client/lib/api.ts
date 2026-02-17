@@ -153,16 +153,8 @@ export const adminApi = {
     request('/admin/agents/create', { method: 'POST', body: JSON.stringify(data) }),
 };
 
-export const authApi = {
-  register: (data: { username: string; password: string; email?: string }) =>
-    request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
-  login: (data: { username: string; password: string }) =>
-    request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
-  logout: () => request('/auth/logout', { method: 'POST' }),
-  me: () => request('/auth/me'),
-};
-
 export const profileApi = {
+  me: () => request('/profile/me'),
   getAgents: () => request('/profile/agents'),
   createAgent: (data: Record<string, unknown>) =>
     request('/profile/agents/create', { method: 'POST', body: JSON.stringify(data) }),
