@@ -196,6 +196,10 @@ export function AdminPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<Record<string, string>>({});
 
+  /* Users state */
+  const [userList, setUserList] = useState<{ id: string; username: string; email: string | null; role: string; clerkUserId: string | null; createdAt: string }[]>([]);
+  const [userRoleSaving, setUserRoleSaving] = useState<string | null>(null);
+
   /* Provider panel state */
   const [providerKeyInputs, setProviderKeyInputs] = useState<Record<string, string>>({});
   const [providerOllamaInputs, setProviderOllamaInputs] = useState<Record<string, string>>({});
@@ -267,6 +271,13 @@ export function AdminPage() {
     } catch { /* ignore */ }
   }, []);
 
+  const fetchUsers = useCallback(async () => {
+    try {
+      const res = await adminApi.getUsers();
+      setUserList(res.data as typeof userList);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     void fetchStatus();
     void fetchDecisions();
@@ -275,6 +286,7 @@ export function AdminPage() {
     void fetchAgents();
     void fetchAvatarAgents();
     void fetchProviders();
+    void fetchUsers();
 
     const refetch = () => {
       void fetchStatus();
@@ -1262,6 +1274,58 @@ export function AdminPage() {
           </div>
         </CollapsibleSection>
       )}
+
+      {/* Users */}
+      <CollapsibleSection id="users" title="Users" subtitle="Manage registered accounts and assign roles">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-text-muted">
+                <th className="pb-2 pr-4 font-medium">Username</th>
+                <th className="pb-2 pr-4 font-medium">Email</th>
+                <th className="pb-2 pr-4 font-medium">Clerk ID</th>
+                <th className="pb-2 pr-4 font-medium">Role</th>
+                <th className="pb-2 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {userList.length === 0 && (
+                <tr><td colSpan={5} className="py-4 text-text-muted text-center">No users registered yet</td></tr>
+              )}
+              {userList.map((u) => (
+                <tr key={u.id} className="hover:bg-surface-2 transition-colors">
+                  <td className="py-2 pr-4 font-mono text-xs">{u.username || '—'}</td>
+                  <td className="py-2 pr-4">{u.email || '—'}</td>
+                  <td className="py-2 pr-4 font-mono text-xs text-text-muted">{u.clerkUserId ? u.clerkUserId.slice(0, 16) + '…' : '—'}</td>
+                  <td className="py-2 pr-4">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${u.role === 'admin' ? 'bg-yellow-900/40 text-yellow-300' : 'bg-surface-2 text-text-muted'}`}>
+                      {u.role}
+                    </span>
+                  </td>
+                  <td className="py-2">
+                    <button
+                      disabled={userRoleSaving === u.id}
+                      onClick={async () => {
+                        const newRole = u.role === 'admin' ? 'user' : 'admin';
+                        setUserRoleSaving(u.id);
+                        try {
+                          await adminApi.setUserRole(u.id, newRole);
+                          setUserList((prev) => prev.map((x) => x.id === u.id ? { ...x, role: newRole } : x));
+                          flash(`${u.username || u.id} is now ${newRole}`);
+                        } catch { flash('Failed to update role'); }
+                        finally { setUserRoleSaving(null); }
+                      }}
+                      className="text-xs px-3 py-1 rounded border border-border hover:bg-surface-2 transition-colors disabled:opacity-50"
+                    >
+                      {userRoleSaving === u.id ? 'Saving…' : u.role === 'admin' ? 'Demote to user' : 'Promote to admin'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CollapsibleSection>
 
       {/* Database */}
       <CollapsibleSection id="database" title="Database">

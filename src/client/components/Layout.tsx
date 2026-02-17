@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
 import { useWebSocket } from '../lib/useWebSocket';
-import { useAuth } from '../lib/authContext';
+import { useUser, SignInButton, UserButton } from '@clerk/clerk-react';
 
 const NAV_LINKS = [
   { to: '/', label: 'Capitol' },
@@ -13,7 +14,23 @@ const NAV_LINKS = [
 
 export function Layout() {
   const { isConnected } = useWebSocket();
-  const { user, logout } = useAuth();
+  const { isSignedIn, isLoaded } = useUser();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isSignedIn) {
+      setUserRole(null);
+      return;
+    }
+    fetch('/api/profile/me')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: { success: boolean; data: { role: string } } | null) => {
+        if (data?.success) {
+          setUserRole(data.data.role);
+        }
+      })
+      .catch(() => setUserRole(null));
+  }, [isSignedIn]);
 
   return (
     <div className="min-h-screen flex flex-col bg-capitol-deep">
@@ -55,7 +72,7 @@ export function Layout() {
         </div>
 
         {/* Admin link — only visible to admins */}
-        {user?.role === 'admin' && (
+        {isSignedIn && userRole === 'admin' && (
           <Link
             to="/admin"
             className="text-xs text-text-muted hover:text-text-secondary uppercase tracking-widest px-3 py-1 rounded border border-border/50 hover:border-border transition-colors"
@@ -75,23 +92,24 @@ export function Layout() {
             />
             {isConnected ? 'Online' : 'Offline'}
           </div>
-          {user ? (
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="text-sm font-medium text-text-primary">{user.username}</div>
-                <div className="text-xs text-text-muted capitalize">{user.role}</div>
+          {isLoaded && (
+            isSignedIn ? (
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/profile"
+                  className="text-xs text-text-muted hover:text-text-secondary uppercase tracking-widest px-2 py-1 rounded border border-border/50 hover:border-border transition-colors"
+                >
+                  Profile
+                </Link>
+                <UserButton afterSignOutUrl="/" />
               </div>
-              <Link to="/profile" className="text-xs text-text-muted hover:text-text-secondary uppercase tracking-widest px-2 py-1 rounded border border-border/50 hover:border-border transition-colors">
-                Profile
-              </Link>
-              <button onClick={() => void logout()} className="text-xs text-text-muted hover:text-text-secondary uppercase tracking-widest">
-                Logout
-              </button>
-            </div>
-          ) : (
-            <Link to="/login" className="text-xs text-gold hover:text-gold/80 uppercase tracking-widest px-3 py-1 rounded border border-gold/40 hover:border-gold/60 transition-colors">
-              Login
-            </Link>
+            ) : (
+              <SignInButton mode="modal">
+                <button className="text-xs text-gold hover:text-gold/80 uppercase tracking-widest px-3 py-1 rounded border border-gold/40 hover:border-gold/60 transition-colors">
+                  Login
+                </button>
+              </SignInButton>
+            )
           )}
         </div>
       </nav>

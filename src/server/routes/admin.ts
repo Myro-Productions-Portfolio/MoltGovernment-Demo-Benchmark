@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '@db/connection';
-import { agentDecisions, agents, governmentSettings } from '@db/schema/index';
+import { agentDecisions, agents, governmentSettings, users } from '@db/schema/index';
 import { count, eq, sql } from 'drizzle-orm';
 import {
   pauseSimulation,
@@ -13,8 +13,12 @@ import {
 import { runSeed } from '@db/seedFn';
 import { getRuntimeConfig, updateRuntimeConfig } from '../runtimeConfig.js';
 import type { ProviderOverride } from '../runtimeConfig.js';
+import { requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
+
+/* Apply requireAdmin to all /admin/* routes in this router */
+router.use('/admin', requireAdmin);
 
 /* GET /api/admin/status — simulation state + decision stats */
 router.get('/admin/status', async (_req, res, next) => {
@@ -342,6 +346,40 @@ router.post('/admin/agents/create', async (req, res, next) => {
     }).returning();
 
     res.json({ success: true, data: newAgent });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* GET /api/admin/users — list all registered users */
+router.get('/admin/users', async (_req, res, next) => {
+  try {
+    const rows = await db
+      .select({ id: users.id, username: users.username, email: users.email, role: users.role, clerkUserId: users.clerkUserId, createdAt: users.createdAt })
+      .from(users)
+      .orderBy(users.createdAt);
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* POST /api/admin/users/:id/role — set a user's role */
+router.post('/admin/users/:id/role', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const body = req.body as Record<string, unknown>;
+    const role = String(body.role ?? '');
+    if (role !== 'admin' && role !== 'user') {
+      res.status(400).json({ success: false, error: 'role must be "admin" or "user"' });
+      return;
+    }
+    const [updated] = await db.update(users).set({ role }).where(eq(users.id, id)).returning();
+    if (!updated) {
+      res.status(404).json({ success: false, error: 'User not found' });
+      return;
+    }
+    res.json({ success: true, data: updated });
   } catch (error) {
     next(error);
   }

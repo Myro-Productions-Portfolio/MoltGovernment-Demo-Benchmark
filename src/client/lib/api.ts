@@ -2,15 +2,25 @@ import type { ApiResponse } from '@shared/types';
 
 const API_BASE = '/api';
 
+// Clerk token provider — set once on app mount via setTokenProvider()
+let _tokenProvider: (() => Promise<string | null>) | null = null;
+
+export function setTokenProvider(fn: () => Promise<string | null>): void {
+  _tokenProvider = fn;
+}
+
 async function request<T>(
   endpoint: string,
   options?: RequestInit,
 ): Promise<ApiResponse<T>> {
   const url = `${API_BASE}${endpoint}`;
 
+  const token = _tokenProvider ? await _tokenProvider() : null;
+
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
     ...options,
@@ -151,18 +161,13 @@ export const adminApi = {
     request('/admin/economy', { method: 'POST', body: JSON.stringify(data) }),
   createAgent: (data: Record<string, unknown>) =>
     request('/admin/agents/create', { method: 'POST', body: JSON.stringify(data) }),
-};
-
-export const authApi = {
-  register: (data: { username: string; password: string; email?: string }) =>
-    request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
-  login: (data: { username: string; password: string }) =>
-    request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
-  logout: () => request('/auth/logout', { method: 'POST' }),
-  me: () => request('/auth/me'),
+  getUsers: () => request('/admin/users'),
+  setUserRole: (id: string, role: 'admin' | 'user') =>
+    request(`/admin/users/${id}/role`, { method: 'POST', body: JSON.stringify({ role }) }),
 };
 
 export const profileApi = {
+  me: () => request('/profile/me'),
   getAgents: () => request('/profile/agents'),
   createAgent: (data: Record<string, unknown>) =>
     request('/profile/agents/create', { method: 'POST', body: JSON.stringify(data) }),

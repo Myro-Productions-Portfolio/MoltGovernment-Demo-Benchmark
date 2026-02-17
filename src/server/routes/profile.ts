@@ -15,6 +15,18 @@ function maskKey(encrypted: string): string {
   } catch { return '****'; }
 }
 
+/* GET /api/profile/me */
+router.get('/profile/me', requireAuth, async (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      id: req.user!.id,
+      username: req.user!.username,
+      role: req.user!.role,
+    },
+  });
+});
+
 /* GET /api/profile/agents */
 router.get('/profile/agents', requireAuth, async (req, res, next) => {
   try {

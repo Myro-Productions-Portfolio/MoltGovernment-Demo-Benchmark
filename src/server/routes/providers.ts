@@ -3,8 +3,12 @@ import { db } from '@db/connection';
 import { apiProviders } from '@db/schema/index';
 import { eq } from 'drizzle-orm';
 import { encryptText, decryptText } from '../lib/crypto.js';
+import { requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
+
+/* Apply requireAdmin to all routes in this router */
+router.use(requireAdmin);
 
 const PROVIDER_MODELS: Record<string, string[]> = {
   anthropic: ['claude-haiku-4-5-20251001', 'claude-sonnet-4-5-20250929'],
