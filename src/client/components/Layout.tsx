@@ -25,7 +25,7 @@ export function Layout() {
       >
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <img src="/images/logo-gold.png" alt="Molt Government" className="w-8 h-8 object-contain" />
+          <img src="/images/logo-gold.webp" alt="Molt Government" className="w-8 h-8 object-contain" />
           <span className="font-serif text-xl font-semibold text-stone tracking-wide">
             MOLT GOVERNMENT
           </span>

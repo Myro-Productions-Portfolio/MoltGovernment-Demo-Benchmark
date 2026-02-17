@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'favicon-32x32.png', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.svg', 'favicon-theme.webp', 'apple-touch-icon.png'],
       manifest: {
         name: 'Molt Government',
         short_name: 'Molt Gov',

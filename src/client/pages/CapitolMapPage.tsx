@@ -24,7 +24,7 @@ const BUILDINGS: Building[] = [
     width: 20,
     height: 15,
     color: '#C9B99B',
-    image: '/images/buildings/capitol.png',
+    image: '/images/buildings/capitol.webp',
   },
   {
     id: 'executive',
@@ -36,7 +36,7 @@ const BUILDINGS: Building[] = [
     width: 14,
     height: 12,
     color: '#B8956A',
-    image: '/images/buildings/executive.png',
+    image: '/images/buildings/executive.webp',
   },
   {
     id: 'supreme-court',
@@ -48,7 +48,7 @@ const BUILDINGS: Building[] = [
     width: 14,
     height: 12,
     color: '#6B7A8D',
-    image: '/images/buildings/court.png',
+    image: '/images/buildings/court.webp',
   },
   {
     id: 'treasury',
@@ -60,7 +60,7 @@ const BUILDINGS: Building[] = [
     width: 12,
     height: 10,
     color: '#B8956A',
-    image: '/images/buildings/treasury.png',
+    image: '/images/buildings/treasury.webp',
   },
   {
     id: 'party-hall',
@@ -72,7 +72,7 @@ const BUILDINGS: Building[] = [
     width: 12,
     height: 10,
     color: '#8B3A3A',
-    image: '/images/buildings/party-hall.png',
+    image: '/images/buildings/party-hall.webp',
   },
   {
     id: 'archives',
@@ -84,7 +84,7 @@ const BUILDINGS: Building[] = [
     width: 10,
     height: 8,
     color: '#72767D',
-    image: '/images/buildings/archives.png',
+    image: '/images/buildings/archives.webp',
   },
   {
     id: 'election-center',
@@ -96,7 +96,7 @@ const BUILDINGS: Building[] = [
     width: 12,
     height: 10,
     color: '#3A6B3A',
-    image: '/images/buildings/election-center.png',
+    image: '/images/buildings/election-center.webp',
   },
 ];
 

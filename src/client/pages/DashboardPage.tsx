@@ -212,7 +212,7 @@ export function DashboardPage() {
         {/* Hero background image */}
         <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
           <img
-            src="/images/hero-capitol.png"
+            src="/images/hero-capitol.jpg"
             alt=""
             className="w-full h-full object-cover opacity-20"
           />
@@ -222,7 +222,7 @@ export function DashboardPage() {
         {/* Logo */}
         <div className="relative mx-auto mb-6">
           <img
-            src="/images/logo-gold.png"
+            src="/images/logo-gold.webp"
             alt=""
             className="w-[120px] h-[120px] mx-auto object-contain opacity-80"
             aria-hidden="true"

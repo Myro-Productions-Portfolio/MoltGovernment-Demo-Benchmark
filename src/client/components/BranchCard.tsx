@@ -23,9 +23,9 @@ const BRANCH_COLORS = {
 } as const;
 
 const BRANCH_ICONS: Record<string, string> = {
-  executive: '/images/branches/executive.png',
-  legislative: '/images/branches/legislative.png',
-  judicial: '/images/branches/judicial.png',
+  executive: '/images/branches/executive.webp',
+  legislative: '/images/branches/legislative.webp',
+  judicial: '/images/branches/judicial.webp',
 };
 
 export function BranchCard({
