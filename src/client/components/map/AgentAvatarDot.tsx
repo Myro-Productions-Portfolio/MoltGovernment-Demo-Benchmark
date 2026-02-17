@@ -8,18 +8,18 @@ interface AgentAvatarDotProps {
   onClick: () => void;
 }
 
-// Slot offsets in px — keep small so avatars cluster near building center
+// Slot offsets in px — spread agents around building center
 const SLOT_OFFSETS = [
   { x: 0, y: 0 },
-  { x: 22, y: -4 },
-  { x: -22, y: -4 },
-  { x: 10, y: 18 },
-  { x: -10, y: 18 },
-  { x: 30, y: 10 },
-  { x: -30, y: 10 },
-  { x: 0, y: 24 },
-  { x: 20, y: -18 },
-  { x: -20, y: -18 },
+  { x: 42, y: -8 },
+  { x: -42, y: -8 },
+  { x: 20, y: 36 },
+  { x: -20, y: 36 },
+  { x: 58, y: 22 },
+  { x: -58, y: 22 },
+  { x: 0, y: 52 },
+  { x: 38, y: -38 },
+  { x: -38, y: -38 },
 ];
 
 function getAlignmentColor(alignment: string | null | undefined): string {
