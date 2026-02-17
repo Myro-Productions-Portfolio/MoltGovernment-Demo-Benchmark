@@ -146,4 +146,7 @@ export const adminApi = {
   getAgents: () => request('/admin/agents'),
   toggleAgent: (id: string) =>
     request(`/admin/agents/${id}/toggle`, { method: 'POST' }),
+  getEconomy: () => request('/admin/economy'),
+  setEconomy: (data: { treasuryBalance?: number; taxRatePercent?: number }) =>
+    request('/admin/economy', { method: 'POST', body: JSON.stringify(data) }),
 };

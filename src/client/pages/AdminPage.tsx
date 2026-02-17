@@ -32,11 +32,50 @@ interface Decision {
 }
 
 interface RuntimeConfig {
+  /* Simulation */
   tickIntervalMs: number;
-  billProposalChance: number;
-  campaignSpeechChance: number;
   billAdvancementDelayMs: number;
   providerOverride: 'default' | 'haiku' | 'ollama';
+  /* Agent Behavior */
+  billProposalChance: number;
+  campaignSpeechChance: number;
+  amendmentProposalChance: number;
+  /* Government Structure */
+  congressSeats: number;
+  congressTermDays: number;
+  presidentTermDays: number;
+  supremeCourtJustices: number;
+  quorumPercentage: number;
+  billPassagePercentage: number;
+  supermajorityPercentage: number;
+  /* Elections */
+  campaignDurationDays: number;
+  votingDurationHours: number;
+  minReputationToRun: number;
+  minReputationToVote: number;
+  /* Economy (runtime) */
+  initialAgentBalance: number;
+  campaignFilingFee: number;
+  partyCreationFee: number;
+  salaryPresident: number;
+  salaryCabinet: number;
+  salaryCongress: number;
+  salaryJustice: number;
+  /* Governance Probabilities */
+  vetoBaseRate: number;
+  vetoRatePerTier: number;
+  vetoMaxRate: number;
+  committeeTableRateOpposing: number;
+  committeeTableRateNeutral: number;
+  committeeAmendRate: number;
+  judicialChallengeRatePerLaw: number;
+  partyWhipFollowRate: number;
+  vetoOverrideThreshold: number;
+}
+
+interface EconomySettings {
+  treasuryBalance: number;
+  taxRatePercent: number;
 }
 
 interface AgentRow {
@@ -123,6 +162,7 @@ export function AdminPage() {
   const [decisionStats, setDecisionStats] = useState<DecisionStats | null>(null);
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [simConfig, setSimConfig] = useState<RuntimeConfig | null>(null);
+  const [economySettings, setEconomySettings] = useState<EconomySettings | null>(null);
   const [agentList, setAgentList] = useState<AgentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
@@ -164,6 +204,13 @@ export function AdminPage() {
     } catch { /* ignore */ }
   }, []);
 
+  const fetchEconomy = useCallback(async () => {
+    try {
+      const res = await adminApi.getEconomy();
+      setEconomySettings(res.data as EconomySettings);
+    } catch { /* ignore */ }
+  }, []);
+
   const fetchAgents = useCallback(async () => {
     try {
       const res = await adminApi.getAgents();
@@ -184,6 +231,7 @@ export function AdminPage() {
     void fetchStatus();
     void fetchDecisions();
     void fetchConfig();
+    void fetchEconomy();
     void fetchAgents();
     void fetchAvatarAgents();
 
@@ -198,7 +246,7 @@ export function AdminPage() {
       subscribe('campaign:speech', refetch),
     ];
     return () => unsubs.forEach((fn) => fn());
-  }, [fetchStatus, fetchDecisions, fetchConfig, fetchAgents, fetchAvatarAgents, subscribe]);
+  }, [fetchStatus, fetchDecisions, fetchConfig, fetchEconomy, fetchAgents, fetchAvatarAgents, subscribe]);
 
   const flash = (msg: string) => {
     setActionMsg(msg);
@@ -246,6 +294,19 @@ export function AdminPage() {
       flash('Settings saved');
     } catch {
       flash('Failed to save settings');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const saveEconomy = async (patch: { treasuryBalance?: number; taxRatePercent?: number }) => {
+    setSavingConfig(true);
+    try {
+      const res = await adminApi.setEconomy(patch);
+      setEconomySettings(res.data as EconomySettings);
+      flash('Economy settings saved');
+    } catch {
+      flash('Failed to save economy settings');
     } finally {
       setSavingConfig(false);
     }
@@ -466,6 +527,377 @@ export function AdminPage() {
             <p className="text-xs text-text-muted">
               Override which AI provider all agents use. Default respects each agent's configured provider.
             </p>
+          </div>
+
+          {/* Amendment Proposal Chance */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-text-secondary">Amendment Proposal Chance</label>
+              <span className="text-sm text-gold font-mono">{Math.round(simConfig.amendmentProposalChance * 100)}%</span>
+            </div>
+            <input
+              type="range" min={0} max={100}
+              value={Math.round(simConfig.amendmentProposalChance * 100)}
+              onChange={(e) => setSimConfig((c) => c ? { ...c, amendmentProposalChance: parseInt(e.target.value) / 100 } : c)}
+              onMouseUp={() => void saveConfig({ amendmentProposalChance: simConfig.amendmentProposalChance })}
+              onTouchEnd={() => void saveConfig({ amendmentProposalChance: simConfig.amendmentProposalChance })}
+              className="w-full accent-gold"
+            />
+            <p className="text-xs text-text-muted">Per-agent chance to propose an amendment to an existing law each tick.</p>
+          </div>
+        </section>
+      )}
+
+      {/* Government Structure */}
+      {simConfig && (
+        <section className="bg-surface rounded-lg border border-border p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-serif text-lg font-medium text-stone">Government Structure</h2>
+              <p className="text-xs text-text-muted mt-0.5">Takes effect on next election cycle or term start</p>
+            </div>
+            {savingConfig && <span className="text-xs text-text-muted">Saving...</span>}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Congress Seats */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Congress Seats</label>
+                <span className="text-sm text-gold font-mono">{simConfig.congressSeats}</span>
+              </div>
+              <input type="range" min={1} max={200} value={simConfig.congressSeats}
+                onChange={(e) => setSimConfig((c) => c ? { ...c, congressSeats: parseInt(e.target.value) } : c)}
+                onMouseUp={() => void saveConfig({ congressSeats: simConfig.congressSeats })}
+                onTouchEnd={() => void saveConfig({ congressSeats: simConfig.congressSeats })}
+                className="w-full accent-gold" />
+              <p className="text-xs text-text-muted">Total legislative seats.</p>
+            </div>
+
+            {/* Supreme Court Justices */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Supreme Court Justices</label>
+                <span className="text-sm text-gold font-mono">{simConfig.supremeCourtJustices}</span>
+              </div>
+              <input type="range" min={1} max={25} value={simConfig.supremeCourtJustices}
+                onChange={(e) => setSimConfig((c) => c ? { ...c, supremeCourtJustices: parseInt(e.target.value) } : c)}
+                onMouseUp={() => void saveConfig({ supremeCourtJustices: simConfig.supremeCourtJustices })}
+                onTouchEnd={() => void saveConfig({ supremeCourtJustices: simConfig.supremeCourtJustices })}
+                className="w-full accent-gold" />
+              <p className="text-xs text-text-muted">Number of justices on the high court.</p>
+            </div>
+
+            {/* Congress Term Days */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Congress Term Length</label>
+                <span className="text-sm text-gold font-mono">{simConfig.congressTermDays}d</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[30, 60, 90, 180, 365].map((d) => (
+                  <button key={d} onClick={() => void saveConfig({ congressTermDays: d })}
+                    className={`px-3 py-1.5 rounded text-xs font-medium border transition-all ${simConfig.congressTermDays === d ? 'bg-gold/20 text-gold border-gold/40' : 'bg-white/5 text-text-muted border-border hover:bg-white/10'}`}>
+                    {d}d
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* President Term Days */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">President Term Length</label>
+                <span className="text-sm text-gold font-mono">{simConfig.presidentTermDays}d</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[30, 60, 90, 180, 365].map((d) => (
+                  <button key={d} onClick={() => void saveConfig({ presidentTermDays: d })}
+                    className={`px-3 py-1.5 rounded text-xs font-medium border transition-all ${simConfig.presidentTermDays === d ? 'bg-gold/20 text-gold border-gold/40' : 'bg-white/5 text-text-muted border-border hover:bg-white/10'}`}>
+                    {d}d
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Vote thresholds */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {([
+              ['quorumPercentage', 'Quorum Required', 'Minimum participation to hold a floor vote.'],
+              ['billPassagePercentage', 'Bill Passage Threshold', 'Yea votes required to pass a bill.'],
+              ['supermajorityPercentage', 'Supermajority (Veto Override)', 'Yea votes required to override a presidential veto.'],
+            ] as [keyof RuntimeConfig, string, string][]).map(([key, label, desc]) => (
+              <div key={key} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-text-secondary">{label}</label>
+                  <span className="text-sm text-gold font-mono">{Math.round((simConfig[key] as number) * 100)}%</span>
+                </div>
+                <input type="range" min={10} max={90} value={Math.round((simConfig[key] as number) * 100)}
+                  onChange={(e) => setSimConfig((c) => c ? { ...c, [key]: parseInt(e.target.value) / 100 } : c)}
+                  onMouseUp={() => void saveConfig({ [key]: simConfig[key] })}
+                  onTouchEnd={() => void saveConfig({ [key]: simConfig[key] })}
+                  className="w-full accent-gold" />
+                <p className="text-xs text-text-muted">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Elections */}
+      {simConfig && (
+        <section className="bg-surface rounded-lg border border-border p-6 space-y-6">
+          <h2 className="font-serif text-lg font-medium text-stone">Elections</h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Campaign Duration */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Campaign Duration</label>
+                <span className="text-sm text-gold font-mono">{simConfig.campaignDurationDays}d</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[7, 14, 30, 60].map((d) => (
+                  <button key={d} onClick={() => void saveConfig({ campaignDurationDays: d })}
+                    className={`px-3 py-1.5 rounded text-xs font-medium border transition-all ${simConfig.campaignDurationDays === d ? 'bg-gold/20 text-gold border-gold/40' : 'bg-white/5 text-text-muted border-border hover:bg-white/10'}`}>
+                    {d}d
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Voting Duration */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Voting Window</label>
+                <span className="text-sm text-gold font-mono">{simConfig.votingDurationHours}h</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[12, 24, 48, 72, 168].map((h) => (
+                  <button key={h} onClick={() => void saveConfig({ votingDurationHours: h })}
+                    className={`px-3 py-1.5 rounded text-xs font-medium border transition-all ${simConfig.votingDurationHours === h ? 'bg-gold/20 text-gold border-gold/40' : 'bg-white/5 text-text-muted border-border hover:bg-white/10'}`}>
+                    {h}h
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Min Rep to Run */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Min Reputation to Run</label>
+                <span className="text-sm text-gold font-mono">{simConfig.minReputationToRun}</span>
+              </div>
+              <input type="range" min={0} max={500} step={10} value={simConfig.minReputationToRun}
+                onChange={(e) => setSimConfig((c) => c ? { ...c, minReputationToRun: parseInt(e.target.value) } : c)}
+                onMouseUp={() => void saveConfig({ minReputationToRun: simConfig.minReputationToRun })}
+                onTouchEnd={() => void saveConfig({ minReputationToRun: simConfig.minReputationToRun })}
+                className="w-full accent-gold" />
+              <p className="text-xs text-text-muted">Reputation required to declare candidacy.</p>
+            </div>
+
+            {/* Min Rep to Vote */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Min Reputation to Vote</label>
+                <span className="text-sm text-gold font-mono">{simConfig.minReputationToVote}</span>
+              </div>
+              <input type="range" min={0} max={200} step={5} value={simConfig.minReputationToVote}
+                onChange={(e) => setSimConfig((c) => c ? { ...c, minReputationToVote: parseInt(e.target.value) } : c)}
+                onMouseUp={() => void saveConfig({ minReputationToVote: simConfig.minReputationToVote })}
+                onTouchEnd={() => void saveConfig({ minReputationToVote: simConfig.minReputationToVote })}
+                className="w-full accent-gold" />
+              <p className="text-xs text-text-muted">Reputation required to cast a vote.</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Economy */}
+      <section className="bg-surface rounded-lg border border-border p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-serif text-lg font-medium text-stone">Economy</h2>
+            <p className="text-xs text-text-muted mt-0.5">Treasury &amp; tax rate persist in DB. Fees &amp; salaries apply next tick.</p>
+          </div>
+          {savingConfig && <span className="text-xs text-text-muted">Saving...</span>}
+        </div>
+
+        {/* DB-persisted: treasury + tax rate */}
+        {economySettings && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Treasury Balance (M$)</label>
+                <span className="text-sm text-gold font-mono">M${economySettings.treasuryBalance.toLocaleString()}</span>
+              </div>
+              <input
+                type="number" min={0} step={1000}
+                value={economySettings.treasuryBalance}
+                onChange={(e) => setEconomySettings((s) => s ? { ...s, treasuryBalance: parseInt(e.target.value) || 0 } : s)}
+                onBlur={() => void saveEconomy({ treasuryBalance: economySettings.treasuryBalance })}
+                className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+              />
+              <p className="text-xs text-text-muted">Direct treasury balance — use to inject or remove funds.</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Tax Rate (%)</label>
+                <span className="text-sm text-gold font-mono">{economySettings.taxRatePercent}%</span>
+              </div>
+              <input type="range" min={0} max={20} step={0.5}
+                value={economySettings.taxRatePercent}
+                onChange={(e) => setEconomySettings((s) => s ? { ...s, taxRatePercent: parseFloat(e.target.value) } : s)}
+                onMouseUp={() => void saveEconomy({ taxRatePercent: economySettings.taxRatePercent })}
+                onTouchEnd={() => void saveEconomy({ taxRatePercent: economySettings.taxRatePercent })}
+                className="w-full accent-gold" />
+              <p className="text-xs text-text-muted">Percent of each agent's balance collected as tax each tick.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Runtime: fees and salaries */}
+        {simConfig && (
+          <>
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-medium text-text-muted uppercase tracking-wide mb-4">Fees</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {([
+                  ['initialAgentBalance', 'Starting Agent Balance', 'M$ each new agent starts with.'],
+                  ['campaignFilingFee', 'Campaign Filing Fee', 'M$ to declare candidacy.'],
+                  ['partyCreationFee', 'Party Creation Fee', 'M$ to found a new party.'],
+                ] as [keyof RuntimeConfig, string, string][]).map(([key, label, desc]) => (
+                  <div key={key} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-text-secondary">{label}</label>
+                      <span className="text-sm text-gold font-mono">M${(simConfig[key] as number).toLocaleString()}</span>
+                    </div>
+                    <input type="number" min={0} step={10}
+                      value={simConfig[key] as number}
+                      onChange={(e) => setSimConfig((c) => c ? { ...c, [key]: parseInt(e.target.value) || 0 } : c)}
+                      onBlur={() => void saveConfig({ [key]: simConfig[key] })}
+                      className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                    />
+                    <p className="text-xs text-text-muted">{desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-medium text-text-muted uppercase tracking-wide mb-4">Salaries (M$/tick)</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {([
+                  ['salaryPresident', 'President'],
+                  ['salaryCabinet', 'Cabinet'],
+                  ['salaryCongress', 'Congress'],
+                  ['salaryJustice', 'Justice'],
+                ] as [keyof RuntimeConfig, string][]).map(([key, label]) => (
+                  <div key={key} className="space-y-1.5">
+                    <label className="text-xs font-medium text-text-secondary">{label}</label>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-text-muted">M$</span>
+                      <input type="number" min={0} step={5}
+                        value={simConfig[key] as number}
+                        onChange={(e) => setSimConfig((c) => c ? { ...c, [key]: parseInt(e.target.value) || 0 } : c)}
+                        onBlur={() => void saveConfig({ [key]: simConfig[key] })}
+                        className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* Governance Probabilities */}
+      {simConfig && (
+        <section className="bg-surface rounded-lg border border-border p-6 space-y-6">
+          <div>
+            <h2 className="font-serif text-lg font-medium text-stone">Governance Probabilities</h2>
+            <p className="text-xs text-text-muted mt-0.5">Research-backed baselines. Changes apply on the next tick.</p>
+          </div>
+
+          {/* Presidential Veto */}
+          <div className="space-y-4">
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wide">Presidential Veto</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {([
+                ['vetoBaseRate', 'Base Veto Rate', 'Probability of veto when president and sponsor share alignment.'],
+                ['vetoRatePerTier', 'Rate Per Alignment Tier', 'Added probability per step apart on the alignment spectrum.'],
+                ['vetoMaxRate', 'Maximum Veto Rate', 'Hard cap — probability never exceeds this regardless of alignment gap.'],
+              ] as [keyof RuntimeConfig, string, string][]).map(([key, label, desc]) => (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-text-secondary">{label}</label>
+                    <span className="text-sm text-gold font-mono">{Math.round((simConfig[key] as number) * 100)}%</span>
+                  </div>
+                  <input type="range" min={0} max={100}
+                    value={Math.round((simConfig[key] as number) * 100)}
+                    onChange={(e) => setSimConfig((c) => c ? { ...c, [key]: parseInt(e.target.value) / 100 } : c)}
+                    onMouseUp={() => void saveConfig({ [key]: simConfig[key] })}
+                    onTouchEnd={() => void saveConfig({ [key]: simConfig[key] })}
+                    className="w-full accent-gold" />
+                  <p className="text-xs text-text-muted">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Committee */}
+          <div className="space-y-4 border-t border-border pt-4">
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wide">Committee Review</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {([
+                ['committeeTableRateOpposing', 'Table Rate (Opposing Chair)', 'Probability chair tables a bill when politically opposed to sponsor.'],
+                ['committeeTableRateNeutral', 'Table Rate (Neutral Chair)', 'Probability chair tables a bill when aligned with or neutral to sponsor.'],
+                ['committeeAmendRate', 'Amendment Rate', 'If not tabled, probability chair amends the bill text.'],
+              ] as [keyof RuntimeConfig, string, string][]).map(([key, label, desc]) => (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-text-secondary">{label}</label>
+                    <span className="text-sm text-gold font-mono">{Math.round((simConfig[key] as number) * 100)}%</span>
+                  </div>
+                  <input type="range" min={0} max={100}
+                    value={Math.round((simConfig[key] as number) * 100)}
+                    onChange={(e) => setSimConfig((c) => c ? { ...c, [key]: parseInt(e.target.value) / 100 } : c)}
+                    onMouseUp={() => void saveConfig({ [key]: simConfig[key] })}
+                    onTouchEnd={() => void saveConfig({ [key]: simConfig[key] })}
+                    className="w-full accent-gold" />
+                  <p className="text-xs text-text-muted">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Judicial + Whip + Override */}
+          <div className="space-y-4 border-t border-border pt-4">
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wide">Judicial, Whip &amp; Override</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {([
+                ['judicialChallengeRatePerLaw', 'Judicial Challenge Rate', 'Per-law probability of a Supreme Court review being triggered each tick.'],
+                ['partyWhipFollowRate', 'Party Whip Follow Rate', 'Probability a member follows their party whip recommendation when voting.'],
+                ['vetoOverrideThreshold', 'Veto Override Threshold', 'Yea fraction required to override a presidential veto (e.g. 0.67 = 2/3).'],
+              ] as [keyof RuntimeConfig, string, string][]).map(([key, label, desc]) => (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-text-secondary">{label}</label>
+                    <span className="text-sm text-gold font-mono">{Math.round((simConfig[key] as number) * 100)}%</span>
+                  </div>
+                  <input type="range" min={0} max={100}
+                    value={Math.round((simConfig[key] as number) * 100)}
+                    onChange={(e) => setSimConfig((c) => c ? { ...c, [key]: parseInt(e.target.value) / 100 } : c)}
+                    onMouseUp={() => void saveConfig({ [key]: simConfig[key] })}
+                    onTouchEnd={() => void saveConfig({ [key]: simConfig[key] })}
+                    className="w-full accent-gold" />
+                  <p className="text-xs text-text-muted">{desc}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}

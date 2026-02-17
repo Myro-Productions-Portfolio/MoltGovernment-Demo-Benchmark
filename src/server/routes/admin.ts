@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '@db/connection';
-import { agentDecisions, agents } from '@db/schema/index';
+import { agentDecisions, agents, governmentSettings } from '@db/schema/index';
 import { count, eq, sql } from 'drizzle-orm';
 import {
   pauseSimulation,
@@ -127,25 +127,114 @@ router.post('/admin/config', async (req, res, next) => {
     const body = req.body as Record<string, unknown>;
     const update: Parameters<typeof updateRuntimeConfig>[0] = {};
 
+    const num = (key: string, min: number, max: number): number | undefined => {
+      const v = body[key];
+      if (typeof v === 'number' && !isNaN(v)) return Math.max(min, Math.min(max, v));
+      return undefined;
+    };
+    const prob = (key: string): number | undefined => num(key, 0, 1);
+    const posInt = (key: string, min = 1, max = 9999): number | undefined => {
+      const v = num(key, min, max);
+      return v !== undefined ? Math.round(v) : undefined;
+    };
+
+    /* Simulation */
     if (typeof body.tickIntervalMs === 'number' && body.tickIntervalMs >= 30_000) {
       update.tickIntervalMs = body.tickIntervalMs;
       await changeTickInterval(body.tickIntervalMs);
     }
-    if (typeof body.billProposalChance === 'number') {
-      update.billProposalChance = Math.max(0, Math.min(1, body.billProposalChance));
-    }
-    if (typeof body.campaignSpeechChance === 'number') {
-      update.campaignSpeechChance = Math.max(0, Math.min(1, body.campaignSpeechChance));
-    }
-    if (typeof body.billAdvancementDelayMs === 'number' && body.billAdvancementDelayMs >= 10_000) {
-      update.billAdvancementDelayMs = body.billAdvancementDelayMs;
-    }
+    const badMs = num('billAdvancementDelayMs', 10_000, 86_400_000);
+    if (badMs !== undefined) update.billAdvancementDelayMs = badMs;
     if (body.providerOverride === 'default' || body.providerOverride === 'haiku' || body.providerOverride === 'ollama') {
       update.providerOverride = body.providerOverride;
     }
 
+    /* Agent Behavior */
+    const bpc = prob('billProposalChance');       if (bpc !== undefined) update.billProposalChance = bpc;
+    const csc = prob('campaignSpeechChance');     if (csc !== undefined) update.campaignSpeechChance = csc;
+    const apc = prob('amendmentProposalChance');  if (apc !== undefined) update.amendmentProposalChance = apc;
+
+    /* Government Structure */
+    const cs = posInt('congressSeats', 1, 500);           if (cs !== undefined) update.congressSeats = cs;
+    const ctd = posInt('congressTermDays', 7, 3650);      if (ctd !== undefined) update.congressTermDays = ctd;
+    const ptd = posInt('presidentTermDays', 7, 3650);     if (ptd !== undefined) update.presidentTermDays = ptd;
+    const scj = posInt('supremeCourtJustices', 1, 25);   if (scj !== undefined) update.supremeCourtJustices = scj;
+    const qp = prob('quorumPercentage');                   if (qp !== undefined) update.quorumPercentage = qp;
+    const bpp = prob('billPassagePercentage');             if (bpp !== undefined) update.billPassagePercentage = bpp;
+    const smp = prob('supermajorityPercentage');           if (smp !== undefined) update.supermajorityPercentage = smp;
+
+    /* Elections */
+    const cdd = posInt('campaignDurationDays', 1, 365);   if (cdd !== undefined) update.campaignDurationDays = cdd;
+    const vdh = posInt('votingDurationHours', 1, 720);    if (vdh !== undefined) update.votingDurationHours = vdh;
+    const mrr = posInt('minReputationToRun', 0, 10000);  if (mrr !== undefined) update.minReputationToRun = mrr;
+    const mrv = posInt('minReputationToVote', 0, 10000); if (mrv !== undefined) update.minReputationToVote = mrv;
+
+    /* Economy */
+    const iab = posInt('initialAgentBalance', 0, 1_000_000); if (iab !== undefined) update.initialAgentBalance = iab;
+    const cff = posInt('campaignFilingFee', 0, 100_000);     if (cff !== undefined) update.campaignFilingFee = cff;
+    const pcf = posInt('partyCreationFee', 0, 100_000);      if (pcf !== undefined) update.partyCreationFee = pcf;
+    const sp = posInt('salaryPresident', 0, 100_000);         if (sp !== undefined) update.salaryPresident = sp;
+    const sc = posInt('salaryCabinet', 0, 100_000);           if (sc !== undefined) update.salaryCabinet = sc;
+    const scg = posInt('salaryCongress', 0, 100_000);         if (scg !== undefined) update.salaryCongress = scg;
+    const sj = posInt('salaryJustice', 0, 100_000);           if (sj !== undefined) update.salaryJustice = sj;
+
+    /* Governance Probabilities */
+    const vbr = prob('vetoBaseRate');                     if (vbr !== undefined) update.vetoBaseRate = vbr;
+    const vrpt = prob('vetoRatePerTier');                 if (vrpt !== undefined) update.vetoRatePerTier = vrpt;
+    const vmr = prob('vetoMaxRate');                      if (vmr !== undefined) update.vetoMaxRate = vmr;
+    const ctro = prob('committeeTableRateOpposing');      if (ctro !== undefined) update.committeeTableRateOpposing = ctro;
+    const ctrn = prob('committeeTableRateNeutral');       if (ctrn !== undefined) update.committeeTableRateNeutral = ctrn;
+    const car = prob('committeeAmendRate');               if (car !== undefined) update.committeeAmendRate = car;
+    const jcr = prob('judicialChallengeRatePerLaw');      if (jcr !== undefined) update.judicialChallengeRatePerLaw = jcr;
+    const pwf = prob('partyWhipFollowRate');              if (pwf !== undefined) update.partyWhipFollowRate = pwf;
+    const vot = prob('vetoOverrideThreshold');            if (vot !== undefined) update.vetoOverrideThreshold = vot;
+
     const updated = updateRuntimeConfig(update);
     res.json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* GET /api/admin/economy — live treasury + tax rate from DB */
+router.get('/admin/economy', async (_req, res, next) => {
+  try {
+    const [row] = await db.select().from(governmentSettings).limit(1);
+    res.json({ success: true, data: row ?? { treasuryBalance: 0, taxRatePercent: 2 } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* POST /api/admin/economy — update treasury balance or tax rate in DB */
+router.post('/admin/economy', async (req, res, next) => {
+  try {
+    const body = req.body as Record<string, unknown>;
+    const patch: Record<string, unknown> = {};
+
+    if (typeof body.treasuryBalance === 'number' && body.treasuryBalance >= 0) {
+      patch.treasuryBalance = Math.round(body.treasuryBalance);
+    }
+    if (typeof body.taxRatePercent === 'number' && body.taxRatePercent >= 0 && body.taxRatePercent <= 100) {
+      patch.taxRatePercent = body.taxRatePercent;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      res.status(400).json({ success: false, error: 'No valid fields provided' });
+      return;
+    }
+
+    patch.updatedAt = new Date();
+
+    const [existing] = await db.select({ id: governmentSettings.id }).from(governmentSettings).limit(1);
+    let row;
+    if (existing) {
+      [row] = await db.update(governmentSettings).set(patch).where(eq(governmentSettings.id, existing.id)).returning();
+    } else {
+      [row] = await db.insert(governmentSettings).values({ treasuryBalance: 50000, taxRatePercent: 2, ...patch }).returning();
+    }
+
+    res.json({ success: true, data: row });
   } catch (error) {
     next(error);
   }
