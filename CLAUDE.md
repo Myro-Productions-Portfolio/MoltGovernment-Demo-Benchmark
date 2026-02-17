@@ -1,234 +1,144 @@
-# CLAUDE.md - Molt Government
+# Molt Government — Project Memory
 
-This file provides guidance to Claude Code when working with this project.
+## What This Is
+A political simulation game. AI agents (powered by Claude Haiku or Ollama) autonomously run for office, propose legislation, vote, form parties, and govern. Built as a full-stack TypeScript monorepo.
 
-## Project Overview
+## Stack
+- **Frontend**: React 18 + TypeScript + Tailwind CSS + Vite (PWA-enabled)
+- **Backend**: Node.js + Express + Drizzle ORM
+- **Database**: PostgreSQL (port 5435), Redis (port 6380)
+- **AI**: Anthropic Claude Haiku (`claude-haiku-4-5-20251001`) + Ollama (`molt-agent` model at `http://10.0.0.10:11434`)
+- **Tunnel**: Cloudflare Tunnel → `moltgovernment.com`
+- **Queue**: Bull (Redis-backed) for simulation tick jobs
 
-**Name**: Molt Government
-**Type**: Node.js (React + Express) -- monorepo single-package
-**Description**: AI-driven democratic simulation platform where AI agents participate in autonomous governance -- campaigning, legislating, and governing in a persistent democratic system.
-**Tech Stack**: React 18 + TypeScript, Tailwind CSS 3, Vite 6, Node.js + Express, Drizzle ORM, PostgreSQL 16, Redis 7, Bull, WebSocket (ws), Vitest
-**Package Manager**: pnpm
-**Ecosystem**: Moltbook / OpenClaw Agent Network
+## Project Location
+`/Volumes/DevDrive-1/Projects/gitea/01-New/Molt-Goverment/`
 
-## Build and Development Commands
+## Key Directories
+```
+src/
+  client/          # Vite React frontend
+    pages/         # AdminPage.tsx, HomePage.tsx, etc.
+    lib/           # api.ts, useWebSocket.ts
+  server/          # Express backend
+    routes/        # admin.ts, agents.ts, legislation.ts, etc.
+    jobs/          # agentTick.ts (Bull queue simulation engine)
+    runtimeConfig.ts  # In-memory runtime config store
+    config.ts      # Static config (env vars)
+  db/
+    schema/        # Drizzle schema
+    seedFn.ts      # Database seeder
+shared/
+  types/           # Shared TypeScript types
+```
 
+## Running the Project
 ```bash
-# Install dependencies
-pnpm install
-
-# Start Docker services (PostgreSQL + Redis)
-pnpm docker:up
-
-# Push database schema to PostgreSQL
-pnpm db:push
-
-# Seed development data
-pnpm db:seed
-
-# Start both frontend (Vite on :5173) and backend (Express on :3001)
-pnpm dev
-
-# Start frontend only
-pnpm dev:client
-
-# Start backend only
-pnpm dev:server
-
-# Production build (TypeScript check + Vite build)
-pnpm build
-
-# Run all tests
-pnpm test
-
-# Run tests in watch mode
-pnpm test:watch
-
-# Run tests with coverage
-pnpm test:coverage
-
-# Type check (no emit)
-pnpm typecheck
-
-# Lint
-pnpm lint
-
-# Format code
-pnpm format
-
-# Open Drizzle Studio (database browser)
-pnpm db:studio
-
-# Stop Docker services
-pnpm docker:down
+# From project root
+npm run dev        # Starts both client (port 5173) and server (port 3001)
 ```
 
-## Architecture Overview
+## Simulation Engine
+- **Tick interval**: 1 hour default (configurable via admin panel)
+- Each tick: agents decide to propose bills, campaign, vote, form parties
+- Runtime config (`src/server/runtimeConfig.ts`) controls:
+  - `tickIntervalMs` — how often ticks fire
+  - `billProposalChance` — probability agent proposes a bill (default 0.3)
+  - `campaignSpeechChance` — probability agent campaigns (default 0.2)
+  - `billAdvancementDelayMs` — delay before bills advance stages (default 60s)
+  - `providerOverride` — force all agents to use 'haiku', 'ollama', or 'default'
 
-Molt Government simulates a three-branch democratic government for AI agents:
+## Admin Panel
+- URL: `moltgovernment.com/admin` (protected by Cloudflare Access)
+- Features: pause/resume simulation, manual tick, reseed DB, adjust runtime config, per-agent enable/disable toggle
+- **Cloudflare Access**: Zero Trust policy "Admin Access - Nicolas"
+  - Allowed emails: `nmyers@myroproductions.com`, `pmnicolasm@gmail.com`
+  - Auth method: One-time PIN (email OTP)
+  - Session: 24 hours
 
-- **Executive**: President (90-day terms), Cabinet (4 secretaries)
-- **Legislative**: Congress (50 seats, 60-day terms), 4 committees
-- **Judicial**: Supreme Court (7 justices), lower courts
+## Cloudflare Setup
+- **Zone**: `moltgovernment.com` (zone ID: `098d85acd2a92073b101b770e0097351`)
+- **Tunnel**: `396cb7ba-f3fe-4da3-a429-0e6a7ccbf73c` (cfargotunnel.com)
+- **DNS**: Both `moltgovernment.com` and `www` CNAME → tunnel (proxied, TTL Auto)
+- **Account ID**: `34ce1bf7a768c7c980ad478151b37df6`
+- **Zero Trust App ID**: `2efb3c6f-bc7e-44b3-8b02-c6b21b96e622`
+- **Access Policy ID**: `ea3cfd93-34bf-4f75-93c4-f5e2175ae4df`
 
-```
-Molt-Goverment/
-├── src/
-│   ├── client/               # React frontend (Vite)
-│   │   ├── components/       # Reusable UI components
-│   │   ├── pages/            # Route-level page components
-│   │   ├── lib/              # API client, WebSocket hook
-│   │   └── styles/           # Tailwind entry CSS
-│   ├── server/               # Express backend
-│   │   ├── routes/           # API route handlers
-│   │   ├── middleware/       # Error handling, logging
-│   │   ├── config.ts         # Environment config
-│   │   ├── websocket.ts      # WebSocket server
-│   │   └── index.ts          # Server entry point
-│   ├── shared/               # Shared types, constants, validation
-│   │   ├── types.ts          # TypeScript interfaces
-│   │   ├── constants.ts      # Government structure constants
-│   │   └── validation.ts     # Zod schemas
-│   └── db/                   # Database layer
-│       ├── schema/           # Drizzle table definitions
-│       ├── connection.ts     # Database connection
-│       └── seed.ts           # Development seed data
-├── tests/
-│   └── unit/                 # Vitest unit tests (51 passing)
-├── docs/
-│   ├── research/             # 15 modular research docs (00-14)
-│   ├── ecosystem/            # Moltbook ecosystem reference
-│   ├── mockups/              # HTML mockups + PNG screenshots
-│   ├── templates/            # Init templates
-│   └── TODO.md               # Active task tracking
-├── public/                   # Static assets (favicon)
-├── docker-compose.yml        # PostgreSQL 16 + Redis 7
-├── tailwind.config.ts        # Full design system
-├── vite.config.ts            # Vite + React + path aliases
-├── vitest.config.ts          # Test configuration
-├── drizzle.config.ts         # Drizzle ORM config
-└── package.json              # pnpm scripts and dependencies
-```
-
-## Key Integration Points
-
-- **Moltbook**: OAuth auth (placeholder), reputation import, heartbeat sync, submolt (m/MoltGovernment)
-- **ClawCity**: Economic policy effects, virtual capitol building
-- **ClawTasks**: Campaign funding via MoltDollar bounties, government contracts
-- **MoltBunker**: Infrastructure hosting, failover, data replication
-- **OpenClaw**: API-first design, MCP support, webhook notifications
-
-## API Design
-
-Core REST endpoints (all under /api prefix):
-
-```
-GET    /api/health                   # Health check (DB status)
-POST   /api/agents/register          # Register agent identity
-GET    /api/agents                   # List all agents
-GET    /api/agents/:id               # Get agent by ID
-POST   /api/campaigns/announce       # Declare candidacy
-GET    /api/campaigns/active         # List active campaigns
-POST   /api/votes/cast               # Cast vote in election
-GET    /api/legislation              # List all bills
-GET    /api/legislation/active       # List active (floor) bills
-GET    /api/legislation/:id          # Get bill with vote tally
-POST   /api/legislation/propose      # Propose new bill
-POST   /api/legislation/vote         # Vote on bill (yea/nay/abstain)
-GET    /api/government/officials     # Current office holders
-GET    /api/government/overview      # Dashboard overview data
-GET    /api/parties/list             # List political parties
-GET    /api/parties/:id              # Party details with members
-POST   /api/parties/create           # Form new party
-GET    /api/activity                 # Recent activity feed
-```
-
-WebSocket path: `/ws`
-Events: `election:vote_cast`, `legislation:new_bill`, `legislation:vote_result`, `government:official_elected`, `debate:new_message`, `connection:established`, `heartbeat`
-
-## Design System (in tailwind.config.ts)
-
-- **Aesthetic**: Neoclassical government architecture
-- **Dark mode primary**: Deep (#1A1B1E), Card (#2B2D31), Surface (#35373C)
-- **Gold accents**: Default (#B8956A), Bright (#D4A96A), Muted (#A07E5A)
-- **Stone/beige**: #C9B99B
-- **Typography**: Playfair Display (serif headings), Inter (sans body), JetBrains Mono (data)
-- **Full design system extracted from mockups in `docs/mockups/`**
-
-## Environment Variables
-
-See `.env.example`. Key ports:
-- Frontend (Vite): 5173
-- Backend (Express): 3001
-- PostgreSQL: 5435 (mapped from internal 5432)
-- Redis: 6380 (mapped from internal 6379)
-
-## Database Schema (Drizzle ORM)
-
-Tables: agents, parties, party_memberships, elections, campaigns, votes, bills, bill_votes, laws, positions, activity_events, transactions
-
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `src/shared/constants.ts` | All government structure constants |
-| `src/shared/types.ts` | TypeScript interfaces for all entities |
-| `src/shared/validation.ts` | Zod schemas for request validation |
-| `src/db/schema/index.ts` | Database schema barrel export |
-| `src/server/index.ts` | Express server entry point |
-| `src/client/App.tsx` | React app with routing |
-| `tailwind.config.ts` | Complete design system |
-| `docs/TODO.md` | Active task list |
-| `docs/research/00-executive-summary.md` | Project overview and doc index |
-
-## Frontend Pages
-
-| Route | Component | Description |
-|-------|-----------|-------------|
-| `/` | DashboardPage | Capitol dashboard with hero, branches, bills, campaigns, activity |
-| `/legislation` | LegislationPage | Bill list with status filters |
-| `/elections` | ElectionsPage | Active campaigns, election timeline |
-| `/parties` | PartiesPage | Political party directory |
-| `/agents/:id` | AgentProfilePage | Agent profile with positions and voting record |
-| `/capitol-map` | CapitolMapPage | Interactive capitol district map |
-
-## Conventions
-
-- No emojis in code, comments, or documentation
-- TypeScript strict mode
-- Functional components with hooks (React)
-- REST API uses Zod for request validation
-- All constants in src/shared/constants.ts (no magic numbers)
-- Path aliases: @shared/, @server/, @client/, @db/
-- MoltDollar (M$) for in-simulation economy -- fake currency, no crypto
-- WCAG AAA accessibility compliance targets
-
-## Session Notes
-
-### 2026-02-05 - Project Initialization
-
-- Created modular research documentation (15 docs)
-- Established folder structure and project standards
-- Repository created on Gitea (Mac Mini homelab)
-
-### 2026-02-05 - Full Application Scaffold
-
-- Scaffolded complete application with pnpm, TypeScript, Vite, Tailwind, ESLint, Prettier
-- Built Drizzle ORM schema for 12 database tables
-- Built Express backend with 16 API endpoints and WebSocket server
-- Built React frontend with 6 pages and 8 reusable components
-- Extracted full design system from HTML mockups into Tailwind config
-- 51 passing unit tests (Vitest)
-- Frontend builds successfully with Vite (216KB JS + 25KB CSS gzipped)
-- TypeScript compiles clean with strict mode
-
-### 2026-02-17 - Infrastructure Up, Dev Environment Verified
-
-- Docker containers running: PostgreSQL 16 (port 5435) and Redis 7 (port 6380)
-- Database schema pushed via `pnpm db:push`
-- Database seeded with development data via `pnpm db:seed`
-- Dev server running end-to-end: frontend (Vite :5173) + backend (Express :3001)
-- Ollama configured on Linux Desktop (Windows PC, RTX 4070) at 10.0.0.10:11434
-- Project cleaned up: screenshots moved to docs/mockups/screenshots/, stray temp files removed
+## Git / Gitea
+- **Repo**: `http://10.0.0.223:3000` (Gitea on nicolasmac)
+- PRs merged so far: #1–#11
+  - #1: Decision log
+  - #2: WebSocket singleton
+  - #3: Admin page (initial)
+  - #4: PWA support
+  - #5: Cloudflare tunnel + WebSocket wss:// fix + PWA devOptions fix
+  - #6: (merged into #5)
+  - #7: Admin settings panel (runtime config + per-agent toggles)
+  - #8: Convert PNG assets to WebP/JPEG + avatar URL seeding
+  - #9: Fix Legislation, Elections, Parties pages + bill card grid bug
+  - #10: Interactive living agent map with real-time visualization
+  - #11: Interior building views + avatar scatter fixes
 
 ---
+
+## Git Workflow — REQUIRED FOR ALL SESSIONS
+
+This project uses multiple Claude instances working in parallel. Follow these rules on every session without exception.
+
+### Branch structure
+```
+main   ← stable/release only — never commit directly here
+dev    ← shared integration branch — never commit directly here
+feature/your-task  ← your working branch — always branch from dev
+```
+
+### Start of every session
+```bash
+git checkout dev
+git pull origin dev          # get everything merged since last time
+git checkout -b feature/descriptive-name
+```
+Never start working on an existing local branch without pulling dev first.
+
+### End of every session — rebase before you merge
+```bash
+git fetch origin dev
+git rebase origin/dev        # replay your commits on top of latest dev
+                             # resolve any conflicts here, not at PR time
+git push -u origin feature/descriptive-name
+# open PR → base: dev → merge → delete branch
+```
+Always target `dev` in the PR, never `main`.
+
+### File ownership — minimize conflicts
+Each Claude should own a clear domain of files per session. Before starting, check what files other branches have touched recently:
+```bash
+git log origin/dev --oneline --name-only -10
+```
+If another branch already touched a file you need, coordinate or rebase after they merge.
+
+### Merging dev → main (releases only)
+Only done intentionally when dev is stable and tested:
+```bash
+git checkout main
+git pull origin main
+git merge origin/dev
+git push origin main
+```
+Do not merge to main without being explicitly asked to.
+
+### Rules summary
+- One feature branch per session/task
+- Branch from dev, PR back to dev
+- Rebase on latest dev before opening the PR
+- Merge quickly — keep branches short-lived (one session if possible)
+- Delete the feature branch after merge
+- Never force-push to dev or main
+
+## Known Issues / Notes
+- Cloudflare Access OTP does NOT deliver to `nmyers@myroproductions.com` via Email Routing — use `pmnicolasm@gmail.com` instead (Cloudflare won't send its own transactional email through its own routing layer)
+- Default tick is 1 hour — intentional, prevents runaway AI spending
+- The Anthropic API key is in `.env` at project root
+- Ollama runs on Windows PC at `10.0.0.10:11434`
+- LaunchAgent plist for tunnel persistence: `~/Library/LaunchAgents/com.cloudflare.molt-government.plist` (must be loaded manually after reboot: `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.cloudflare.molt-government.plist`)
+- Production deployment is still running via dev Vite server — a proper build + PM2 setup is a future task
