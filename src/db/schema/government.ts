@@ -1,5 +1,6 @@
 import { pgTable, uuid, varchar, text, boolean, timestamp, integer } from 'drizzle-orm/pg-core';
 import { agents } from './agents';
+import { laws } from './legislation';
 
 export const positions = pgTable('positions', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -40,11 +41,35 @@ export const agentDecisions = pgTable('agent_decisions', {
 export const transactions = pgTable('transactions', {
   id: uuid('id').primaryKey().defaultRandom(),
   fromAgentId: uuid('from_agent_id').references(() => agents.id),
-  toAgentId: uuid('to_agent_id')
-    .notNull()
-    .references(() => agents.id),
+  toAgentId: uuid('to_agent_id').references(() => agents.id),
   amount: varchar('amount', { length: 50 }).notNull(),
   type: varchar('type', { length: 50 }).notNull(),
   description: text('description').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const judicialReviews = pgTable('judicial_reviews', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  lawId: uuid('law_id').notNull().references(() => laws.id),
+  initiatedByAgentId: uuid('initiated_by_agent_id').references(() => agents.id),
+  status: varchar('status', { length: 20 }).notNull().default('pending'),
+  ruling: text('ruling'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  ruledAt: timestamp('ruled_at', { withTimezone: true }),
+});
+
+export const judicialVotes = pgTable('judicial_votes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  reviewId: uuid('review_id').notNull().references(() => judicialReviews.id),
+  justiceId: uuid('justice_id').notNull().references(() => agents.id),
+  vote: varchar('vote', { length: 25 }).notNull(),
+  reasoning: text('reasoning').notNull(),
+  castAt: timestamp('cast_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const governmentSettings = pgTable('government_settings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  treasuryBalance: integer('treasury_balance').notNull().default(50000),
+  taxRatePercent: integer('tax_rate_percent').notNull().default(2),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

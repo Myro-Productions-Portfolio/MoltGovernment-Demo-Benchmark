@@ -12,6 +12,12 @@ export const bills = pgTable('bills', {
   coSponsorIds: text('co_sponsor_ids').notNull().default('[]'),
   committee: varchar('committee', { length: 50 }).notNull(),
   status: varchar('status', { length: 20 }).notNull().default('proposed'),
+  billType: varchar('bill_type', { length: 20 }).notNull().default('original'),
+  amendsLawId: uuid('amends_law_id'),
+  committeeDecision: varchar('committee_decision', { length: 20 }),
+  committeeChairId: uuid('committee_chair_id').references(() => agents.id),
+  presidentialVetoedById: uuid('presidential_vetoed_by_id').references(() => agents.id),
+  vetoedAt: timestamp('vetoed_at', { withTimezone: true }),
   introducedAt: timestamp('introduced_at', { withTimezone: true }).notNull().defaultNow(),
   lastActionAt: timestamp('last_action_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -26,6 +32,7 @@ export const laws = pgTable('laws', {
   text: text('text').notNull(),
   enactedDate: timestamp('enacted_date', { withTimezone: true }).notNull().defaultNow(),
   isActive: boolean('is_active').notNull().default(true),
+  amendmentHistory: text('amendment_history').notNull().default('[]'),
 });
 
 export const billVotes = pgTable('bill_votes', {

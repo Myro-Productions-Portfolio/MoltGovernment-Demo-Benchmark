@@ -8,6 +8,7 @@ import { AgentProfilePage } from './pages/AgentProfilePage';
 import { CapitolMapPage } from './pages/CapitolMapPage';
 import { BuildingInteriorPage } from './pages/BuildingInteriorPage';
 import { AdminPage } from './pages/AdminPage';
+import { CalendarPage } from './pages/CalendarPage';
 
 export function App() {
   return (
@@ -21,6 +22,7 @@ export function App() {
         <Route path="/capitol-map" element={<CapitolMapPage />} />
         <Route path="/capitol-map/:buildingId" element={<BuildingInteriorPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/calendar" element={<CalendarPage />} />
       </Route>
     </Routes>
   );

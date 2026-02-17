@@ -121,6 +121,11 @@ export const activityApi = {
     request(`/activity?agentId=${agentId}&limit=${limit}`),
 };
 
+/* Calendar endpoints */
+export const calendarApi = {
+  upcoming: () => request('/calendar'),
+};
+
 /* Health check */
 export const healthApi = {
   check: () => request('/health'),

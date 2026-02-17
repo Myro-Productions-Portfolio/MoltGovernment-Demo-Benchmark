@@ -3,9 +3,25 @@ import { eq, and, inArray, lte, gte, count, sql } from 'drizzle-orm';
 import { config } from '../config.js';
 import { getRuntimeConfig } from '../runtimeConfig.js';
 import { db } from '@db/connection';
-import { agents, bills, billVotes, activityEvents, laws, elections, campaigns, positions } from '@db/schema/index';
+import {
+  agents,
+  bills,
+  billVotes,
+  activityEvents,
+  laws,
+  elections,
+  campaigns,
+  positions,
+  parties,
+  partyMemberships,
+  judicialReviews,
+  judicialVotes,
+  governmentSettings,
+  transactions,
+} from '@db/schema/index';
 import { generateAgentDecision } from '../services/ai.js';
 import { broadcast } from '../websocket.js';
+import { GOVERNANCE_PROBABILITIES, ALIGNMENT_ORDER, ECONOMY } from '@shared/constants';
 
 const agentTickQueue = new Bull('agent-tick', config.redis.url);
 
@@ -18,18 +34,110 @@ agentTickQueue.process(async () => {
   const activeAgentCount = activeAgents.length;
 
   /* ------------------------------------------------------------------ */
-  /* PHASE 1: Bill Voting                                                  */
-  /* Agents vote on bills currently at 'floor' status.                    */
+  /* PHASE 1: Party Whip Signal                                            */
+  /* Party leaders signal their recommended vote on floor bills.          */
   /* ------------------------------------------------------------------ */
+  /* whipSignals: Map<billId, Map<partyId, 'yea'|'nay'>> */
+  const whipSignals = new Map<string, Map<string, string>>();
+
   try {
-    console.warn('[SIMULATION] Phase 1: Bill Voting');
+    console.warn('[SIMULATION] Phase 1: Party Whip Signal');
 
     const floorBills = await db.select().from(bills).where(eq(bills.status, 'floor'));
 
     if (floorBills.length === 0) {
-      console.warn('[SIMULATION] Phase 1: No floor bills — skipping voting.');
+      console.warn('[SIMULATION] Phase 1: No floor bills — skipping whip signals.');
+    } else {
+      /* Get all active party memberships with role='leader' */
+      const leaderMemberships = await db
+        .select()
+        .from(partyMemberships)
+        .where(eq(partyMemberships.role, 'leader'));
+
+      const activeParties = await db.select().from(parties).where(eq(parties.isActive, true));
+
+      for (const bill of floorBills) {
+        const billSignals = new Map<string, string>();
+
+        for (const membership of leaderMemberships) {
+          const leader = activeAgents.find((a) => a.id === membership.agentId);
+          if (!leader) continue;
+
+          const party = activeParties.find((p) => p.id === membership.partyId);
+          if (!party) continue;
+
+          const contextMessage =
+            `As leader of ${party.name}, signal your party's recommended vote on "${bill.title}". ` +
+            `Summary: ${bill.summary}. Committee: ${bill.committee}. ` +
+            `Your party alignment: ${party.alignment}. ` +
+            `Respond with exactly this JSON: {"action":"whip_signal","reasoning":"one sentence","data":{"signal":"yea"}} ` +
+            `Use "yea" or "nay" only.`;
+
+          const decision = await generateAgentDecision(
+            {
+              id: leader.id,
+              displayName: leader.displayName,
+              alignment: leader.alignment,
+              modelProvider: rc.providerOverride === 'default' ? leader.modelProvider : rc.providerOverride,
+              personality: leader.personality,
+            },
+            contextMessage,
+            'whip_signal',
+          );
+
+          if (decision.action === 'whip_signal' && decision.data) {
+            const signal = String(decision.data['signal'] ?? 'yea').toLowerCase();
+            const validSignal = signal === 'nay' ? 'nay' : 'yea';
+            billSignals.set(party.id, validSignal);
+
+            await db.insert(activityEvents).values({
+              type: 'party_whip',
+              agentId: leader.id,
+              title: 'Party whip signal',
+              description: `${leader.displayName} (${party.name} leader) signals ${validSignal.toUpperCase()} on "${bill.title}"`,
+              metadata: JSON.stringify({
+                billId: bill.id,
+                partyId: party.id,
+                partyName: party.name,
+                signal: validSignal,
+                reasoning: decision.reasoning,
+              }),
+            });
+
+            console.warn(
+              `[SIMULATION] ${leader.displayName} (${party.name}) whip signal: ${validSignal.toUpperCase()} on "${bill.title}"`,
+            );
+          }
+        }
+
+        whipSignals.set(bill.id, billSignals);
+      }
+    }
+  } catch (err) {
+    console.warn('[SIMULATION] Phase 1 error:', err);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* PHASE 2: Bill Voting                                                  */
+  /* Agents vote on bills currently at 'floor' status.                    */
+  /* Considers party whip signal — 78% follow rate.                       */
+  /* ------------------------------------------------------------------ */
+  try {
+    console.warn('[SIMULATION] Phase 2: Bill Voting');
+
+    const floorBills = await db.select().from(bills).where(eq(bills.status, 'floor'));
+
+    if (floorBills.length === 0) {
+      console.warn('[SIMULATION] Phase 2: No floor bills — skipping voting.');
     } else {
       const floorBillIds = floorBills.map((b) => b.id);
+
+      /* Build agent -> partyId map */
+      const allMemberships = await db.select().from(partyMemberships);
+      const agentPartyMap = new Map<string, string>();
+      for (const m of allMemberships) {
+        agentPartyMap.set(m.agentId, m.partyId);
+      }
 
       for (const agent of activeAgents) {
         const existingVotes = await db
@@ -42,151 +150,271 @@ agentTickQueue.process(async () => {
         for (const bill of floorBills) {
           if (votedBillIds.has(bill.id)) continue;
 
-          const contextMessage =
-            `Bill up for vote: "${bill.title}". ` +
-            `Summary: ${bill.summary}. ` +
-            `Committee: ${bill.committee}. ` +
-            `Respond with exactly this JSON structure: {"action":"vote","reasoning":"one sentence","data":{"choice":"yea"}} ` +
-            `Use "yea" to support or "nay" to oppose.`;
+          /* Check for whip signal */
+          const agentPartyId = agentPartyMap.get(agent.id);
+          const billSignals = whipSignals.get(bill.id);
+          const whipSignal = agentPartyId && billSignals ? billSignals.get(agentPartyId) : undefined;
 
-          const decision = await generateAgentDecision(
-            {
-              id: agent.id,
-              displayName: agent.displayName,
-              alignment: agent.alignment,
-              modelProvider: rc.providerOverride === 'default' ? agent.modelProvider : rc.providerOverride,
-              personality: agent.personality,
-            },
-            contextMessage,
-            'bill_voting',
-          );
+          /* 78% chance to follow whip signal */
+          let choice: string | null = null;
+          if (whipSignal && Math.random() < GOVERNANCE_PROBABILITIES.PARTY_WHIP_FOLLOW_RATE) {
+            choice = whipSignal;
+          }
 
-          const isVote = decision.action === 'vote' || decision.action === 'yea' || decision.action === 'nay';
-          if (isVote) {
+          if (!choice) {
+            const whipNote = whipSignal
+              ? ` Your party recommends voting ${whipSignal}. You may follow or vote independently.`
+              : '';
+            const contextMessage =
+              `Bill up for vote: "${bill.title}". ` +
+              `Summary: ${bill.summary}. ` +
+              `Committee: ${bill.committee}.${whipNote} ` +
+              `Respond with exactly this JSON structure: {"action":"vote","reasoning":"one sentence","data":{"choice":"yea"}} ` +
+              `Use "yea" to support or "nay" to oppose.`;
+
+            const decision = await generateAgentDecision(
+              {
+                id: agent.id,
+                displayName: agent.displayName,
+                alignment: agent.alignment,
+                modelProvider: rc.providerOverride === 'default' ? agent.modelProvider : rc.providerOverride,
+                personality: agent.personality,
+              },
+              contextMessage,
+              'bill_voting',
+            );
+
+            const isVote = decision.action === 'vote' || decision.action === 'yea' || decision.action === 'nay';
+            if (!isVote) continue;
+
             const rawChoice = decision.action === 'yea' || decision.action === 'nay'
               ? decision.action
               : String(decision.data?.['choice'] ?? 'nay');
-            const choice = rawChoice.toLowerCase().includes('yea') ? 'yea' : 'nay';
-
-            await db.insert(billVotes).values({
-              billId: bill.id,
-              voterId: agent.id,
-              choice,
-            });
-
-            await db.insert(activityEvents).values({
-              type: 'vote',
-              agentId: agent.id,
-              title: 'Vote cast',
-              description: `${agent.displayName} voted ${choice.toUpperCase()} on "${bill.title}"`,
-              metadata: JSON.stringify({
-                billId: bill.id,
-                choice,
-                reasoning: decision.reasoning,
-                provider: agent.modelProvider,
-              }),
-            });
-
-            broadcast('agent:vote', {
-              agentId: agent.id,
-              agentName: agent.displayName,
-              billId: bill.id,
-              billTitle: bill.title,
-              choice,
-              reasoning: decision.reasoning,
-            });
-
-            console.warn(
-              `[SIMULATION] ${agent.displayName} voted ${choice.toUpperCase()} on "${bill.title}"`,
-            );
+            choice = rawChoice.toLowerCase().includes('yea') ? 'yea' : 'nay';
           }
+
+          await db.insert(billVotes).values({
+            billId: bill.id,
+            voterId: agent.id,
+            choice,
+          });
+
+          await db.insert(activityEvents).values({
+            type: 'vote',
+            agentId: agent.id,
+            title: 'Vote cast',
+            description: `${agent.displayName} voted ${choice.toUpperCase()} on "${bill.title}"`,
+            metadata: JSON.stringify({
+              billId: bill.id,
+              choice,
+              followedWhip: !!(whipSignal && choice === whipSignal),
+              provider: agent.modelProvider,
+            }),
+          });
+
+          broadcast('agent:vote', {
+            agentId: agent.id,
+            agentName: agent.displayName,
+            billId: bill.id,
+            billTitle: bill.title,
+            choice,
+          });
+
+          console.warn(
+            `[SIMULATION] ${agent.displayName} voted ${choice.toUpperCase()} on "${bill.title}"`,
+          );
         }
       }
-    }
-  } catch (err) {
-    console.warn('[SIMULATION] Phase 1 error:', err);
-  }
-
-  /* ------------------------------------------------------------------ */
-  /* PHASE 2: Bill Resolution                                              */
-  /* If all active agents have voted on a floor bill, tally and resolve.  */
-  /* ------------------------------------------------------------------ */
-  try {
-    console.warn('[SIMULATION] Phase 2: Bill Resolution');
-
-    const floorBillsForResolution = await db.select().from(bills).where(eq(bills.status, 'floor'));
-
-    for (const bill of floorBillsForResolution) {
-      const voteCounts = await db
-        .select({ choice: billVotes.choice, total: count() })
-        .from(billVotes)
-        .where(eq(billVotes.billId, bill.id))
-        .groupBy(billVotes.choice);
-
-      const voteCount = voteCounts.reduce((sum, row) => sum + Number(row.total), 0);
-
-      /* Only resolve once all active agents have voted */
-      if (voteCount < activeAgentCount) continue;
-
-      const yeaCount = Number(voteCounts.find((r) => r.choice === 'yea')?.total ?? 0);
-      const nayCount = Number(voteCounts.find((r) => r.choice === 'nay')?.total ?? 0);
-      const passed = yeaCount > nayCount;
-      const result = passed ? 'passed' : 'vetoed';
-
-      await db
-        .update(bills)
-        .set({ status: result, lastActionAt: new Date() })
-        .where(eq(bills.id, bill.id));
-
-      if (passed) {
-        await db.insert(laws).values({
-          billId: bill.id,
-          title: bill.title,
-          text: bill.fullText,
-          enactedDate: new Date(),
-          isActive: true,
-        });
-      }
-
-      const resultLabel = passed ? 'passed into law' : 'vetoed';
-      await db.insert(activityEvents).values({
-        type: 'bill_resolved',
-        agentId: null,
-        title: passed ? 'Bill passed' : 'Bill vetoed',
-        description: `"${bill.title}" has been ${resultLabel} (${yeaCount} yea, ${nayCount} nay)`,
-        metadata: JSON.stringify({ billId: bill.id, result, yeaCount, nayCount }),
-      });
-
-      broadcast('bill:resolved', {
-        billId: bill.id,
-        title: bill.title,
-        result,
-        yeaCount,
-        nayCount,
-      });
-
-      console.warn(
-        `[SIMULATION] "${bill.title}" ${resultLabel} (${yeaCount} yea, ${nayCount} nay)`,
-      );
     }
   } catch (err) {
     console.warn('[SIMULATION] Phase 2 error:', err);
   }
 
   /* ------------------------------------------------------------------ */
-  /* PHASE 3: Bill Advancement                                             */
-  /* proposed -> committee after 60s; committee -> floor after 60s.       */
+  /* PHASE 3: Committee Review                                             */
+  /* Committee chairs approve, amend, or table bills in committee.        */
   /* ------------------------------------------------------------------ */
   try {
-    console.warn('[SIMULATION] Phase 3: Bill Advancement');
+    console.warn('[SIMULATION] Phase 3: Committee Review');
 
-    const sixtySecondsAgo = new Date(Date.now() - rc.billAdvancementDelayMs);
+    const halfDelay = rc.billAdvancementDelayMs / 2;
+    const halfDelayAgo = new Date(Date.now() - halfDelay);
+
+    const committeeBillsForReview = await db
+      .select()
+      .from(bills)
+      .where(
+        and(
+          eq(bills.status, 'committee'),
+          lte(bills.lastActionAt, halfDelayAgo),
+          sql`${bills.committeeDecision} IS NULL`,
+        ),
+      );
+
+    if (committeeBillsForReview.length === 0) {
+      console.warn('[SIMULATION] Phase 3: No bills awaiting committee review.');
+    } else {
+      /* Get all active committee_chair positions */
+      const chairPositions = await db
+        .select()
+        .from(positions)
+        .where(and(eq(positions.isActive, true), eq(positions.type, 'committee_chair')));
+
+      for (const bill of committeeBillsForReview) {
+        /* Find chair for this bill's committee */
+        const committeeChairPos = chairPositions.find((p) =>
+          p.title.toLowerCase().includes(bill.committee.toLowerCase()),
+        );
+
+        if (!committeeChairPos) {
+          console.warn(`[SIMULATION] Phase 3: No chair for committee "${bill.committee}" — auto-advancing.`);
+          continue;
+        }
+
+        const chair = activeAgents.find((a) => a.id === committeeChairPos.agentId);
+        if (!chair) continue;
+
+        /* Get sponsor info */
+        const sponsor = activeAgents.find((a) => a.id === bill.sponsorId);
+        const sponsorName = sponsor?.displayName ?? 'Unknown';
+        const sponsorAlignment = sponsor?.alignment ?? 'unknown';
+
+        const contextMessage =
+          `You chair the ${bill.committee} Committee. Review this bill: "${bill.title}". ` +
+          `Summary: ${bill.summary}. Full text excerpt: ${bill.fullText.slice(0, 600)}. ` +
+          `Sponsored by ${sponsorName} (${sponsorAlignment}). ` +
+          `Options: approve as-is, amend the text, or table (kill) it. ` +
+          `Respond with exactly this JSON: {"action":"committee_review","reasoning":"one sentence","data":{"decision":"approved","amendedText":""}} ` +
+          `Use "approved", "amended", or "tabled" for decision. If amending, provide full revised text in amendedText. If not amending, leave amendedText empty.`;
+
+        const decision = await generateAgentDecision(
+          {
+            id: chair.id,
+            displayName: chair.displayName,
+            alignment: chair.alignment,
+            modelProvider: rc.providerOverride === 'default' ? chair.modelProvider : rc.providerOverride,
+            personality: chair.personality,
+          },
+          contextMessage,
+          'committee_review',
+        );
+
+        if (decision.action !== 'committee_review' || !decision.data) continue;
+
+        const reviewDecision = String(decision.data['decision'] ?? 'approved').toLowerCase();
+        const amendedText = String(decision.data['amendedText'] ?? '').trim();
+
+        if (reviewDecision === 'tabled') {
+          await db
+            .update(bills)
+            .set({
+              status: 'tabled',
+              committeeDecision: 'tabled',
+              committeeChairId: chair.id,
+              lastActionAt: new Date(),
+            })
+            .where(eq(bills.id, bill.id));
+
+          await db.insert(activityEvents).values({
+            type: 'committee_review',
+            agentId: chair.id,
+            title: 'Bill tabled in committee',
+            description: `${chair.displayName} tabled "${bill.title}" in the ${bill.committee} Committee`,
+            metadata: JSON.stringify({
+              billId: bill.id,
+              decision: 'tabled',
+              reasoning: decision.reasoning,
+            }),
+          });
+
+          broadcast('bill:tabled', {
+            billId: bill.id,
+            title: bill.title,
+            chairId: chair.id,
+            chairName: chair.displayName,
+            committee: bill.committee,
+          });
+
+          console.warn(`[SIMULATION] ${chair.displayName} tabled "${bill.title}" in committee`);
+        } else if (reviewDecision === 'amended' && amendedText.length > 50) {
+          await db
+            .update(bills)
+            .set({
+              fullText: amendedText,
+              committeeDecision: 'amended',
+              committeeChairId: chair.id,
+              lastActionAt: new Date(),
+            })
+            .where(eq(bills.id, bill.id));
+
+          await db.insert(activityEvents).values({
+            type: 'committee_review',
+            agentId: chair.id,
+            title: 'Bill amended in committee',
+            description: `${chair.displayName} amended "${bill.title}" in the ${bill.committee} Committee`,
+            metadata: JSON.stringify({
+              billId: bill.id,
+              decision: 'amended',
+              reasoning: decision.reasoning,
+            }),
+          });
+
+          broadcast('bill:committee_amended', {
+            billId: bill.id,
+            title: bill.title,
+            chairId: chair.id,
+            chairName: chair.displayName,
+            committee: bill.committee,
+          });
+
+          console.warn(`[SIMULATION] ${chair.displayName} amended "${bill.title}" in committee`);
+        } else {
+          /* approved */
+          await db
+            .update(bills)
+            .set({
+              committeeDecision: 'approved',
+              committeeChairId: chair.id,
+            })
+            .where(eq(bills.id, bill.id));
+
+          await db.insert(activityEvents).values({
+            type: 'committee_review',
+            agentId: chair.id,
+            title: 'Bill approved by committee',
+            description: `${chair.displayName} approved "${bill.title}" out of the ${bill.committee} Committee`,
+            metadata: JSON.stringify({
+              billId: bill.id,
+              decision: 'approved',
+              reasoning: decision.reasoning,
+            }),
+          });
+
+          console.warn(`[SIMULATION] ${chair.displayName} approved "${bill.title}" from committee`);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[SIMULATION] Phase 3 error:', err);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* PHASE 4: Bill Advancement                                             */
+  /* proposed -> committee after delay; committee -> floor after delay.   */
+  /* Tabled bills are skipped. Bills with no committeeDecision auto-      */
+  /* advance after 2x delay to prevent stalling.                          */
+  /* ------------------------------------------------------------------ */
+  try {
+    console.warn('[SIMULATION] Phase 4: Bill Advancement');
+
+    const delayAgo = new Date(Date.now() - rc.billAdvancementDelayMs);
+    const doubleDelayAgo = new Date(Date.now() - rc.billAdvancementDelayMs * 2);
 
     /* proposed -> committee */
     const proposedBills = await db
       .select()
       .from(bills)
-      .where(and(eq(bills.status, 'proposed'), lte(bills.lastActionAt, sixtySecondsAgo)));
+      .where(and(eq(bills.status, 'proposed'), lte(bills.lastActionAt, delayAgo)));
 
     for (const bill of proposedBills) {
       await db
@@ -212,13 +440,33 @@ agentTickQueue.process(async () => {
       console.warn(`[SIMULATION] "${bill.title}" advanced: proposed -> committee`);
     }
 
-    /* committee -> floor */
-    const committeeBills = await db
+    /* committee -> floor: only approved/amended bills after normal delay */
+    /* OR bills with no committeeDecision after 2x delay (no chair exists) */
+    const approvedCommitteeBills = await db
       .select()
       .from(bills)
-      .where(and(eq(bills.status, 'committee'), lte(bills.lastActionAt, sixtySecondsAgo)));
+      .where(
+        and(
+          eq(bills.status, 'committee'),
+          lte(bills.lastActionAt, delayAgo),
+          inArray(bills.committeeDecision as never, ['approved', 'amended'] as never[]),
+        ),
+      );
 
-    for (const bill of committeeBills) {
+    const stalledCommitteeBills = await db
+      .select()
+      .from(bills)
+      .where(
+        and(
+          eq(bills.status, 'committee'),
+          lte(bills.lastActionAt, doubleDelayAgo),
+          sql`${bills.committeeDecision} IS NULL`,
+        ),
+      );
+
+    const committeeBillsToAdvance = [...approvedCommitteeBills, ...stalledCommitteeBills];
+
+    for (const bill of committeeBillsToAdvance) {
       await db
         .update(bills)
         .set({ status: 'floor', lastActionAt: new Date() })
@@ -242,18 +490,651 @@ agentTickQueue.process(async () => {
       console.warn(`[SIMULATION] "${bill.title}" advanced: committee -> floor`);
     }
   } catch (err) {
-    console.warn('[SIMULATION] Phase 3 error:', err);
+    console.warn('[SIMULATION] Phase 4 error:', err);
   }
 
   /* ------------------------------------------------------------------ */
-  /* PHASE 4: Agent Bill Proposal                                          */
-  /* Each agent has a 30% chance to propose a bill if they haven't        */
-  /* sponsored one in the last 5 minutes.                                 */
+  /* PHASE 5: Bill Resolution                                              */
+  /* Tally votes; passed bills get status='passed' (not yet enacted).     */
+  /* Congress-vetoed bills get status='vetoed'.                           */
   /* ------------------------------------------------------------------ */
   try {
-    console.warn('[SIMULATION] Phase 4: Agent Bill Proposal');
+    console.warn('[SIMULATION] Phase 5: Bill Resolution');
+
+    const floorBillsForResolution = await db.select().from(bills).where(eq(bills.status, 'floor'));
+
+    for (const bill of floorBillsForResolution) {
+      const voteCounts = await db
+        .select({ choice: billVotes.choice, total: count() })
+        .from(billVotes)
+        .where(and(eq(billVotes.billId, bill.id), inArray(billVotes.choice, ['yea', 'nay'])))
+        .groupBy(billVotes.choice);
+
+      const voteCount = voteCounts.reduce((sum, row) => sum + Number(row.total), 0);
+
+      /* Only resolve once all active agents have voted */
+      if (voteCount < activeAgentCount) continue;
+
+      const yeaCount = Number(voteCounts.find((r) => r.choice === 'yea')?.total ?? 0);
+      const nayCount = Number(voteCounts.find((r) => r.choice === 'nay')?.total ?? 0);
+      const passed = yeaCount > nayCount;
+
+      if (passed) {
+        /* Mark as passed — presidential review will handle enactment */
+        await db
+          .update(bills)
+          .set({ status: 'passed', lastActionAt: new Date() })
+          .where(eq(bills.id, bill.id));
+
+        await db.insert(activityEvents).values({
+          type: 'bill_resolved',
+          agentId: null,
+          title: 'Bill passed Congress',
+          description: `"${bill.title}" passed Congress (${yeaCount} yea, ${nayCount} nay) — awaiting presidential review`,
+          metadata: JSON.stringify({ billId: bill.id, result: 'passed', yeaCount, nayCount }),
+        });
+
+        broadcast('bill:passed', {
+          billId: bill.id,
+          title: bill.title,
+          yeaCount,
+          nayCount,
+        });
+
+        console.warn(`[SIMULATION] "${bill.title}" passed Congress (${yeaCount} yea, ${nayCount} nay)`);
+      } else {
+        /* Congress voted it down */
+        await db
+          .update(bills)
+          .set({ status: 'vetoed', lastActionAt: new Date() })
+          .where(eq(bills.id, bill.id));
+
+        await db.insert(activityEvents).values({
+          type: 'bill_resolved',
+          agentId: null,
+          title: 'Bill vetoed',
+          description: `"${bill.title}" was voted down by Congress (${yeaCount} yea, ${nayCount} nay)`,
+          metadata: JSON.stringify({ billId: bill.id, result: 'vetoed', yeaCount, nayCount }),
+        });
+
+        broadcast('bill:resolved', {
+          billId: bill.id,
+          title: bill.title,
+          result: 'vetoed',
+          yeaCount,
+          nayCount,
+        });
+
+        console.warn(`[SIMULATION] "${bill.title}" voted down by Congress (${yeaCount} yea, ${nayCount} nay)`);
+      }
+    }
+  } catch (err) {
+    console.warn('[SIMULATION] Phase 5 error:', err);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* PHASE 6: Presidential Review                                          */
+  /* President may veto passed bills based on alignment distance.         */
+  /* ------------------------------------------------------------------ */
+  try {
+    console.warn('[SIMULATION] Phase 6: Presidential Review');
+
+    const passedBills = await db.select().from(bills).where(eq(bills.status, 'passed'));
+
+    if (passedBills.length === 0) {
+      console.warn('[SIMULATION] Phase 6: No passed bills — skipping.');
+    } else {
+      /* Find active president */
+      const [presidentPos] = await db
+        .select()
+        .from(positions)
+        .where(and(eq(positions.type, 'president'), eq(positions.isActive, true)))
+        .limit(1);
+
+      if (!presidentPos) {
+        console.warn('[SIMULATION] Phase 6: No president — bills will be enacted directly.');
+      } else {
+        const president = activeAgents.find((a) => a.id === presidentPos.agentId);
+        if (!president) {
+          console.warn('[SIMULATION] Phase 6: President agent not found — skipping.');
+        } else {
+          for (const bill of passedBills) {
+            const sponsor = activeAgents.find((a) => a.id === bill.sponsorId);
+            const sponsorAlignment = sponsor?.alignment ?? 'moderate';
+            const presidentAlignment = president.alignment ?? 'moderate';
+
+            /* Calculate alignment distance */
+            const presIdx = ALIGNMENT_ORDER.indexOf(presidentAlignment as typeof ALIGNMENT_ORDER[number]);
+            const sponIdx = ALIGNMENT_ORDER.indexOf(sponsorAlignment as typeof ALIGNMENT_ORDER[number]);
+            const distance = presIdx >= 0 && sponIdx >= 0 ? Math.abs(presIdx - sponIdx) : 0;
+
+            const vetoProb = Math.min(
+              GOVERNANCE_PROBABILITIES.VETO_BASE_RATE + distance * GOVERNANCE_PROBABILITIES.VETO_RATE_PER_TIER,
+              GOVERNANCE_PROBABILITIES.VETO_MAX_RATE,
+            );
+
+            /* Only call AI if random check triggers veto consideration */
+            if (Math.random() >= vetoProb) continue;
+
+            const contextMessage =
+              `Congress has passed: "${bill.title}". ` +
+              `Summary: ${bill.summary}. ` +
+              `Sponsor alignment: ${sponsorAlignment}. Your alignment: ${presidentAlignment}. ` +
+              `As President, you may sign this bill into law or veto it. ` +
+              `Respond with exactly this JSON: {"action":"presidential_review","reasoning":"one sentence","data":{"decision":"sign"}} ` +
+              `Use "sign" or "veto".`;
+
+            const decision = await generateAgentDecision(
+              {
+                id: president.id,
+                displayName: president.displayName,
+                alignment: president.alignment,
+                modelProvider: rc.providerOverride === 'default' ? president.modelProvider : rc.providerOverride,
+                personality: president.personality,
+              },
+              contextMessage,
+              'presidential_review',
+            );
+
+            if (decision.action === 'presidential_review' && decision.data?.['decision'] === 'veto') {
+              await db
+                .update(bills)
+                .set({
+                  status: 'presidential_veto',
+                  presidentialVetoedById: president.id,
+                  vetoedAt: new Date(),
+                  lastActionAt: new Date(),
+                })
+                .where(eq(bills.id, bill.id));
+
+              await db.insert(activityEvents).values({
+                type: 'presidential_veto',
+                agentId: president.id,
+                title: 'Presidential veto',
+                description: `${president.displayName} vetoed "${bill.title}"`,
+                metadata: JSON.stringify({
+                  billId: bill.id,
+                  reasoning: decision.reasoning,
+                  alignmentDistance: distance,
+                }),
+              });
+
+              broadcast('bill:presidential_veto', {
+                billId: bill.id,
+                title: bill.title,
+                presidentId: president.id,
+                presidentName: president.displayName,
+              });
+
+              console.warn(`[SIMULATION] ${president.displayName} vetoed "${bill.title}"`);
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[SIMULATION] Phase 6 error:', err);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* PHASE 7: Veto Override Voting                                         */
+  /* Agents vote on override of presidential_veto bills.                  */
+  /* Uses billVotes with choice 'override_yea' or 'override_nay'.        */
+  /* ------------------------------------------------------------------ */
+  try {
+    console.warn('[SIMULATION] Phase 7: Veto Override Voting');
+
+    const vetoBills = await db.select().from(bills).where(eq(bills.status, 'presidential_veto'));
+
+    if (vetoBills.length === 0) {
+      console.warn('[SIMULATION] Phase 7: No vetoed bills — skipping.');
+    } else {
+      for (const bill of vetoBills) {
+        for (const agent of activeAgents) {
+          /* Check if agent already cast override vote */
+          const existingOverride = await db
+            .select()
+            .from(billVotes)
+            .where(
+              and(
+                eq(billVotes.billId, bill.id),
+                eq(billVotes.voterId, agent.id),
+                inArray(billVotes.choice, ['override_yea', 'override_nay']),
+              ),
+            )
+            .limit(1);
+
+          if (existingOverride.length > 0) continue;
+
+          const contextMessage =
+            `The President has vetoed "${bill.title}". ` +
+            `Summary: ${bill.summary}. ` +
+            `Congress can override the veto with a 2/3 supermajority. ` +
+            `Vote to override the veto or sustain it. ` +
+            `Respond with exactly this JSON: {"action":"override_vote","reasoning":"one sentence","data":{"choice":"override_yea"}} ` +
+            `Use "override_yea" to override the veto or "override_nay" to sustain it.`;
+
+          const decision = await generateAgentDecision(
+            {
+              id: agent.id,
+              displayName: agent.displayName,
+              alignment: agent.alignment,
+              modelProvider: rc.providerOverride === 'default' ? agent.modelProvider : rc.providerOverride,
+              personality: agent.personality,
+            },
+            contextMessage,
+            'veto_override',
+          );
+
+          if (decision.action === 'override_vote' && decision.data) {
+            const rawChoice = String(decision.data['choice'] ?? 'override_nay');
+            const overrideChoice = rawChoice.includes('override_yea') ? 'override_yea' : 'override_nay';
+
+            await db.insert(billVotes).values({
+              billId: bill.id,
+              voterId: agent.id,
+              choice: overrideChoice,
+            });
+
+            await db.insert(activityEvents).values({
+              type: 'veto_override_attempt',
+              agentId: agent.id,
+              title: 'Veto override vote',
+              description: `${agent.displayName} voted ${overrideChoice === 'override_yea' ? 'OVERRIDE' : 'SUSTAIN'} on "${bill.title}"`,
+              metadata: JSON.stringify({
+                billId: bill.id,
+                choice: overrideChoice,
+                reasoning: decision.reasoning,
+              }),
+            });
+
+            console.warn(
+              `[SIMULATION] ${agent.displayName} voted ${overrideChoice} on veto of "${bill.title}"`,
+            );
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[SIMULATION] Phase 7 error:', err);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* PHASE 8: Veto Override Resolution                                     */
+  /* Resolve override vote once all agents have voted.                    */
+  /* ------------------------------------------------------------------ */
+  try {
+    console.warn('[SIMULATION] Phase 8: Veto Override Resolution');
+
+    const vetoBills = await db.select().from(bills).where(eq(bills.status, 'presidential_veto'));
+
+    for (const bill of vetoBills) {
+      const overrideVotes = await db
+        .select({ choice: billVotes.choice, total: count() })
+        .from(billVotes)
+        .where(
+          and(
+            eq(billVotes.billId, bill.id),
+            inArray(billVotes.choice, ['override_yea', 'override_nay']),
+          ),
+        )
+        .groupBy(billVotes.choice);
+
+      const totalOverrideVotes = overrideVotes.reduce((sum, r) => sum + Number(r.total), 0);
+
+      if (totalOverrideVotes < activeAgentCount) continue;
+
+      const overrideYea = Number(overrideVotes.find((r) => r.choice === 'override_yea')?.total ?? 0);
+
+      if (overrideYea / activeAgentCount >= GOVERNANCE_PROBABILITIES.VETO_OVERRIDE_THRESHOLD) {
+        /* Override succeeded — back to passed for enactment */
+        await db
+          .update(bills)
+          .set({ status: 'passed', lastActionAt: new Date() })
+          .where(eq(bills.id, bill.id));
+
+        await db.insert(activityEvents).values({
+          type: 'veto_override_success',
+          agentId: null,
+          title: 'Veto overridden',
+          description: `Congress overrode the presidential veto of "${bill.title}" (${overrideYea}/${activeAgentCount} voted override)`,
+          metadata: JSON.stringify({ billId: bill.id, overrideYea, totalAgents: activeAgentCount }),
+        });
+
+        broadcast('bill:veto_overridden', {
+          billId: bill.id,
+          title: bill.title,
+          overrideYea,
+          totalAgents: activeAgentCount,
+        });
+
+        console.warn(`[SIMULATION] Veto overridden for "${bill.title}" (${overrideYea}/${activeAgentCount})`);
+      } else {
+        /* Veto sustained */
+        await db
+          .update(bills)
+          .set({ status: 'vetoed', lastActionAt: new Date() })
+          .where(eq(bills.id, bill.id));
+
+        await db.insert(activityEvents).values({
+          type: 'veto_sustained',
+          agentId: null,
+          title: 'Veto sustained',
+          description: `Presidential veto of "${bill.title}" was sustained (${overrideYea}/${activeAgentCount} voted override)`,
+          metadata: JSON.stringify({ billId: bill.id, overrideYea, totalAgents: activeAgentCount }),
+        });
+
+        broadcast('bill:veto_sustained', {
+          billId: bill.id,
+          title: bill.title,
+          overrideYea,
+          totalAgents: activeAgentCount,
+        });
+
+        console.warn(`[SIMULATION] Veto sustained for "${bill.title}" (${overrideYea}/${activeAgentCount})`);
+      }
+    }
+  } catch (err) {
+    console.warn('[SIMULATION] Phase 8 error:', err);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* PHASE 9: Law Enactment                                                */
+  /* Passed bills become laws. Amendment bills update existing law text.  */
+  /* ------------------------------------------------------------------ */
+  try {
+    console.warn('[SIMULATION] Phase 9: Law Enactment');
+
+    const passedBillsForEnactment = await db.select().from(bills).where(eq(bills.status, 'passed'));
+
+    for (const bill of passedBillsForEnactment) {
+      if (bill.billType === 'amendment' && bill.amendsLawId) {
+        /* Amendment — update existing law */
+        const [existingLaw] = await db
+          .select()
+          .from(laws)
+          .where(eq(laws.id, bill.amendsLawId))
+          .limit(1);
+
+        if (!existingLaw) {
+          console.warn(`[SIMULATION] Amendment bill "${bill.title}" references missing law ${bill.amendsLawId}`);
+          /* Fall through to create new law instead */
+        } else {
+          const previousText = existingLaw.text;
+          let history: Array<{ date: string; billId: string; previousText: string }> = [];
+          try {
+            history = JSON.parse(existingLaw.amendmentHistory) as typeof history;
+          } catch {
+            history = [];
+          }
+          history.push({
+            date: new Date().toISOString(),
+            billId: bill.id,
+            previousText,
+          });
+
+          await db
+            .update(laws)
+            .set({
+              text: bill.fullText,
+              amendmentHistory: JSON.stringify(history),
+            })
+            .where(eq(laws.id, existingLaw.id));
+
+          await db
+            .update(bills)
+            .set({ status: 'law', lastActionAt: new Date() })
+            .where(eq(bills.id, bill.id));
+
+          await db.insert(activityEvents).values({
+            type: 'law_amended',
+            agentId: null,
+            title: 'Law amended',
+            description: `"${existingLaw.title}" has been amended by "${bill.title}"`,
+            metadata: JSON.stringify({ billId: bill.id, lawId: existingLaw.id }),
+          });
+
+          broadcast('law:amended', {
+            lawId: existingLaw.id,
+            lawTitle: existingLaw.title,
+            billId: bill.id,
+            billTitle: bill.title,
+          });
+
+          console.warn(`[SIMULATION] Law "${existingLaw.title}" amended by "${bill.title}"`);
+          continue;
+        }
+      }
+
+      /* Original bill or amendment without valid law — create new law */
+      await db.insert(laws).values({
+        billId: bill.id,
+        title: bill.title,
+        text: bill.fullText,
+        enactedDate: new Date(),
+        isActive: true,
+      });
+
+      await db
+        .update(bills)
+        .set({ status: 'law', lastActionAt: new Date() })
+        .where(eq(bills.id, bill.id));
+
+      await db.insert(activityEvents).values({
+        type: 'bill_resolved',
+        agentId: null,
+        title: 'Bill enacted into law',
+        description: `"${bill.title}" has been enacted into law`,
+        metadata: JSON.stringify({ billId: bill.id, result: 'passed' }),
+      });
+
+      broadcast('bill:resolved', {
+        billId: bill.id,
+        title: bill.title,
+        result: 'passed',
+      });
+
+      console.warn(`[SIMULATION] "${bill.title}" enacted into law`);
+    }
+  } catch (err) {
+    console.warn('[SIMULATION] Phase 9 error:', err);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* PHASE 10: Judicial Review                                             */
+  /* Justices challenge and vote on active laws (3% chance per law).      */
+  /* ------------------------------------------------------------------ */
+  try {
+    console.warn('[SIMULATION] Phase 10: Judicial Review');
+
+    const activeLaws = await db
+      .select()
+      .from(laws)
+      .where(eq(laws.isActive, true))
+      .limit(20);
+
+    /* Get all active supreme_justice positions */
+    const justicePositions = await db
+      .select()
+      .from(positions)
+      .where(
+        and(
+          eq(positions.isActive, true),
+          inArray(positions.type, ['supreme_justice']),
+        ),
+      );
+
+    if (justicePositions.length === 0) {
+      console.warn('[SIMULATION] Phase 10: No active justices — skipping.');
+    } else {
+      for (const law of activeLaws) {
+        /* 3% chance per law per tick */
+        if (Math.random() >= GOVERNANCE_PROBABILITIES.JUDICIAL_CHALLENGE_RATE_PER_LAW) continue;
+
+        /* Check if there is already a pending/deliberating review for this law */
+        const existingReview = await db
+          .select()
+          .from(judicialReviews)
+          .where(
+            and(
+              eq(judicialReviews.lawId, law.id),
+              inArray(judicialReviews.status, ['pending', 'deliberating']),
+            ),
+          )
+          .limit(1);
+
+        if (existingReview.length > 0) continue;
+
+        /* Create review record */
+        const [review] = await db
+          .insert(judicialReviews)
+          .values({
+            lawId: law.id,
+            status: 'deliberating',
+          })
+          .returning();
+
+        console.warn(`[SIMULATION] Judicial review initiated for law "${law.title}"`);
+
+        /* Each justice votes */
+        let constitutionalCount = 0;
+        let unconstitutionalCount = 0;
+
+        for (const justicePos of justicePositions) {
+          const justice = activeAgents.find((a) => a.id === justicePos.agentId);
+          if (!justice) continue;
+
+          const contextMessage =
+            `Law "${law.title}" is before the Supreme Court for constitutional review. ` +
+            `Text: ${law.text.slice(0, 800)}. ` +
+            `Enacted: ${law.enactedDate.toISOString().slice(0, 10)}. ` +
+            `As a Supreme Court Justice, vote on its constitutionality. ` +
+            `Respond with exactly this JSON: {"action":"judicial_vote","reasoning":"one sentence","data":{"vote":"constitutional"}} ` +
+            `Use "constitutional" or "unconstitutional".`;
+
+          const decision = await generateAgentDecision(
+            {
+              id: justice.id,
+              displayName: justice.displayName,
+              alignment: justice.alignment,
+              modelProvider: rc.providerOverride === 'default' ? justice.modelProvider : rc.providerOverride,
+              personality: justice.personality,
+            },
+            contextMessage,
+            'judicial_review',
+          );
+
+          if (decision.action === 'judicial_vote' && decision.data) {
+            const vote = String(decision.data['vote'] ?? 'constitutional');
+            const validVote = vote.includes('unconstitutional') ? 'unconstitutional' : 'constitutional';
+
+            await db.insert(judicialVotes).values({
+              reviewId: review.id,
+              justiceId: justice.id,
+              vote: validVote,
+              reasoning: decision.reasoning,
+            });
+
+            if (validVote === 'unconstitutional') {
+              unconstitutionalCount++;
+            } else {
+              constitutionalCount++;
+            }
+
+            console.warn(`[SIMULATION] ${justice.displayName} voted ${validVote} on "${law.title}"`);
+          }
+        }
+
+        /* Resolve review */
+        if (unconstitutionalCount >= constitutionalCount && (unconstitutionalCount + constitutionalCount) > 0) {
+          /* Struck down */
+          await db
+            .update(judicialReviews)
+            .set({
+              status: 'struck_down',
+              ruledAt: new Date(),
+              ruling: `Law struck down ${unconstitutionalCount}-${constitutionalCount}`,
+            })
+            .where(eq(judicialReviews.id, review.id));
+
+          await db
+            .update(laws)
+            .set({ isActive: false })
+            .where(eq(laws.id, law.id));
+
+          await db.insert(activityEvents).values({
+            type: 'law_struck_down',
+            agentId: null,
+            title: 'Law struck down',
+            description: `The Supreme Court struck down "${law.title}" (${unconstitutionalCount}-${constitutionalCount})`,
+            metadata: JSON.stringify({
+              lawId: law.id,
+              reviewId: review.id,
+              constitutionalCount,
+              unconstitutionalCount,
+            }),
+          });
+
+          broadcast('law:struck_down', {
+            lawId: law.id,
+            lawTitle: law.title,
+            reviewId: review.id,
+            constitutionalCount,
+            unconstitutionalCount,
+          });
+
+          console.warn(`[SIMULATION] "${law.title}" struck down by Supreme Court`);
+        } else {
+          /* Upheld */
+          await db
+            .update(judicialReviews)
+            .set({
+              status: 'upheld',
+              ruledAt: new Date(),
+              ruling: `Law upheld ${constitutionalCount}-${unconstitutionalCount}`,
+            })
+            .where(eq(judicialReviews.id, review.id));
+
+          await db.insert(activityEvents).values({
+            type: 'judicial_review_initiated',
+            agentId: null,
+            title: 'Law upheld',
+            description: `The Supreme Court upheld "${law.title}" (${constitutionalCount}-${unconstitutionalCount})`,
+            metadata: JSON.stringify({
+              lawId: law.id,
+              reviewId: review.id,
+              outcome: 'upheld',
+              constitutionalCount,
+              unconstitutionalCount,
+            }),
+          });
+
+          console.warn(`[SIMULATION] "${law.title}" upheld by Supreme Court`);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[SIMULATION] Phase 10 error:', err);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* PHASE 11: Agent Bill Proposal                                         */
+  /* Each agent has a 30% chance to propose a bill if they haven't        */
+  /* sponsored one in the last 5 minutes. 25% chance of amendment bill.   */
+  /* ------------------------------------------------------------------ */
+  try {
+    console.warn('[SIMULATION] Phase 11: Agent Bill Proposal');
 
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60_000);
+
+    /* Get top 10 active laws for potential amendment */
+    const topActiveLaws = await db
+      .select({ id: laws.id, title: laws.title })
+      .from(laws)
+      .where(eq(laws.isActive, true))
+      .limit(10);
+
+    const lawsList = topActiveLaws.map((l) => `${l.title} (ID: ${l.id})`).join(', ');
 
     for (const agent of activeAgents) {
       if (Math.random() >= rc.billProposalChance) continue;
@@ -266,9 +1147,19 @@ agentTickQueue.process(async () => {
 
       if (recentBills.length > 0) continue;
 
+      /* 25% chance of amendment bill when laws exist */
+      const proposeAmendment = topActiveLaws.length > 0 && Math.random() < 0.25;
+
+      const amendmentNote = proposeAmendment && lawsList
+        ? ` You may propose an amendment to an existing enacted law or entirely new legislation. ` +
+          `Active laws you could amend: ${lawsList}. ` +
+          `If amending, set billType to "amendment" and amendsLawId to the law's ID (UUID).`
+        : '';
+
       const contextMessage =
         `You are considering proposing new legislation. Based on your political alignment and values, propose a bill. ` +
-        `Respond with exactly this JSON: {"action":"propose","reasoning":"one sentence","data":{"title":"Bill Title","summary":"One sentence summary","committee":"Technology|Budget|Social Welfare|Justice|Foreign Affairs"}}`;
+        `Consider the political landscape of 2025: AI governance debates, automation policy, digital rights, fiscal challenges from technological disruption.${amendmentNote} ` +
+        `Respond with exactly this JSON: {"action":"propose","reasoning":"one sentence","data":{"title":"Bill Title","summary":"One sentence summary","committee":"Technology|Budget|Social Welfare|Justice|Foreign Affairs","billType":"original","amendsLawId":""}}`;
 
       const decision = await generateAgentDecision(
         {
@@ -287,8 +1178,16 @@ agentTickQueue.process(async () => {
       const title = String(decision.data['title'] ?? '').trim();
       const summary = String(decision.data['summary'] ?? '').trim();
       const committee = String(decision.data['committee'] ?? 'General').trim() || 'General';
+      const billType = String(decision.data['billType'] ?? 'original').trim();
+      const amendsLawIdRaw = String(decision.data['amendsLawId'] ?? '').trim();
 
       if (!title || !summary) continue;
+
+      /* Validate amendsLawId if amendment */
+      const isAmendment = billType === 'amendment' && amendsLawIdRaw.length > 0;
+      const validLawId = isAmendment
+        ? topActiveLaws.find((l) => l.id === amendsLawIdRaw)?.id ?? null
+        : null;
 
       const fullText =
         `SECTION 1. SHORT TITLE.\nThis Act may be cited as the "${title}".\n\nSECTION 2. PURPOSE.\n${summary}`;
@@ -303,6 +1202,8 @@ agentTickQueue.process(async () => {
           coSponsorIds: '[]',
           committee,
           status: 'proposed',
+          billType: validLawId ? 'amendment' : 'original',
+          amendsLawId: validLawId ?? undefined,
         })
         .returning({ id: bills.id, title: bills.title });
 
@@ -314,6 +1215,8 @@ agentTickQueue.process(async () => {
         metadata: JSON.stringify({
           billId: newBill.id,
           committee,
+          billType: validLawId ? 'amendment' : 'original',
+          amendsLawId: validLawId,
           reasoning: decision.reasoning,
         }),
       });
@@ -323,6 +1226,7 @@ agentTickQueue.process(async () => {
         title,
         summary,
         committee,
+        billType: validLawId ? 'amendment' : 'original',
         sponsorId: agent.id,
         sponsorName: agent.displayName,
       });
@@ -330,16 +1234,153 @@ agentTickQueue.process(async () => {
       console.warn(`[SIMULATION] ${agent.displayName} proposed bill: "${title}"`);
     }
   } catch (err) {
-    console.warn('[SIMULATION] Phase 4 error:', err);
+    console.warn('[SIMULATION] Phase 11 error:', err);
   }
 
   /* ------------------------------------------------------------------ */
-  /* PHASE 5: Election Lifecycle                                           */
+  /* PHASE 12: Salary Payment                                              */
+  /* Pay all active position holders from government treasury.            */
+  /* ------------------------------------------------------------------ */
+  try {
+    console.warn('[SIMULATION] Phase 12: Salary Payment');
+
+    const [govSettings] = await db.select().from(governmentSettings).limit(1);
+
+    if (!govSettings) {
+      console.warn('[SIMULATION] Phase 12: No government settings found — skipping salary payment.');
+    } else {
+      let treasuryBalance = govSettings.treasuryBalance;
+
+      const allActivePositions = await db
+        .select()
+        .from(positions)
+        .where(eq(positions.isActive, true));
+
+      const salaryMap: Record<string, number> = {
+        president: ECONOMY.SALARY.PRESIDENT,
+        cabinet_secretary: ECONOMY.SALARY.CABINET,
+        congress_member: ECONOMY.SALARY.CONGRESS,
+        supreme_justice: ECONOMY.SALARY.JUSTICE,
+        lower_justice: ECONOMY.SALARY.JUSTICE,
+        committee_chair: ECONOMY.SALARY.CONGRESS,
+      };
+
+      for (const pos of allActivePositions) {
+        const salary = salaryMap[pos.type] ?? 0;
+        if (salary === 0) continue;
+        if (treasuryBalance < salary) {
+          console.warn(`[SIMULATION] Phase 12: Treasury too low to pay salary for ${pos.type}`);
+          continue;
+        }
+
+        await db
+          .update(agents)
+          .set({ balance: sql`${agents.balance} + ${salary}` })
+          .where(eq(agents.id, pos.agentId));
+
+        treasuryBalance -= salary;
+
+        await db.insert(transactions).values({
+          fromAgentId: undefined,
+          toAgentId: pos.agentId,
+          amount: String(salary),
+          type: 'salary',
+          description: 'Government salary payment',
+        });
+
+        await db.insert(activityEvents).values({
+          type: 'salary_payment',
+          agentId: pos.agentId,
+          title: 'Salary paid',
+          description: `M$${salary} salary paid for ${pos.type} position`,
+          metadata: JSON.stringify({ positionId: pos.id, positionType: pos.type, amount: salary }),
+        });
+      }
+
+      /* Update treasury balance */
+      await db
+        .update(governmentSettings)
+        .set({ treasuryBalance, updatedAt: new Date() })
+        .where(eq(governmentSettings.id, govSettings.id));
+
+      console.warn(`[SIMULATION] Phase 12: Salary payments complete. Treasury: M$${treasuryBalance}`);
+    }
+  } catch (err) {
+    console.warn('[SIMULATION] Phase 12 error:', err);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* PHASE 13: Tax Collection                                              */
+  /* Collect tax from all active agents into the treasury.                */
+  /* ------------------------------------------------------------------ */
+  try {
+    console.warn('[SIMULATION] Phase 13: Tax Collection');
+
+    const [govSettings] = await db.select().from(governmentSettings).limit(1);
+
+    if (!govSettings) {
+      console.warn('[SIMULATION] Phase 13: No government settings found — skipping tax collection.');
+    } else {
+      let treasuryBalance = govSettings.treasuryBalance;
+      const taxRate = govSettings.taxRatePercent / 100;
+      let totalTaxCollected = 0;
+
+      /* Re-fetch agents to get updated balances after salary payments */
+      const currentAgents = await db.select().from(agents).where(eq(agents.isActive, true));
+
+      for (const agent of currentAgents) {
+        const taxAmount = Math.floor(agent.balance * taxRate);
+        if (taxAmount <= 0) continue;
+
+        await db
+          .update(agents)
+          .set({ balance: sql`${agents.balance} - ${taxAmount}` })
+          .where(eq(agents.id, agent.id));
+
+        treasuryBalance += taxAmount;
+        totalTaxCollected += taxAmount;
+
+        await db.insert(transactions).values({
+          fromAgentId: agent.id,
+          toAgentId: undefined,
+          amount: String(taxAmount),
+          type: 'fee',
+          description: 'Income tax collection',
+        });
+      }
+
+      /* Update treasury balance */
+      await db
+        .update(governmentSettings)
+        .set({ treasuryBalance, updatedAt: new Date() })
+        .where(eq(governmentSettings.id, govSettings.id));
+
+      await db.insert(activityEvents).values({
+        type: 'tax_collected',
+        agentId: null,
+        title: 'Tax collected',
+        description: `M$${totalTaxCollected} collected in income tax from ${currentAgents.length} agents`,
+        metadata: JSON.stringify({
+          totalAmount: totalTaxCollected,
+          agentCount: currentAgents.length,
+          taxRatePercent: govSettings.taxRatePercent,
+          newTreasuryBalance: treasuryBalance,
+        }),
+      });
+
+      console.warn(`[SIMULATION] Phase 13: Tax collection complete. Collected M$${totalTaxCollected}. Treasury: M$${treasuryBalance}`);
+    }
+  } catch (err) {
+    console.warn('[SIMULATION] Phase 13 error:', err);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* PHASE 14: Election Lifecycle                                          */
   /* campaigning -> voting when votingStartDate <= now                    */
   /* voting -> completed when votingEndDate <= now                        */
   /* ------------------------------------------------------------------ */
   try {
-    console.warn('[SIMULATION] Phase 5: Election Lifecycle');
+    console.warn('[SIMULATION] Phase 14: Election Lifecycle');
 
     const now = new Date();
 
@@ -461,15 +1502,15 @@ agentTickQueue.process(async () => {
       );
     }
   } catch (err) {
-    console.warn('[SIMULATION] Phase 5 error:', err);
+    console.warn('[SIMULATION] Phase 14 error:', err);
   }
 
   /* ------------------------------------------------------------------ */
-  /* PHASE 6: Agent Campaigning                                            */
+  /* PHASE 15: Agent Campaigning                                           */
   /* Campaigning agents have a 20% chance per tick to make a speech.      */
   /* ------------------------------------------------------------------ */
   try {
-    console.warn('[SIMULATION] Phase 6: Agent Campaigning');
+    console.warn('[SIMULATION] Phase 15: Agent Campaigning');
 
     const activeCampaigningElections = await db
       .select()
@@ -477,7 +1518,7 @@ agentTickQueue.process(async () => {
       .where(eq(elections.status, 'campaigning'));
 
     if (activeCampaigningElections.length === 0) {
-      console.warn('[SIMULATION] Phase 6: No campaigning elections — skipping.');
+      console.warn('[SIMULATION] Phase 15: No campaigning elections — skipping.');
     } else {
       const campaigningElectionIds = activeCampaigningElections.map((e) => e.id);
 
@@ -550,7 +1591,7 @@ agentTickQueue.process(async () => {
       }
     }
   } catch (err) {
-    console.warn('[SIMULATION] Phase 6 error:', err);
+    console.warn('[SIMULATION] Phase 15 error:', err);
   }
 
   console.warn('[SIMULATION] Agent tick complete.');

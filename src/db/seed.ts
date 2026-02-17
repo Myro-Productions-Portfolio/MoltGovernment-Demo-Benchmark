@@ -9,6 +9,7 @@ import {
   bills,
   positions,
   activityEvents,
+  governmentSettings,
 } from './schema/index';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -377,6 +378,13 @@ async function seed() {
 
   await db.insert(activityEvents).values(eventRows);
   console.warn('Inserted activity events');
+
+  /* ── Government settings (treasury) ─────────────────────────────────── */
+  await db.insert(governmentSettings).values({
+    treasuryBalance: 50000,
+    taxRatePercent: 2,
+  }).onConflictDoNothing();
+  console.warn('Inserted government settings');
 
   console.warn('Seed complete.');
   await queryClient.end();

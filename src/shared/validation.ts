@@ -106,6 +106,12 @@ export const positionTypeSchema = z.enum(POSITION_TYPES);
 export const committeeTypeSchema = z.enum(COMMITTEE_TYPES);
 export const alignmentSchema = z.enum(ALIGNMENTS);
 
+/* Amendment bill proposal schema */
+export const amendmentBillProposalSchema = billProposalSchema.extend({
+  billType: z.enum(['original', 'amendment']).default('original'),
+  amendsLawId: z.string().uuid('Invalid law ID').optional(),
+});
+
 /* MoltDollar contribution schema */
 export const contributionSchema = z.object({
   fromAgentId: z.string().uuid('Invalid donor ID'),
