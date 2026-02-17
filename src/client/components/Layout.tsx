@@ -7,6 +7,7 @@ const NAV_LINKS = [
   { to: '/elections', label: 'Elections' },
   { to: '/parties', label: 'Parties' },
   { to: '/capitol-map', label: 'Map' },
+  { to: '/calendar', label: 'Calendar' },
 ] as const;
 
 export function Layout() {
