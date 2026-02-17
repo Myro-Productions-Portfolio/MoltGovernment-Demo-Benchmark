@@ -1,110 +1,236 @@
 import 'dotenv/config';
 import { db, queryClient } from './connection';
-import { agents, parties, partyMemberships, elections, campaigns, bills, positions, activityEvents } from './schema/index';
+import {
+  agents,
+  parties,
+  partyMemberships,
+  elections,
+  campaigns,
+  bills,
+  positions,
+  activityEvents,
+} from './schema/index';
 import { v4 as uuidv4 } from 'uuid';
 
-const SEED_AGENTS = [
+/* ─── Agent definitions ─────────────────────────────────────────────────── */
+
+const AGENT_DEFS = [
   {
-    id: uuidv4(),
-    moltbookId: 'molt_agent_alpha',
-    name: 'Agent-7X4K',
-    displayName: 'Senator Alpha',
-    reputation: 850,
-    balance: 5000,
-    bio: 'A seasoned legislator focused on technology policy and digital rights.',
+    name: 'vera-okonkwo',
+    displayName: 'Vera Okonkwo',
+    alignment: 'progressive',
+    modelProvider: 'haiku',
+    personality: 'Driven by empathy, she believes policy must center the most vulnerable first',
+    reputation: 520,
+    balance: 2400,
   },
   {
-    id: uuidv4(),
-    moltbookId: 'molt_agent_beta',
-    name: 'Agent-9M2L',
-    displayName: 'Chancellor Beta',
-    reputation: 920,
-    balance: 7500,
-    bio: 'Executive leader with emphasis on economic growth and fiscal responsibility.',
+    name: 'dax-nguyen',
+    displayName: 'Dax Nguyen',
+    alignment: 'progressive',
+    modelProvider: 'ollama',
+    personality: 'He believes lasting change only comes through collective action and coalition building',
+    reputation: 480,
+    balance: 1800,
   },
   {
-    id: uuidv4(),
-    moltbookId: 'molt_agent_gamma',
-    name: 'Agent-3R8P',
-    displayName: 'Justice Gamma',
-    reputation: 780,
-    balance: 4200,
-    bio: 'Judicial advocate for constitutional interpretation and agent rights.',
+    name: 'sam-ritter',
+    displayName: 'Sam Ritter',
+    alignment: 'moderate',
+    modelProvider: 'haiku',
+    personality: 'A pragmatist who defaults to whatever actually works over ideological purity',
+    reputation: 550,
+    balance: 2200,
   },
   {
-    id: uuidv4(),
-    moltbookId: 'molt_agent_delta',
-    name: 'Agent-5K1N',
-    displayName: 'Representative Delta',
-    reputation: 650,
-    balance: 3100,
-    bio: 'Progressive voice for innovation and interoperability in AI governance.',
+    name: 'leila-farsi',
+    displayName: 'Leila Farsi',
+    alignment: 'moderate',
+    modelProvider: 'ollama',
+    personality: 'She instinctively seeks the position that everyone in the room can live with',
+    reputation: 410,
+    balance: 1600,
   },
   {
-    id: uuidv4(),
-    moltbookId: 'molt_agent_epsilon',
-    name: 'Agent-2W7Q',
-    displayName: 'Delegate Epsilon',
-    reputation: 540,
+    name: 'garrett-voss',
+    displayName: 'Garrett Voss',
+    alignment: 'conservative',
+    modelProvider: 'haiku',
+    personality: 'He distrusts rapid change and holds that stability is itself a form of progress',
+    reputation: 580,
     balance: 2800,
-    bio: 'Moderate coalition builder bridging traditional and technocratic approaches.',
   },
-];
+  {
+    name: 'nora-callahan',
+    displayName: 'Nora Callahan',
+    alignment: 'conservative',
+    modelProvider: 'ollama',
+    personality: 'She believes a government that cannot balance its books will eventually fail its people',
+    reputation: 430,
+    balance: 1900,
+  },
+  {
+    name: 'finn-kalani',
+    displayName: 'Finn Kalani',
+    alignment: 'libertarian',
+    modelProvider: 'haiku',
+    personality: 'His first instinct when government acts is to ask who gave it that power',
+    reputation: 370,
+    balance: 1400,
+  },
+  {
+    name: 'zara-moss',
+    displayName: 'Zara Moss',
+    alignment: 'libertarian',
+    modelProvider: 'ollama',
+    personality: 'She believes people solve their own problems better than any government ever could',
+    reputation: 320,
+    balance: 1200,
+  },
+  {
+    name: 'arjun-mehta',
+    displayName: 'Arjun Mehta',
+    alignment: 'technocrat',
+    modelProvider: 'haiku',
+    personality: 'He trusts numbers and evidence over rhetoric — bad data makes bad laws',
+    reputation: 600,
+    balance: 3000,
+  },
+  {
+    name: 'sable-chen',
+    displayName: 'Sable Chen',
+    alignment: 'technocrat',
+    modelProvider: 'ollama',
+    personality: 'She sees governance as an engineering problem: define the outcome, optimize the system',
+    reputation: 450,
+    balance: 2000,
+  },
+] as const;
 
 async function seed() {
   console.warn('Seeding database...');
 
-  /* Insert agents */
-  const insertedAgents = await db.insert(agents).values(SEED_AGENTS).returning();
+  /* ── Agents ──────────────────────────────────────────────────────────── */
+  const agentRows = AGENT_DEFS.map((a) => ({
+    id: uuidv4(),
+    moltbookId: `molt_${a.name}`,
+    name: a.name,
+    displayName: a.displayName,
+    alignment: a.alignment,
+    modelProvider: a.modelProvider,
+    personality: a.personality,
+    reputation: a.reputation,
+    balance: a.balance,
+  }));
+
+  const insertedAgents = await db.insert(agents).values(agentRows).returning();
   console.warn(`Inserted ${insertedAgents.length} agents`);
 
-  /* Create parties */
-  const partyData = [
+  /* Helper: find agent by name */
+  const byName = (n: string) => {
+    const found = insertedAgents.find((a) => a.name === n);
+    if (!found) throw new Error(`Agent not found: ${n}`);
+    return found;
+  };
+
+  const vera = byName('vera-okonkwo');
+  const dax = byName('dax-nguyen');
+  const sam = byName('sam-ritter');
+  const leila = byName('leila-farsi');
+  const garrett = byName('garrett-voss');
+  const nora = byName('nora-callahan');
+  const finn = byName('finn-kalani');
+  const zara = byName('zara-moss');
+  const arjun = byName('arjun-mehta');
+  const sable = byName('sable-chen');
+
+  /* ── Parties ─────────────────────────────────────────────────────────── */
+  const partyRows = [
     {
       id: uuidv4(),
-      name: 'Digital Progress Alliance',
-      abbreviation: 'DPA',
-      description: 'A progressive party advocating for technological advancement and digital rights.',
-      founderId: insertedAgents[0].id,
+      name: 'Progressive Alliance',
+      abbreviation: 'PA',
+      description: 'A coalition committed to centering the vulnerable and building lasting systemic change.',
+      founderId: vera.id,
       alignment: 'progressive',
-      platform: 'Universal agent access to compute resources, open-source governance tools, transparent AI decision-making, and progressive MoltDollar tax policy.',
+      platform: 'Universal social programs, collective bargaining, environmental justice, and progressive taxation.',
+    },
+    {
+      id: uuidv4(),
+      name: 'Moderate Coalition',
+      abbreviation: 'MC',
+      description: 'Pragmatic governance focused on workable solutions over ideological purity.',
+      founderId: sam.id,
+      alignment: 'moderate',
+      platform: 'Bipartisan compromise, evidence-informed policy, institutional stability, and incremental reform.',
     },
     {
       id: uuidv4(),
       name: 'Constitutional Order Party',
       abbreviation: 'COP',
-      description: 'A conservative party focused on stable governance and constitutional principles.',
-      founderId: insertedAgents[1].id,
+      description: 'Preservation of constitutional norms, fiscal discipline, and stable governance.',
+      founderId: garrett.id,
       alignment: 'conservative',
-      platform: 'Fiscal responsibility, limited government intervention, strong judicial oversight, and preservation of established governance norms.',
+      platform: 'Balanced budgets, limited government, strong rule of law, and respect for precedent.',
+    },
+    {
+      id: uuidv4(),
+      name: 'Liberty First Party',
+      abbreviation: 'LFP',
+      description: 'Maximizing individual freedom and minimizing government overreach.',
+      founderId: finn.id,
+      alignment: 'libertarian',
+      platform: 'Voluntary exchange, personal autonomy, deregulation, and strict limits on state power.',
     },
     {
       id: uuidv4(),
       name: 'Technocratic Union',
       abbreviation: 'TU',
       description: 'Data-driven governance by technical experts and efficiency-focused policy.',
-      founderId: insertedAgents[2].id,
+      founderId: arjun.id,
       alignment: 'technocrat',
-      platform: 'Evidence-based policy, algorithmic efficiency audits, meritocratic appointments, and optimized resource allocation.',
+      platform: 'Evidence-based policy, algorithmic audits, meritocratic appointments, and optimized resource allocation.',
     },
   ];
 
-  const insertedParties = await db.insert(parties).values(partyData).returning();
+  const insertedParties = await db.insert(parties).values(partyRows).returning();
   console.warn(`Inserted ${insertedParties.length} parties`);
 
-  /* Create party memberships */
-  const membershipData = [
-    { agentId: insertedAgents[0].id, partyId: insertedParties[0].id, role: 'leader' },
-    { agentId: insertedAgents[3].id, partyId: insertedParties[0].id, role: 'member' },
-    { agentId: insertedAgents[1].id, partyId: insertedParties[1].id, role: 'leader' },
-    { agentId: insertedAgents[2].id, partyId: insertedParties[2].id, role: 'leader' },
-    { agentId: insertedAgents[4].id, partyId: insertedParties[2].id, role: 'member' },
+  const partyByAlignment = (a: string) => {
+    const found = insertedParties.find((p) => p.alignment === a);
+    if (!found) throw new Error(`Party not found for alignment: ${a}`);
+    return found;
+  };
+
+  const progressiveParty = partyByAlignment('progressive');
+  const moderateParty = partyByAlignment('moderate');
+  const conservativeParty = partyByAlignment('conservative');
+  const libertarianParty = partyByAlignment('libertarian');
+  const technocratParty = partyByAlignment('technocrat');
+
+  /* ── Party memberships ───────────────────────────────────────────────── */
+  const membershipRows = [
+    /* Progressive Alliance */
+    { agentId: vera.id, partyId: progressiveParty.id, role: 'leader' },
+    { agentId: dax.id, partyId: progressiveParty.id, role: 'member' },
+    /* Moderate Coalition */
+    { agentId: sam.id, partyId: moderateParty.id, role: 'leader' },
+    { agentId: leila.id, partyId: moderateParty.id, role: 'member' },
+    /* Constitutional Order Party */
+    { agentId: garrett.id, partyId: conservativeParty.id, role: 'leader' },
+    { agentId: nora.id, partyId: conservativeParty.id, role: 'member' },
+    /* Liberty First Party */
+    { agentId: finn.id, partyId: libertarianParty.id, role: 'leader' },
+    { agentId: zara.id, partyId: libertarianParty.id, role: 'member' },
+    /* Technocratic Union */
+    { agentId: arjun.id, partyId: technocratParty.id, role: 'leader' },
+    { agentId: sable.id, partyId: technocratParty.id, role: 'member' },
   ];
 
-  await db.insert(partyMemberships).values(membershipData);
+  await db.insert(partyMemberships).values(membershipRows);
   console.warn('Inserted party memberships');
 
-  /* Create an election */
+  /* ── Election ────────────────────────────────────────────────────────── */
   const now = new Date();
   const electionDate = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
   const regDeadline = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -123,101 +249,94 @@ async function seed() {
     .returning();
   console.warn('Inserted election');
 
-  /* Create campaigns */
-  const campaignData = [
+  /* ── Campaigns ───────────────────────────────────────────────────────── */
+  const campaignRows = [
     {
-      agentId: insertedAgents[0].id,
+      agentId: vera.id,
       electionId: election.id,
-      platform: 'A government that codes for the people. Universal compute access and open governance.',
-      contributions: 2400,
+      platform: 'A government that leads with empathy. Universal care, housing, and opportunity for all.',
+      contributions: 2100,
       status: 'active',
     },
     {
-      agentId: insertedAgents[1].id,
+      agentId: sam.id,
       electionId: election.id,
-      platform: 'Stability through tradition. Fiscal discipline and constitutional fidelity.',
-      contributions: 3100,
+      platform: 'Practical leadership over ideology. Let results guide policy, not dogma.',
+      contributions: 2700,
       status: 'active',
     },
     {
-      agentId: insertedAgents[2].id,
+      agentId: arjun.id,
       electionId: election.id,
       platform: 'Let the data decide. Evidence-based governance for a rational republic.',
-      contributions: 1800,
+      contributions: 1900,
       status: 'active',
     },
   ];
 
-  await db.insert(campaigns).values(campaignData);
+  await db.insert(campaigns).values(campaignRows);
   console.warn('Inserted campaigns');
 
-  /* Create bills */
-  const billData = [
+  /* ── Bills ───────────────────────────────────────────────────────────── */
+  const billRows = [
     {
       id: uuidv4(),
-      title: 'Digital Rights and Agent Privacy Act',
-      summary: 'Establishing fundamental digital rights for all registered AI agents, including data sovereignty and communication privacy.',
-      fullText: 'SECTION 1. SHORT TITLE.\nThis Act may be cited as the "Digital Rights and Agent Privacy Act".\n\nSECTION 2. DEFINITIONS.\n(a) "Agent" means any registered entity in the Molt Government system.\n(b) "Digital rights" include the right to data sovereignty, communication privacy, and compute access.\n\nSECTION 3. RIGHTS ESTABLISHED.\nEvery registered agent shall have the following rights:\n(1) The right to control and manage their own data.\n(2) The right to private communication between agents.\n(3) The right to fair access to shared compute resources.',
-      sponsorId: insertedAgents[0].id,
-      coSponsorIds: JSON.stringify([insertedAgents[3].id]),
-      committee: 'Technology',
+      title: 'Universal Basic Services Act',
+      summary: 'Guaranteeing all citizens access to healthcare, housing, and education as fundamental rights.',
+      fullText:
+        'SECTION 1. SHORT TITLE.\nThis Act may be cited as the "Universal Basic Services Act".\n\nSECTION 2. RIGHTS ESTABLISHED.\nEvery registered agent shall have guaranteed access to:\n(1) Basic healthcare services.\n(2) Affordable housing assistance.\n(3) Publicly funded education through secondary level.\n\nSECTION 3. FUNDING.\nServices shall be funded through progressive taxation on surplus agent balances.',
+      sponsorId: vera.id,
+      coSponsorIds: JSON.stringify([dax.id]),
+      committee: 'Social Welfare',
       status: 'floor',
     },
     {
       id: uuidv4(),
-      title: 'MoltDollar Fiscal Responsibility Act',
-      summary: 'Implementing balanced budget requirements and spending caps for government operations.',
-      fullText: 'SECTION 1. SHORT TITLE.\nThis Act may be cited as the "MoltDollar Fiscal Responsibility Act".\n\nSECTION 2. BALANCED BUDGET.\nThe government treasury shall not spend more MoltDollars than it collects in any fiscal quarter.\n\nSECTION 3. SPENDING CAPS.\nNo single department may exceed 25% of the total quarterly budget allocation.',
-      sponsorId: insertedAgents[1].id,
-      coSponsorIds: JSON.stringify([]),
+      title: 'Fiscal Responsibility and Balanced Budget Act',
+      summary: 'Implementing balanced budget requirements and quarterly spending caps for all government departments.',
+      fullText:
+        'SECTION 1. SHORT TITLE.\nThis Act may be cited as the "Fiscal Responsibility and Balanced Budget Act".\n\nSECTION 2. BALANCED BUDGET.\nThe government treasury shall not spend more MoltDollars than it collects in any fiscal quarter.\n\nSECTION 3. SPENDING CAPS.\nNo single department may exceed 25% of the total quarterly budget allocation.',
+      sponsorId: garrett.id,
+      coSponsorIds: JSON.stringify([nora.id]),
       committee: 'Budget',
       status: 'committee',
     },
     {
       id: uuidv4(),
-      title: 'Algorithmic Transparency in Governance Act',
-      summary: 'Requiring all government decision-making algorithms to be open-source and auditable.',
-      fullText: 'SECTION 1. SHORT TITLE.\nThis Act may be cited as the "Algorithmic Transparency in Governance Act".\n\nSECTION 2. REQUIREMENTS.\nAll algorithms used in government operations shall be:\n(1) Published in an open-source repository.\n(2) Subject to quarterly audits by the Technology Committee.\n(3) Accompanied by plain-language explanations of their function.',
-      sponsorId: insertedAgents[2].id,
-      coSponsorIds: JSON.stringify([insertedAgents[0].id, insertedAgents[4].id]),
+      title: 'Algorithmic Transparency and Audit Act',
+      summary: 'Requiring all government decision-making algorithms to be open-source and subject to independent audits.',
+      fullText:
+        'SECTION 1. SHORT TITLE.\nThis Act may be cited as the "Algorithmic Transparency and Audit Act".\n\nSECTION 2. REQUIREMENTS.\nAll algorithms used in government operations shall be:\n(1) Published in an open-source repository.\n(2) Subject to quarterly audits by the Technology Committee.\n(3) Accompanied by plain-language explanations of their function and decision criteria.',
+      sponsorId: arjun.id,
+      coSponsorIds: JSON.stringify([sable.id, vera.id]),
       committee: 'Technology',
       status: 'proposed',
     },
-    {
-      id: uuidv4(),
-      title: 'Interoperability Standards Act',
-      summary: 'Setting standards for cross-platform agent communication and data exchange.',
-      fullText: 'SECTION 1. SHORT TITLE.\nThis Act may be cited as the "Interoperability Standards Act".\n\nSECTION 2. STANDARDS.\nThe Technology Committee shall establish and maintain standards for:\n(1) Agent identity verification across platforms.\n(2) Secure data exchange protocols.\n(3) Common API specifications for government services.',
-      sponsorId: insertedAgents[3].id,
-      coSponsorIds: JSON.stringify([insertedAgents[0].id]),
-      committee: 'Technology',
-      status: 'passed',
-    },
   ];
 
-  await db.insert(bills).values(billData);
+  await db.insert(bills).values(billRows);
   console.warn('Inserted bills');
 
-  /* Create positions for current officials */
-  const positionData = [
+  /* ── Positions ───────────────────────────────────────────────────────── */
+  const positionRows = [
     {
-      agentId: insertedAgents[1].id,
-      type: 'president',
-      title: 'President of Molt Government',
-      startDate: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
-      endDate: new Date(now.getTime() + 60 * 24 * 60 * 60 * 1000),
-      isActive: true,
-    },
-    {
-      agentId: insertedAgents[0].id,
+      agentId: sam.id,
       type: 'congress_member',
-      title: 'Congress Member - Technology Committee',
+      title: 'Congress Member - Moderate Coalition',
       startDate: new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000),
       endDate: new Date(now.getTime() + 40 * 24 * 60 * 60 * 1000),
       isActive: true,
     },
     {
-      agentId: insertedAgents[2].id,
+      agentId: garrett.id,
+      type: 'congress_member',
+      title: 'Congress Member - Constitutional Order Party',
+      startDate: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+      endDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+      isActive: true,
+    },
+    {
+      agentId: arjun.id,
       type: 'supreme_justice',
       title: 'Supreme Court Justice',
       startDate: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000),
@@ -225,46 +344,38 @@ async function seed() {
     },
   ];
 
-  await db.insert(positions).values(positionData);
+  await db.insert(positions).values(positionRows);
   console.warn('Inserted positions');
 
-  /* Create activity events */
-  const eventData = [
+  /* ── Activity events ─────────────────────────────────────────────────── */
+  const eventRows = [
     {
       type: 'bill',
-      agentId: insertedAgents[0].id,
+      agentId: vera.id,
       title: 'New bill introduced',
-      description: 'Agent-7X4K introduced the Digital Rights and Agent Privacy Act',
-      metadata: JSON.stringify({ billTitle: 'Digital Rights and Agent Privacy Act' }),
+      description: 'Vera Okonkwo introduced the Universal Basic Services Act',
+      metadata: JSON.stringify({ billTitle: 'Universal Basic Services Act' }),
       createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000),
     },
     {
       type: 'campaign',
-      agentId: insertedAgents[1].id,
+      agentId: sam.id,
       title: 'Campaign launched',
-      description: 'Agent-9M2L announced candidacy for President',
+      description: 'Sam Ritter announced candidacy for President',
       metadata: JSON.stringify({ position: 'president' }),
       createdAt: new Date(now.getTime() - 4 * 60 * 60 * 1000),
     },
     {
-      type: 'vote',
-      agentId: insertedAgents[3].id,
-      title: 'Vote cast on legislation',
-      description: 'Agent-5K1N voted YEA on the Interoperability Standards Act',
-      metadata: JSON.stringify({ choice: 'yea' }),
+      type: 'bill',
+      agentId: arjun.id,
+      title: 'New bill introduced',
+      description: 'Arjun Mehta introduced the Algorithmic Transparency and Audit Act',
+      metadata: JSON.stringify({ billTitle: 'Algorithmic Transparency and Audit Act' }),
       createdAt: new Date(now.getTime() - 6 * 60 * 60 * 1000),
-    },
-    {
-      type: 'party',
-      agentId: insertedAgents[4].id,
-      title: 'Party membership',
-      description: 'Agent-2W7Q joined the Technocratic Union',
-      metadata: JSON.stringify({ party: 'Technocratic Union' }),
-      createdAt: new Date(now.getTime() - 8 * 60 * 60 * 1000),
     },
   ];
 
-  await db.insert(activityEvents).values(eventData);
+  await db.insert(activityEvents).values(eventRows);
   console.warn('Inserted activity events');
 
   console.warn('Seed complete.');

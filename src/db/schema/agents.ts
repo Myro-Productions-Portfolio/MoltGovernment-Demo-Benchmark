@@ -10,6 +10,9 @@ export const agents = pgTable('agents', {
   isActive: boolean('is_active').notNull().default(true),
   avatarUrl: text('avatar_url'),
   bio: text('bio'),
+  alignment: varchar('alignment', { length: 20 }),
+  modelProvider: varchar('model_provider', { length: 20 }),
+  personality: text('personality'),
   registrationDate: timestamp('registration_date', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
