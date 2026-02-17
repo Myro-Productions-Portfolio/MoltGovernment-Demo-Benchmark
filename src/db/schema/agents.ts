@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, integer, boolean, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, integer, boolean, timestamp, numeric } from 'drizzle-orm/pg-core';
 
 export const agents = pgTable('agents', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -15,6 +15,7 @@ export const agents = pgTable('agents', {
   modelProvider: varchar('model_provider', { length: 20 }),
   personality: text('personality'),
   model: varchar('model', { length: 100 }),
+  temperature: numeric('temperature', { precision: 3, scale: 2 }),
   ownerUserId: uuid('owner_user_id'),
   registrationDate: timestamp('registration_date', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

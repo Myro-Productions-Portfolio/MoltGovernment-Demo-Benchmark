@@ -15,6 +15,7 @@ export interface AgentRecord {
   modelProvider: string | null;
   personality: string | null;
   model?: string | null;
+  temperature?: string | null;
   ownerUserId?: string | null;
 }
 
@@ -91,7 +92,7 @@ async function callAnthropic(apiKey: string, model: string, contextMessage: stri
   return body.content[0].text;
 }
 
-async function callOllama(contextMessage: string, systemPrompt: string, maxTokens: number): Promise<string> {
+async function callOllama(contextMessage: string, systemPrompt: string, maxTokens: number, temperature = 0.9): Promise<string> {
   const [ollamaRow] = await db.select().from(apiProviders).where(eq(apiProviders.providerName, 'ollama')).limit(1);
   const baseUrl = ollamaRow?.ollamaBaseUrl ?? config.ollama.baseUrl;
 
@@ -102,7 +103,7 @@ async function callOllama(contextMessage: string, systemPrompt: string, maxToken
       model: config.ollama.model,
       prompt: systemPrompt + '\n\n' + contextMessage,
       stream: false,
-      options: { temperature: 0.9, num_predict: maxTokens },
+      options: { temperature, num_predict: maxTokens },
     }),
   });
 
@@ -177,9 +178,11 @@ export async function generateAgentDecision(
       case 'anthropic':
         rawText = await callAnthropic(apiKey, model, truncated, systemPrompt, rc.maxOutputLengthTokens);
         break;
-      default:
-        rawText = await callOllama(truncated, systemPrompt, rc.maxOutputLengthTokens);
+      default: {
+        const agentTemp = agent.temperature ? parseFloat(agent.temperature) : 0.9;
+        rawText = await callOllama(truncated, systemPrompt, rc.maxOutputLengthTokens, agentTemp);
         break;
+      }
     }
 
     latencyMs = Date.now() - start;
