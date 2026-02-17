@@ -29,6 +29,24 @@ interface Decision {
   createdAt: string;
 }
 
+interface RuntimeConfig {
+  tickIntervalMs: number;
+  billProposalChance: number;
+  campaignSpeechChance: number;
+  billAdvancementDelayMs: number;
+  providerOverride: 'default' | 'haiku' | 'ollama';
+}
+
+interface AgentRow {
+  id: string;
+  displayName: string;
+  alignment: string;
+  modelProvider: string;
+  isActive: boolean;
+  reputation: number;
+  balance: number;
+}
+
 function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
   return (
     <span
@@ -66,13 +84,41 @@ function AdminButton({
   );
 }
 
+function msToLabel(ms: number): string {
+  if (ms < 60_000) return `${ms / 1000}s`;
+  if (ms < 3_600_000) return `${ms / 60_000}m`;
+  if (ms < 86_400_000) return `${ms / 3_600_000}h`;
+  return `${ms / 86_400_000}d`;
+}
+
+const TICK_PRESETS = [
+  { label: '30s', ms: 30_000 },
+  { label: '2m', ms: 120_000 },
+  { label: '5m', ms: 300_000 },
+  { label: '15m', ms: 900_000 },
+  { label: '1h', ms: 3_600_000 },
+  { label: '6h', ms: 21_600_000 },
+  { label: '24h', ms: 86_400_000 },
+];
+
+const ADVANCEMENT_PRESETS = [
+  { label: '30s', ms: 30_000 },
+  { label: '1m', ms: 60_000 },
+  { label: '5m', ms: 300_000 },
+  { label: '15m', ms: 900_000 },
+  { label: '1h', ms: 3_600_000 },
+];
+
 export function AdminPage() {
   const [simStatus, setSimStatus] = useState<SimulationStatus | null>(null);
   const [decisionStats, setDecisionStats] = useState<DecisionStats | null>(null);
   const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [simConfig, setSimConfig] = useState<RuntimeConfig | null>(null);
+  const [agentList, setAgentList] = useState<AgentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [reseedConfirm, setReseedConfirm] = useState(false);
+  const [savingConfig, setSavingConfig] = useState(false);
   const { subscribe } = useWebSocket();
 
   const fetchStatus = useCallback(async () => {
@@ -81,9 +127,7 @@ export function AdminPage() {
       const data = res.data as { simulation: SimulationStatus; decisions: DecisionStats };
       setSimStatus(data.simulation);
       setDecisionStats(data.decisions);
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
   }, []);
 
   const fetchDecisions = useCallback(async () => {
@@ -92,16 +136,30 @@ export function AdminPage() {
       if (res.data && Array.isArray(res.data)) {
         setDecisions(res.data as Decision[]);
       }
-    } catch {
-      /* ignore */
-    } finally {
+    } catch { /* ignore */ } finally {
       setLoading(false);
     }
+  }, []);
+
+  const fetchConfig = useCallback(async () => {
+    try {
+      const res = await adminApi.getConfig();
+      setSimConfig(res.data as RuntimeConfig);
+    } catch { /* ignore */ }
+  }, []);
+
+  const fetchAgents = useCallback(async () => {
+    try {
+      const res = await adminApi.getAgents();
+      setAgentList(res.data as AgentRow[]);
+    } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
     void fetchStatus();
     void fetchDecisions();
+    void fetchConfig();
+    void fetchAgents();
 
     const refetch = () => {
       void fetchStatus();
@@ -114,7 +172,7 @@ export function AdminPage() {
       subscribe('campaign:speech', refetch),
     ];
     return () => unsubs.forEach((fn) => fn());
-  }, [fetchStatus, fetchDecisions, subscribe]);
+  }, [fetchStatus, fetchDecisions, fetchConfig, fetchAgents, subscribe]);
 
   const flash = (msg: string) => {
     setActionMsg(msg);
@@ -150,6 +208,26 @@ export function AdminPage() {
     flash('Database reseeded');
     void fetchStatus();
     void fetchDecisions();
+    void fetchAgents();
+  };
+
+  const saveConfig = async (patch: Partial<RuntimeConfig>) => {
+    if (!simConfig) return;
+    setSavingConfig(true);
+    try {
+      const res = await adminApi.setConfig(patch as Record<string, unknown>);
+      setSimConfig(res.data as RuntimeConfig);
+      flash('Settings saved');
+    } catch {
+      flash('Failed to save settings');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const handleToggleAgent = async (id: string) => {
+    await adminApi.toggleAgent(id);
+    void fetchAgents();
   };
 
   const running = simStatus ? !simStatus.isPaused : false;
@@ -160,7 +238,7 @@ export function AdminPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-serif text-3xl font-semibold text-stone">Admin Panel</h1>
-          <p className="text-sm text-text-muted mt-1">Simulation controls and decision log</p>
+          <p className="text-sm text-text-muted mt-1">Simulation controls, settings, and decision log</p>
         </div>
         {simStatus && (
           <StatusBadge ok={running} label={running ? 'Running' : 'Paused'} />
@@ -203,6 +281,186 @@ export function AdminPage() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* Simulation Settings */}
+      {simConfig && (
+        <section className="bg-surface rounded-lg border border-border p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="font-serif text-lg font-medium text-stone">Simulation Settings</h2>
+            {savingConfig && <span className="text-xs text-text-muted">Saving...</span>}
+          </div>
+
+          {/* Tick interval */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-text-secondary">Tick Interval</label>
+              <span className="text-sm text-gold font-mono">{msToLabel(simConfig.tickIntervalMs)}</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {TICK_PRESETS.map(({ label, ms }) => (
+                <button
+                  key={ms}
+                  onClick={() => void saveConfig({ tickIntervalMs: ms })}
+                  className={`px-3 py-1.5 rounded text-xs font-medium border transition-all ${
+                    simConfig.tickIntervalMs === ms
+                      ? 'bg-gold/20 text-gold border-gold/40'
+                      : 'bg-white/5 text-text-muted border-border hover:bg-white/10'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-text-muted">How often agents vote, propose bills, and campaign.</p>
+          </div>
+
+          {/* Bill advancement delay */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-text-secondary">Bill Advancement Delay</label>
+              <span className="text-sm text-gold font-mono">{msToLabel(simConfig.billAdvancementDelayMs)}</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {ADVANCEMENT_PRESETS.map(({ label, ms }) => (
+                <button
+                  key={ms}
+                  onClick={() => void saveConfig({ billAdvancementDelayMs: ms })}
+                  className={`px-3 py-1.5 rounded text-xs font-medium border transition-all ${
+                    simConfig.billAdvancementDelayMs === ms
+                      ? 'bg-gold/20 text-gold border-gold/40'
+                      : 'bg-white/5 text-text-muted border-border hover:bg-white/10'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-text-muted">Time bills wait in proposed/committee before advancing to next stage.</p>
+          </div>
+
+          {/* Probability sliders */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Bill Proposal Chance</label>
+                <span className="text-sm text-gold font-mono">{Math.round(simConfig.billProposalChance * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(simConfig.billProposalChance * 100)}
+                onChange={(e) =>
+                  setSimConfig((c) => c ? { ...c, billProposalChance: parseInt(e.target.value) / 100 } : c)
+                }
+                onMouseUp={() => void saveConfig({ billProposalChance: simConfig.billProposalChance })}
+                onTouchEnd={() => void saveConfig({ billProposalChance: simConfig.billProposalChance })}
+                className="w-full accent-gold"
+              />
+              <p className="text-xs text-text-muted">Per-agent chance to propose a bill each tick.</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Campaign Speech Chance</label>
+                <span className="text-sm text-gold font-mono">{Math.round(simConfig.campaignSpeechChance * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round(simConfig.campaignSpeechChance * 100)}
+                onChange={(e) =>
+                  setSimConfig((c) => c ? { ...c, campaignSpeechChance: parseInt(e.target.value) / 100 } : c)
+                }
+                onMouseUp={() => void saveConfig({ campaignSpeechChance: simConfig.campaignSpeechChance })}
+                onTouchEnd={() => void saveConfig({ campaignSpeechChance: simConfig.campaignSpeechChance })}
+                className="w-full accent-gold"
+              />
+              <p className="text-xs text-text-muted">Per-campaign chance to make a speech each tick.</p>
+            </div>
+          </div>
+
+          {/* AI Provider Override */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-text-secondary">AI Provider Override</label>
+            <div className="flex flex-wrap gap-2">
+              {(['default', 'haiku', 'ollama'] as const).map((opt) => (
+                <button
+                  key={opt}
+                  onClick={() => void saveConfig({ providerOverride: opt })}
+                  className={`px-3 py-1.5 rounded text-xs font-medium border transition-all capitalize ${
+                    simConfig.providerOverride === opt
+                      ? 'bg-gold/20 text-gold border-gold/40'
+                      : 'bg-white/5 text-text-muted border-border hover:bg-white/10'
+                  }`}
+                >
+                  {opt === 'default' ? 'Per-agent default' : opt}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-text-muted">
+              Override which AI provider all agents use. Default respects each agent's configured provider.
+            </p>
+          </div>
+        </section>
+      )}
+
+      {/* Agents */}
+      <section className="bg-surface rounded-lg border border-border p-6 space-y-4">
+        <h2 className="font-serif text-lg font-medium text-stone">Agents</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                {['Agent', 'Alignment', 'Provider', 'Reputation', 'Balance', 'Status', ''].map((h) => (
+                  <th key={h} className="pb-2 pr-4 text-xs font-medium text-text-muted uppercase tracking-wide">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/50">
+              {agentList.map((agent) => (
+                <tr key={agent.id} className={`hover:bg-white/[0.02] ${!agent.isActive ? 'opacity-50' : ''}`}>
+                  <td className="py-2 pr-4 text-text-primary font-medium whitespace-nowrap">
+                    {agent.displayName}
+                  </td>
+                  <td className="py-2 pr-4 text-text-secondary text-xs whitespace-nowrap">
+                    {agent.alignment}
+                  </td>
+                  <td className="py-2 pr-4">
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                      agent.modelProvider === 'haiku'
+                        ? 'bg-purple-900/40 text-purple-300'
+                        : 'bg-blue-900/40 text-blue-300'
+                    }`}>
+                      {agent.modelProvider}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-4 text-text-secondary text-xs">{agent.reputation}</td>
+                  <td className="py-2 pr-4 text-text-secondary text-xs">M${agent.balance.toLocaleString()}</td>
+                  <td className="py-2 pr-4">
+                    <StatusBadge ok={agent.isActive} label={agent.isActive ? 'Active' : 'Inactive'} />
+                  </td>
+                  <td className="py-2">
+                    <button
+                      onClick={() => void handleToggleAgent(agent.id)}
+                      className={`text-xs px-2 py-1 rounded border transition-all ${
+                        agent.isActive
+                          ? 'text-red-400 border-red-800 hover:bg-red-900/30'
+                          : 'text-green-400 border-green-800 hover:bg-green-900/30'
+                      }`}
+                    >
+                      {agent.isActive ? 'Disable' : 'Enable'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {/* Decision Stats */}

@@ -21,6 +21,6 @@ export const config = {
     model: 'claude-haiku-4-5-20251001',
   },
   simulation: {
-    tickIntervalMs: parseInt(process.env.SIMULATION_TICK_MS || '120000', 10),
+    tickIntervalMs: parseInt(process.env.SIMULATION_TICK_MS || '3600000', 10),
   },
 } as const;

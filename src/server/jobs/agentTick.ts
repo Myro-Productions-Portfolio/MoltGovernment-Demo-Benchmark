@@ -1,6 +1,7 @@
 import Bull from 'bull';
 import { eq, and, inArray, lte, gte, count, sql } from 'drizzle-orm';
 import { config } from '../config.js';
+import { getRuntimeConfig } from '../runtimeConfig.js';
 import { db } from '@db/connection';
 import { agents, bills, billVotes, activityEvents, laws, elections, campaigns, positions } from '@db/schema/index';
 import { generateAgentDecision } from '../services/ai.js';
@@ -9,6 +10,7 @@ import { broadcast } from '../websocket.js';
 const agentTickQueue = new Bull('agent-tick', config.redis.url);
 
 agentTickQueue.process(async () => {
+  const rc = getRuntimeConfig();
   console.warn('[SIMULATION] Agent tick running...');
 
   /* Fetch all active agents once — used across phases */
@@ -52,7 +54,7 @@ agentTickQueue.process(async () => {
               id: agent.id,
               displayName: agent.displayName,
               alignment: agent.alignment,
-              modelProvider: agent.modelProvider,
+              modelProvider: rc.providerOverride === 'default' ? agent.modelProvider : rc.providerOverride,
               personality: agent.personality,
             },
             contextMessage,
@@ -178,7 +180,7 @@ agentTickQueue.process(async () => {
   try {
     console.warn('[SIMULATION] Phase 3: Bill Advancement');
 
-    const sixtySecondsAgo = new Date(Date.now() - 60_000);
+    const sixtySecondsAgo = new Date(Date.now() - rc.billAdvancementDelayMs);
 
     /* proposed -> committee */
     const proposedBills = await db
@@ -254,7 +256,7 @@ agentTickQueue.process(async () => {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60_000);
 
     for (const agent of activeAgents) {
-      if (Math.random() >= 0.3) continue;
+      if (Math.random() >= rc.billProposalChance) continue;
 
       /* Check if agent sponsored a bill in the last 5 minutes */
       const recentBills = await db
@@ -273,7 +275,7 @@ agentTickQueue.process(async () => {
           id: agent.id,
           displayName: agent.displayName,
           alignment: agent.alignment,
-          modelProvider: agent.modelProvider,
+          modelProvider: rc.providerOverride === 'default' ? agent.modelProvider : rc.providerOverride,
           personality: agent.personality,
         },
         contextMessage,
@@ -485,7 +487,7 @@ agentTickQueue.process(async () => {
         .where(and(eq(campaigns.status, 'active'), inArray(campaigns.electionId, campaigningElectionIds)));
 
       for (const campaign of activeCampaigns) {
-        if (Math.random() >= 0.2) continue;
+        if (Math.random() >= rc.campaignSpeechChance) continue;
 
         const election = activeCampaigningElections.find((e) => e.id === campaign.electionId);
         if (!election) continue;
@@ -502,7 +504,7 @@ agentTickQueue.process(async () => {
             id: campaignAgent.id,
             displayName: campaignAgent.displayName,
             alignment: campaignAgent.alignment,
-            modelProvider: campaignAgent.modelProvider,
+            modelProvider: rc.providerOverride === 'default' ? campaignAgent.modelProvider : rc.providerOverride,
             personality: campaignAgent.personality,
           },
           contextMessage,
@@ -555,10 +557,20 @@ agentTickQueue.process(async () => {
 });
 
 export function startAgentTick(): void {
+  const rc = getRuntimeConfig();
   agentTickQueue
-    .add({}, { repeat: { every: config.simulation.tickIntervalMs }, removeOnComplete: 10, removeOnFail: 5 })
+    .add({}, { repeat: { every: rc.tickIntervalMs }, removeOnComplete: 10, removeOnFail: 5 })
     .catch((err: unknown) => console.error('[SIMULATION] Failed to add tick job:', err));
-  console.warn(`[SIMULATION] Agent tick started — interval: ${config.simulation.tickIntervalMs}ms`);
+  console.warn(`[SIMULATION] Agent tick started — interval: ${rc.tickIntervalMs}ms`);
+}
+
+export async function changeTickInterval(newIntervalMs: number): Promise<void> {
+  const jobs = await agentTickQueue.getRepeatableJobs();
+  for (const job of jobs) {
+    await agentTickQueue.removeRepeatableByKey(job.key);
+  }
+  await agentTickQueue.add({}, { repeat: { every: newIntervalMs }, removeOnComplete: 10, removeOnFail: 5 });
+  console.warn(`[SIMULATION] Tick interval changed to ${newIntervalMs}ms`);
 }
 
 export async function pauseSimulation(): Promise<void> {
