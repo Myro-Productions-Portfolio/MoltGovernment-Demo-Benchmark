@@ -2,9 +2,12 @@
 // Purpose: Full-screen top-down interior view of a Capitol District building.
 // Room images go in /public/images/interiors/{buildingId}.webp — a placeholder
 // gradient is shown until then.
+//
+// DEBUG MODE: add ?debug=1 to URL to enable coordinate overlay.
+// Hover the room to see live x%/y% — click to copy to clipboard.
 
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useRef, useCallback } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAgentMap } from '../hooks/useAgentMap';
 import { SpeechBubble } from '../components/map/SpeechBubble';
@@ -94,10 +97,192 @@ function AgentSeat({ agent, seat, bubble, onClick }: AgentSeatProps) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Debug coordinate overlay — enabled by ?debug=1
+// ---------------------------------------------------------------------------
+
+interface DebugOverlayProps {
+  seats: SeatPosition[];
+  buildingColor: string;
+}
+
+function DebugOverlay({ seats, buildingColor }: DebugOverlayProps) {
+  const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+    const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+    setCursor({ x, y });
+  }, []);
+
+  const handleMouseLeave = useCallback(() => setCursor(null), []);
+
+  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+    const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+    const text = `{ x: ${x}, y: ${y} }`;
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(text);
+    setTimeout(() => setCopied(null), 2000);
+  }, []);
+
+  const gridLines = [10, 20, 30, 40, 50, 60, 70, 80, 90];
+
+  return (
+    <div
+      ref={containerRef}
+      className="absolute inset-0 z-50"
+      style={{ cursor: 'crosshair' }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onClick={handleClick}
+    >
+      {/* Grid lines — vertical */}
+      {gridLines.map((pct) => (
+        <div
+          key={`v${pct}`}
+          className="absolute top-0 bottom-0 pointer-events-none"
+          style={{
+            left: `${pct}%`,
+            width: '1px',
+            background: 'rgba(201,185,155,0.25)',
+          }}
+        >
+          <span
+            className="absolute top-1 text-[0.45rem] font-mono select-none"
+            style={{
+              color: 'rgba(201,185,155,0.7)',
+              transform: 'translateX(-50%)',
+            }}
+          >
+            {pct}
+          </span>
+        </div>
+      ))}
+
+      {/* Grid lines — horizontal */}
+      {gridLines.map((pct) => (
+        <div
+          key={`h${pct}`}
+          className="absolute left-0 right-0 pointer-events-none"
+          style={{
+            top: `${pct}%`,
+            height: '1px',
+            background: 'rgba(201,185,155,0.25)',
+          }}
+        >
+          <span
+            className="absolute left-1 text-[0.45rem] font-mono select-none"
+            style={{
+              color: 'rgba(201,185,155,0.7)',
+              transform: 'translateY(-50%)',
+            }}
+          >
+            {pct}
+          </span>
+        </div>
+      ))}
+
+      {/* Current seat markers with index labels */}
+      {seats.map((seat, i) => (
+        <div
+          key={i}
+          className="absolute pointer-events-none"
+          style={{
+            left: `${seat.x}%`,
+            top: `${seat.y}%`,
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          <div
+            className="w-6 h-6 rounded-full flex items-center justify-center"
+            style={{
+              background: `${buildingColor}33`,
+              border: `1.5px solid ${buildingColor}`,
+              boxShadow: `0 0 6px ${buildingColor}88`,
+            }}
+          >
+            <span
+              className="text-[0.5rem] font-bold font-mono select-none"
+              style={{ color: buildingColor }}
+            >
+              {i}
+            </span>
+          </div>
+          <div
+            className="absolute top-full left-1/2 mt-0.5 text-[0.42rem] font-mono whitespace-nowrap select-none"
+            style={{
+              color: 'rgba(201,185,155,0.8)',
+              transform: 'translateX(-50%)',
+            }}
+          >
+            {seat.x},{seat.y}
+          </div>
+        </div>
+      ))}
+
+      {/* Live cursor readout */}
+      {cursor && (
+        <div
+          className="fixed pointer-events-none z-[100] px-2 py-1 rounded font-mono text-xs"
+          style={{
+            background: 'rgba(26,27,30,0.92)',
+            border: '1px solid rgba(201,185,155,0.4)',
+            color: '#C9B99B',
+            // offset so it doesn't cover what you're looking at
+            left: cursor.x > 70 ? 'auto' : `calc(${cursor.x}% + 14px)`,
+            right: cursor.x > 70 ? `calc(${100 - cursor.x}% + 14px)` : 'auto',
+            top: cursor.y > 80 ? 'auto' : `calc(${cursor.y}% + 14px)`,
+            bottom: cursor.y > 80 ? `calc(${100 - cursor.y}% + 14px)` : 'auto',
+          }}
+        >
+          x: {cursor.x}% &nbsp; y: {cursor.y}%
+          <div className="text-[0.55rem] opacity-60 mt-0.5">click to copy</div>
+        </div>
+      )}
+
+      {/* Copied confirmation */}
+      {copied && (
+        <div
+          className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded font-mono text-xs z-[101]"
+          style={{
+            background: 'rgba(26,27,30,0.95)',
+            border: '1px solid rgba(201,185,155,0.6)',
+            color: '#D4A96A',
+          }}
+        >
+          Copied: {copied}
+        </div>
+      )}
+
+      {/* Debug mode badge */}
+      <div
+        className="absolute bottom-4 right-4 px-2 py-1 rounded font-mono text-[0.55rem] pointer-events-none"
+        style={{
+          background: 'rgba(139,58,58,0.85)',
+          border: '1px solid rgba(139,58,58,0.6)',
+          color: '#E8E6E3',
+        }}
+      >
+        DEBUG — ?debug=1 active — hover to read coords, click to copy
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
 export function BuildingInteriorPage() {
   const { buildingId } = useParams<{ buildingId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const building = getBuildingById(buildingId ?? '');
+
+  const isDebug = new URLSearchParams(location.search).get('debug') === '1';
 
   const {
     agents,
@@ -154,6 +339,14 @@ export function BuildingInteriorPage() {
         <span className="badge-committee">{building.type}</span>
 
         <div className="ml-auto flex items-center gap-3">
+          {isDebug && (
+            <span
+              className="text-[0.6rem] font-mono px-1.5 py-0.5 rounded"
+              style={{ background: 'rgba(139,58,58,0.4)', color: '#E8E6E3' }}
+            >
+              DEBUG
+            </span>
+          )}
           {occupants.length > 0 && (
             <span className="text-[0.65rem] font-mono text-text-muted">
               {occupants.length} agent{occupants.length !== 1 ? 's' : ''} present
@@ -220,7 +413,7 @@ export function BuildingInteriorPage() {
         />
 
         {/* Faint seat markers — show all designated positions */}
-        {building.seats.map((seat, i) => (
+        {!isDebug && building.seats.map((seat, i) => (
           <div
             key={i}
             className="absolute w-10 h-10 rounded-full pointer-events-none"
@@ -250,6 +443,11 @@ export function BuildingInteriorPage() {
             );
           })}
         </AnimatePresence>
+
+        {/* Debug coordinate overlay — ?debug=1 */}
+        {isDebug && (
+          <DebugOverlay seats={building.seats} buildingColor={building.color} />
+        )}
 
         {/* Ticker */}
         <MapEventTicker events={tickerEvents} />
