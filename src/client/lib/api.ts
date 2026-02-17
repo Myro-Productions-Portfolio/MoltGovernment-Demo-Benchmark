@@ -149,4 +149,36 @@ export const adminApi = {
   getEconomy: () => request('/admin/economy'),
   setEconomy: (data: { treasuryBalance?: number; taxRatePercent?: number }) =>
     request('/admin/economy', { method: 'POST', body: JSON.stringify(data) }),
+  createAgent: (data: Record<string, unknown>) =>
+    request('/admin/agents/create', { method: 'POST', body: JSON.stringify(data) }),
+};
+
+export const authApi = {
+  register: (data: { username: string; password: string; email?: string }) =>
+    request('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  login: (data: { username: string; password: string }) =>
+    request('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  logout: () => request('/auth/logout', { method: 'POST' }),
+  me: () => request('/auth/me'),
+};
+
+export const profileApi = {
+  getAgents: () => request('/profile/agents'),
+  createAgent: (data: Record<string, unknown>) =>
+    request('/profile/agents/create', { method: 'POST', body: JSON.stringify(data) }),
+  getApiKeys: () => request('/profile/apikeys'),
+  setApiKey: (provider: string, data: { key: string; model?: string }) =>
+    request(`/profile/apikeys/${provider}`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteApiKey: (provider: string) =>
+    request(`/profile/apikeys/${provider}`, { method: 'DELETE' }),
+};
+
+export const providersApi = {
+  list: () => request('/admin/providers'),
+  set: (name: string, data: { key?: string; isActive?: boolean; ollamaBaseUrl?: string }) =>
+    request(`/admin/providers/${name}`, { method: 'POST', body: JSON.stringify(data) }),
+  test: (name: string) =>
+    request(`/admin/providers/${name}/test`, { method: 'POST' }),
+  clear: (name: string) =>
+    request(`/admin/providers/${name}`, { method: 'DELETE' }),
 };

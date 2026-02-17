@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { adminApi, agentsApi } from '../lib/api';
+import { adminApi, agentsApi, providersApi } from '../lib/api';
 import { useWebSocket } from '../lib/useWebSocket';
 import { PixelAvatar, proceduralConfig } from '../components/PixelAvatar';
 import type { AvatarConfig } from '../components/PixelAvatar';
+import { CollapsibleSection } from '../components/CollapsibleSection';
 
 interface SimulationStatus {
   isPaused: boolean;
@@ -35,7 +36,7 @@ interface RuntimeConfig {
   /* Simulation */
   tickIntervalMs: number;
   billAdvancementDelayMs: number;
-  providerOverride: 'default' | 'haiku' | 'ollama';
+  providerOverride: 'default' | 'anthropic' | 'openai' | 'google' | 'huggingface' | 'ollama';
   /* Agent Behavior */
   billProposalChance: number;
   campaignSpeechChance: number;
@@ -71,6 +72,11 @@ interface RuntimeConfig {
   judicialChallengeRatePerLaw: number;
   partyWhipFollowRate: number;
   vetoOverrideThreshold: number;
+  /* Guard Rails */
+  maxPromptLengthChars: number;
+  maxOutputLengthTokens: number;
+  maxBillsPerAgentPerTick: number;
+  maxCampaignSpeechesPerTick: number;
 }
 
 interface EconomySettings {
@@ -93,6 +99,15 @@ interface AvatarAgentRow {
   name: string;
   displayName: string;
   avatarConfig: string | null;
+}
+
+interface ProviderRow {
+  providerName: string;
+  isConfigured: boolean;
+  isActive: boolean;
+  maskedKey: string | null;
+  ollamaBaseUrl: string | null;
+  models: string[];
 }
 
 function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
@@ -157,6 +172,9 @@ const ADVANCEMENT_PRESETS = [
   { label: '1h', ms: 3_600_000 },
 ];
 
+const ALIGNMENTS = ['progressive', 'moderate', 'conservative', 'libertarian', 'technocrat'];
+const AI_PROVIDERS = ['anthropic', 'openai', 'google', 'huggingface', 'ollama'];
+
 export function AdminPage() {
   const [simStatus, setSimStatus] = useState<SimulationStatus | null>(null);
   const [decisionStats, setDecisionStats] = useState<DecisionStats | null>(null);
@@ -164,6 +182,7 @@ export function AdminPage() {
   const [simConfig, setSimConfig] = useState<RuntimeConfig | null>(null);
   const [economySettings, setEconomySettings] = useState<EconomySettings | null>(null);
   const [agentList, setAgentList] = useState<AgentRow[]>([]);
+  const [providers, setProviders] = useState<ProviderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [reseedConfirm, setReseedConfirm] = useState(false);
@@ -176,6 +195,20 @@ export function AdminPage() {
   const [draftConfigs, setDraftConfigs] = useState<Record<string, AvatarConfig>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<Record<string, string>>({});
+
+  /* Provider panel state */
+  const [providerKeyInputs, setProviderKeyInputs] = useState<Record<string, string>>({});
+  const [providerOllamaInputs, setProviderOllamaInputs] = useState<Record<string, string>>({});
+  const [providerTesting, setProviderTesting] = useState<string | null>(null);
+  const [providerTestResults, setProviderTestResults] = useState<Record<string, { success: boolean; latencyMs: number; error?: string }>>({});
+  const [providerSaving, setProviderSaving] = useState<string | null>(null);
+
+  /* Create agent panel state */
+  const [showCreateAgent, setShowCreateAgent] = useState(false);
+  const [agentForm, setAgentForm] = useState({
+    displayName: '', name: '', alignment: 'moderate', modelProvider: 'anthropic', model: '', bio: '', personality: '', startingBalance: 1000,
+  });
+  const [agentFormLoading, setAgentFormLoading] = useState(false);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -227,6 +260,13 @@ export function AdminPage() {
     } catch { /* ignore */ }
   }, []);
 
+  const fetchProviders = useCallback(async () => {
+    try {
+      const res = await providersApi.list();
+      setProviders(res.data as ProviderRow[]);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     void fetchStatus();
     void fetchDecisions();
@@ -234,6 +274,7 @@ export function AdminPage() {
     void fetchEconomy();
     void fetchAgents();
     void fetchAvatarAgents();
+    void fetchProviders();
 
     const refetch = () => {
       void fetchStatus();
@@ -246,7 +287,7 @@ export function AdminPage() {
       subscribe('campaign:speech', refetch),
     ];
     return () => unsubs.forEach((fn) => fn());
-  }, [fetchStatus, fetchDecisions, fetchConfig, fetchEconomy, fetchAgents, fetchAvatarAgents, subscribe]);
+  }, [fetchStatus, fetchDecisions, fetchConfig, fetchEconomy, fetchAgents, fetchAvatarAgents, fetchProviders, subscribe]);
 
   const flash = (msg: string) => {
     setActionMsg(msg);
@@ -317,6 +358,61 @@ export function AdminPage() {
     void fetchAgents();
   };
 
+  const handleCreateAgent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAgentFormLoading(true);
+    try {
+      await adminApi.createAgent(agentForm);
+      flash('Agent created successfully');
+      setShowCreateAgent(false);
+      setAgentForm({ displayName: '', name: '', alignment: 'moderate', modelProvider: 'anthropic', model: '', bio: '', personality: '', startingBalance: 1000 });
+      void fetchAgents();
+      void fetchAvatarAgents();
+    } catch (err) {
+      flash(err instanceof Error ? err.message : 'Failed to create agent');
+    } finally {
+      setAgentFormLoading(false);
+    }
+  };
+
+  const handleProviderSave = async (name: string) => {
+    setProviderSaving(name);
+    try {
+      const key = providerKeyInputs[name]?.trim();
+      const ollamaBaseUrl = providerOllamaInputs[name]?.trim();
+      await providersApi.set(name, { key: key || undefined, ollamaBaseUrl: ollamaBaseUrl || undefined });
+      flash(`${name} provider saved`);
+      setProviderKeyInputs((prev) => ({ ...prev, [name]: '' }));
+      void fetchProviders();
+    } catch {
+      flash(`Failed to save ${name} provider`);
+    } finally {
+      setProviderSaving(null);
+    }
+  };
+
+  const handleProviderTest = async (name: string) => {
+    setProviderTesting(name);
+    try {
+      const res = await providersApi.test(name);
+      setProviderTestResults((prev) => ({ ...prev, [name]: res.data as { success: boolean; latencyMs: number; error?: string } }));
+    } catch {
+      setProviderTestResults((prev) => ({ ...prev, [name]: { success: false, latencyMs: 0, error: 'Request failed' } }));
+    } finally {
+      setProviderTesting(null);
+    }
+  };
+
+  const handleProviderClear = async (name: string) => {
+    try {
+      await providersApi.clear(name);
+      flash(`${name} key cleared`);
+      void fetchProviders();
+    } catch {
+      flash(`Failed to clear ${name} key`);
+    }
+  };
+
   const running = simStatus ? !simStatus.isPaused : false;
 
   /* ---- Avatar customizer helpers ---- */
@@ -356,6 +452,8 @@ export function AdminPage() {
     setDraftConfigs((prev) => ({ ...prev, [agent.id]: config }));
   }
 
+  const savingBadge = savingConfig ? <span className="text-xs text-text-muted">Saving...</span> : undefined;
+
   return (
     <div className="max-w-content mx-auto px-8 py-section space-y-8">
       {/* Header */}
@@ -377,8 +475,7 @@ export function AdminPage() {
       )}
 
       {/* Simulation Controls */}
-      <section className="bg-surface rounded-lg border border-border p-6 space-y-4">
-        <h2 className="font-serif text-lg font-medium text-stone">Simulation Controls</h2>
+      <CollapsibleSection id="simulation_controls" title="Simulation Controls">
         <div className="flex flex-wrap gap-3">
           <AdminButton onClick={handlePause} disabled={!running} variant="default">
             Pause
@@ -405,16 +502,11 @@ export function AdminPage() {
             ))}
           </div>
         )}
-      </section>
+      </CollapsibleSection>
 
       {/* Simulation Settings */}
       {simConfig && (
-        <section className="bg-surface rounded-lg border border-border p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="font-serif text-lg font-medium text-stone">Simulation Settings</h2>
-            {savingConfig && <span className="text-xs text-text-muted">Saving...</span>}
-          </div>
-
+        <CollapsibleSection id="simulation_settings" title="Simulation Settings" badge={savingBadge}>
           {/* Tick interval */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -471,13 +563,9 @@ export function AdminPage() {
                 <span className="text-sm text-gold font-mono">{Math.round(simConfig.billProposalChance * 100)}%</span>
               </div>
               <input
-                type="range"
-                min={0}
-                max={100}
+                type="range" min={0} max={100}
                 value={Math.round(simConfig.billProposalChance * 100)}
-                onChange={(e) =>
-                  setSimConfig((c) => c ? { ...c, billProposalChance: parseInt(e.target.value) / 100 } : c)
-                }
+                onChange={(e) => setSimConfig((c) => c ? { ...c, billProposalChance: parseInt(e.target.value) / 100 } : c)}
                 onMouseUp={() => void saveConfig({ billProposalChance: simConfig.billProposalChance })}
                 onTouchEnd={() => void saveConfig({ billProposalChance: simConfig.billProposalChance })}
                 className="w-full accent-gold"
@@ -491,13 +579,9 @@ export function AdminPage() {
                 <span className="text-sm text-gold font-mono">{Math.round(simConfig.campaignSpeechChance * 100)}%</span>
               </div>
               <input
-                type="range"
-                min={0}
-                max={100}
+                type="range" min={0} max={100}
                 value={Math.round(simConfig.campaignSpeechChance * 100)}
-                onChange={(e) =>
-                  setSimConfig((c) => c ? { ...c, campaignSpeechChance: parseInt(e.target.value) / 100 } : c)
-                }
+                onChange={(e) => setSimConfig((c) => c ? { ...c, campaignSpeechChance: parseInt(e.target.value) / 100 } : c)}
                 onMouseUp={() => void saveConfig({ campaignSpeechChance: simConfig.campaignSpeechChance })}
                 onTouchEnd={() => void saveConfig({ campaignSpeechChance: simConfig.campaignSpeechChance })}
                 className="w-full accent-gold"
@@ -510,7 +594,7 @@ export function AdminPage() {
           <div className="space-y-2">
             <label className="text-sm font-medium text-text-secondary">AI Provider Override</label>
             <div className="flex flex-wrap gap-2">
-              {(['default', 'haiku', 'ollama'] as const).map((opt) => (
+              {(['default', 'anthropic', 'openai', 'google', 'huggingface', 'ollama'] as const).map((opt) => (
                 <button
                   key={opt}
                   onClick={() => void saveConfig({ providerOverride: opt })}
@@ -545,20 +629,79 @@ export function AdminPage() {
             />
             <p className="text-xs text-text-muted">Per-agent chance to propose an amendment to an existing law each tick.</p>
           </div>
-        </section>
+
+          {/* Guard Rails sub-section */}
+          <div className="border-t border-border pt-4">
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wide mb-4">Guard Rails</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-text-secondary">Max Prompt Length (chars)</label>
+                  <span className="text-sm text-gold font-mono">{simConfig.maxPromptLengthChars.toLocaleString()}</span>
+                </div>
+                <input type="number" min={500} max={32000} step={500}
+                  value={simConfig.maxPromptLengthChars}
+                  onChange={(e) => setSimConfig((c) => c ? { ...c, maxPromptLengthChars: parseInt(e.target.value) || 4000 } : c)}
+                  onBlur={() => void saveConfig({ maxPromptLengthChars: simConfig.maxPromptLengthChars })}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                />
+                <p className="text-xs text-text-muted">Maximum characters sent to AI per request.</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-text-secondary">Max Output Tokens</label>
+                  <span className="text-sm text-gold font-mono">{simConfig.maxOutputLengthTokens}</span>
+                </div>
+                <input type="number" min={50} max={4000} step={50}
+                  value={simConfig.maxOutputLengthTokens}
+                  onChange={(e) => setSimConfig((c) => c ? { ...c, maxOutputLengthTokens: parseInt(e.target.value) || 500 } : c)}
+                  onBlur={() => void saveConfig({ maxOutputLengthTokens: simConfig.maxOutputLengthTokens })}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                />
+                <p className="text-xs text-text-muted">Maximum tokens each AI response can use.</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-text-secondary">Max Bills Per Agent Per Tick</label>
+                  <span className="text-sm text-gold font-mono">{simConfig.maxBillsPerAgentPerTick}</span>
+                </div>
+                <input type="number" min={1} max={20}
+                  value={simConfig.maxBillsPerAgentPerTick}
+                  onChange={(e) => setSimConfig((c) => c ? { ...c, maxBillsPerAgentPerTick: parseInt(e.target.value) || 1 } : c)}
+                  onBlur={() => void saveConfig({ maxBillsPerAgentPerTick: simConfig.maxBillsPerAgentPerTick })}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                />
+                <p className="text-xs text-text-muted">Maximum bill proposals per agent per tick.</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-text-secondary">Max Campaign Speeches Per Tick</label>
+                  <span className="text-sm text-gold font-mono">{simConfig.maxCampaignSpeechesPerTick}</span>
+                </div>
+                <input type="number" min={1} max={20}
+                  value={simConfig.maxCampaignSpeechesPerTick}
+                  onChange={(e) => setSimConfig((c) => c ? { ...c, maxCampaignSpeechesPerTick: parseInt(e.target.value) || 1 } : c)}
+                  onBlur={() => void saveConfig({ maxCampaignSpeechesPerTick: simConfig.maxCampaignSpeechesPerTick })}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                />
+                <p className="text-xs text-text-muted">Maximum campaign speeches per agent per tick.</p>
+              </div>
+            </div>
+          </div>
+        </CollapsibleSection>
       )}
 
       {/* Government Structure */}
       {simConfig && (
-        <section className="bg-surface rounded-lg border border-border p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-serif text-lg font-medium text-stone">Government Structure</h2>
-              <p className="text-xs text-text-muted mt-0.5">Takes effect on next election cycle or term start</p>
-            </div>
-            {savingConfig && <span className="text-xs text-text-muted">Saving...</span>}
-          </div>
-
+        <CollapsibleSection
+          id="government_structure"
+          title="Government Structure"
+          subtitle="Takes effect on next election cycle or term start"
+          badge={savingBadge}
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {/* Congress Seats */}
             <div className="space-y-2">
@@ -642,16 +785,13 @@ export function AdminPage() {
               </div>
             ))}
           </div>
-        </section>
+        </CollapsibleSection>
       )}
 
       {/* Elections */}
       {simConfig && (
-        <section className="bg-surface rounded-lg border border-border p-6 space-y-6">
-          <h2 className="font-serif text-lg font-medium text-stone">Elections</h2>
-
+        <CollapsibleSection id="elections" title="Elections">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {/* Campaign Duration */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-text-secondary">Campaign Duration</label>
@@ -667,7 +807,6 @@ export function AdminPage() {
               </div>
             </div>
 
-            {/* Voting Duration */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-text-secondary">Voting Window</label>
@@ -683,7 +822,6 @@ export function AdminPage() {
               </div>
             </div>
 
-            {/* Min Rep to Run */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-text-secondary">Min Reputation to Run</label>
@@ -697,7 +835,6 @@ export function AdminPage() {
               <p className="text-xs text-text-muted">Reputation required to declare candidacy.</p>
             </div>
 
-            {/* Min Rep to Vote */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-text-secondary">Min Reputation to Vote</label>
@@ -711,20 +848,16 @@ export function AdminPage() {
               <p className="text-xs text-text-muted">Reputation required to cast a vote.</p>
             </div>
           </div>
-        </section>
+        </CollapsibleSection>
       )}
 
       {/* Economy */}
-      <section className="bg-surface rounded-lg border border-border p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-serif text-lg font-medium text-stone">Economy</h2>
-            <p className="text-xs text-text-muted mt-0.5">Treasury &amp; tax rate persist in DB. Fees &amp; salaries apply next tick.</p>
-          </div>
-          {savingConfig && <span className="text-xs text-text-muted">Saving...</span>}
-        </div>
-
-        {/* DB-persisted: treasury + tax rate */}
+      <CollapsibleSection
+        id="economy"
+        title="Economy"
+        subtitle="Treasury & tax rate persist in DB. Fees & salaries apply next tick."
+        badge={savingBadge}
+      >
         {economySettings && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div className="space-y-2">
@@ -758,7 +891,6 @@ export function AdminPage() {
           </div>
         )}
 
-        {/* Runtime: fees and salaries */}
         {simConfig && (
           <>
             <div className="border-t border-border pt-4">
@@ -812,16 +944,15 @@ export function AdminPage() {
             </div>
           </>
         )}
-      </section>
+      </CollapsibleSection>
 
       {/* Governance Probabilities */}
       {simConfig && (
-        <section className="bg-surface rounded-lg border border-border p-6 space-y-6">
-          <div>
-            <h2 className="font-serif text-lg font-medium text-stone">Governance Probabilities</h2>
-            <p className="text-xs text-text-muted mt-0.5">Research-backed baselines. Changes apply on the next tick.</p>
-          </div>
-
+        <CollapsibleSection
+          id="governance_probabilities"
+          title="Governance Probabilities"
+          subtitle="Research-backed baselines. Changes apply on the next tick."
+        >
           {/* Presidential Veto */}
           <div className="space-y-4">
             <p className="text-xs font-medium text-text-muted uppercase tracking-wide">Presidential Veto</p>
@@ -899,12 +1030,161 @@ export function AdminPage() {
               ))}
             </div>
           </div>
-        </section>
+        </CollapsibleSection>
       )}
 
+      {/* AI Providers */}
+      <CollapsibleSection id="api_providers" title="AI Providers" subtitle="Configure API keys for each provider. Keys are AES-256 encrypted at rest.">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {providers.map((p) => {
+            const testResult = providerTestResults[p.providerName];
+            return (
+              <div key={p.providerName} className="bg-white/5 rounded border border-border p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-text-primary capitalize">{p.providerName}</span>
+                    {p.isConfigured ? (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-green-900/40 text-green-400">Configured</span>
+                    ) : (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-text-muted">Not set</span>
+                    )}
+                  </div>
+                  {p.maskedKey && <span className="text-xs font-mono text-text-muted">{p.maskedKey}</span>}
+                </div>
+
+                {p.providerName !== 'ollama' && (
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      value={providerKeyInputs[p.providerName] ?? ''}
+                      onChange={(e) => setProviderKeyInputs((prev) => ({ ...prev, [p.providerName]: e.target.value }))}
+                      className="flex-1 bg-white/5 border border-border rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                      placeholder={p.isConfigured ? 'Replace key...' : 'Enter API key...'}
+                    />
+                  </div>
+                )}
+
+                {p.providerName === 'ollama' && (
+                  <div>
+                    <input
+                      type="text"
+                      value={providerOllamaInputs[p.providerName] ?? (p.ollamaBaseUrl ?? '')}
+                      onChange={(e) => setProviderOllamaInputs((prev) => ({ ...prev, [p.providerName]: e.target.value }))}
+                      className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                      placeholder="http://localhost:11434"
+                    />
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => void handleProviderSave(p.providerName)}
+                    disabled={providerSaving === p.providerName}
+                    className="px-3 py-1.5 rounded bg-gold/20 text-gold border border-gold/40 hover:bg-gold/30 text-xs font-medium transition-all disabled:opacity-40"
+                  >
+                    {providerSaving === p.providerName ? 'Saving...' : 'Save'}
+                  </button>
+                  <button
+                    onClick={() => void handleProviderTest(p.providerName)}
+                    disabled={providerTesting === p.providerName}
+                    className="px-3 py-1.5 rounded bg-white/5 border border-border text-text-muted hover:bg-white/10 text-xs font-medium transition-all disabled:opacity-40"
+                  >
+                    {providerTesting === p.providerName ? 'Testing...' : 'Test'}
+                  </button>
+                  {p.isConfigured && (
+                    <button
+                      onClick={() => void handleProviderClear(p.providerName)}
+                      className="px-3 py-1.5 rounded border border-red-800 text-red-400 hover:bg-red-900/30 text-xs transition-all"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {testResult && (
+                  <div className={`text-xs px-2 py-1.5 rounded ${testResult.success ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                    {testResult.success ? `OK — ${testResult.latencyMs}ms` : `Failed${testResult.error ? `: ${testResult.error}` : ''}`}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CollapsibleSection>
+
       {/* Agents */}
-      <section className="bg-surface rounded-lg border border-border p-6 space-y-4">
-        <h2 className="font-serif text-lg font-medium text-stone">Agents</h2>
+      <CollapsibleSection id="agents" title="Agents">
+        <div className="flex justify-end mb-2">
+          <button
+            onClick={() => setShowCreateAgent(!showCreateAgent)}
+            className="text-xs px-3 py-1.5 rounded bg-gold/20 text-gold border border-gold/40 hover:bg-gold/30 transition-all"
+          >
+            {showCreateAgent ? 'Cancel' : 'Create New Agent'}
+          </button>
+        </div>
+
+        {showCreateAgent && (
+          <form onSubmit={(e) => void handleCreateAgent(e)} className="space-y-4 border border-border rounded p-4 mb-4">
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wide">New Agent</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Display Name</label>
+                <input type="text" value={agentForm.displayName}
+                  onChange={(e) => setAgentForm((f) => ({ ...f, displayName: e.target.value }))}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                  placeholder="Jane Doe" required />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Username slug</label>
+                <input type="text" value={agentForm.name}
+                  onChange={(e) => setAgentForm((f) => ({ ...f, name: e.target.value }))}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                  placeholder="jane_doe" required />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Alignment</label>
+                <select value={agentForm.alignment}
+                  onChange={(e) => setAgentForm((f) => ({ ...f, alignment: e.target.value }))}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50">
+                  {ALIGNMENTS.map((a) => <option key={a} value={a} className="bg-surface">{a}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Provider</label>
+                <select value={agentForm.modelProvider}
+                  onChange={(e) => setAgentForm((f) => ({ ...f, modelProvider: e.target.value }))}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50">
+                  {AI_PROVIDERS.map((p) => <option key={p} value={p} className="bg-surface">{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Model (optional)</label>
+                <input type="text" value={agentForm.model}
+                  onChange={(e) => setAgentForm((f) => ({ ...f, model: e.target.value }))}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                  placeholder="e.g. claude-haiku-4-5-20251001" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Starting Balance (M$)</label>
+                <input type="number" min={0} step={100} value={agentForm.startingBalance}
+                  onChange={(e) => setAgentForm((f) => ({ ...f, startingBalance: parseInt(e.target.value) || 0 }))}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Personality</label>
+              <textarea value={agentForm.personality}
+                onChange={(e) => setAgentForm((f) => ({ ...f, personality: e.target.value }))}
+                className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                rows={2} placeholder="How this agent thinks and acts..." />
+            </div>
+            <button type="submit" disabled={agentFormLoading}
+              className="px-6 py-2 rounded bg-gold/20 text-gold border border-gold/40 hover:bg-gold/30 text-sm font-medium transition-all disabled:opacity-40">
+              {agentFormLoading ? 'Creating...' : 'Create Agent'}
+            </button>
+          </form>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -927,9 +1207,13 @@ export function AdminPage() {
                   </td>
                   <td className="py-2 pr-4">
                     <span className={`text-xs px-1.5 py-0.5 rounded ${
-                      agent.modelProvider === 'haiku'
+                      agent.modelProvider === 'anthropic'
                         ? 'bg-purple-900/40 text-purple-300'
-                        : 'bg-blue-900/40 text-blue-300'
+                        : agent.modelProvider === 'openai'
+                        ? 'bg-green-900/40 text-green-300'
+                        : agent.modelProvider === 'google'
+                        ? 'bg-blue-900/40 text-blue-300'
+                        : 'bg-gray-900/40 text-gray-300'
                     }`}>
                       {agent.modelProvider}
                     </span>
@@ -956,17 +1240,16 @@ export function AdminPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* Decision Stats */}
       {decisionStats && (
-        <section className="bg-surface rounded-lg border border-border p-6 space-y-4">
-          <h2 className="font-serif text-lg font-medium text-stone">Decision Stats</h2>
+        <CollapsibleSection id="decision_stats" title="Decision Stats">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               { label: 'Total Decisions', value: decisionStats.total },
               { label: 'Errors', value: decisionStats.errors, warn: decisionStats.errors > 0 },
-              { label: 'Haiku', value: decisionStats.haikuCount },
+              { label: 'Anthropic', value: decisionStats.haikuCount },
               { label: 'Ollama', value: decisionStats.ollamaCount },
             ].map(({ label, value, warn }) => (
               <div key={label} className="bg-white/5 rounded p-3">
@@ -977,27 +1260,21 @@ export function AdminPage() {
               </div>
             ))}
           </div>
-        </section>
+        </CollapsibleSection>
       )}
 
       {/* Database */}
-      <section className="bg-surface rounded-lg border border-border p-6 space-y-4">
-        <h2 className="font-serif text-lg font-medium text-stone">Database</h2>
+      <CollapsibleSection id="database" title="Database">
         <div className="flex items-center gap-4">
           <AdminButton onClick={handleReseed} variant="danger">
             {reseedConfirm ? 'Confirm? Click again to wipe all data' : 'Reseed Database'}
           </AdminButton>
           <span className="text-xs text-text-muted">Truncates all tables and restores the 10-agent seed state.</span>
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* Agent Avatars */}
-      <section className="bg-surface rounded-lg border border-border p-6 space-y-4">
-        <div>
-          <h2 className="font-serif text-lg font-medium text-stone">Agent Avatars</h2>
-          <p className="text-xs text-text-muted mt-1">Customize pixel portrait configurations</p>
-        </div>
-
+      <CollapsibleSection id="agent_avatars" title="Agent Avatars" subtitle="Customize pixel portrait configurations">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-start">
           {avatarAgents.map((agent) => {
             const isEditing = editingAgentId === agent.id;
@@ -1020,12 +1297,10 @@ export function AdminPage() {
                 {/* Inline editor panel */}
                 {isEditing && (
                   <div className="border border-border border-t-0 bg-surface rounded-b p-4 space-y-4">
-                    {/* Live preview */}
                     <div className="flex justify-center">
                       <PixelAvatar config={cfg} seed={agent.name} size="lg" />
                     </div>
 
-                    {/* Color inputs */}
                     <div className="space-y-2">
                       {([
                         ['Background', 'bgColor', cfg.bgColor],
@@ -1047,7 +1322,6 @@ export function AdminPage() {
                       ))}
                     </div>
 
-                    {/* Eye type selector */}
                     <div>
                       <div className="text-xs text-text-muted mb-2 uppercase tracking-wide">Eyes</div>
                       <div className="grid grid-cols-4 gap-1">
@@ -1066,7 +1340,6 @@ export function AdminPage() {
                       </div>
                     </div>
 
-                    {/* Mouth type selector */}
                     <div>
                       <div className="text-xs text-text-muted mb-2 uppercase tracking-wide">Mouth</div>
                       <div className="grid grid-cols-4 gap-1">
@@ -1085,7 +1358,6 @@ export function AdminPage() {
                       </div>
                     </div>
 
-                    {/* Accessory selector */}
                     <div>
                       <div className="text-xs text-text-muted mb-2 uppercase tracking-wide">Accessory</div>
                       <div className="grid grid-cols-4 gap-1">
@@ -1104,7 +1376,6 @@ export function AdminPage() {
                       </div>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex flex-col gap-2">
                       <button
                         className="btn-secondary text-xs w-full bg-gold/10 text-gold border-gold/30 hover:bg-gold/20"
@@ -1113,16 +1384,10 @@ export function AdminPage() {
                       >
                         {savingId === agent.id ? 'Saving...' : 'Save'}
                       </button>
-                      <button
-                        className="btn-secondary text-xs w-full"
-                        onClick={() => handleResetAvatar(agent)}
-                      >
+                      <button className="btn-secondary text-xs w-full" onClick={() => handleResetAvatar(agent)}>
                         Reset to Procedural
                       </button>
-                      <button
-                        className="btn-secondary text-xs w-full text-text-muted"
-                        onClick={() => setEditingAgentId(null)}
-                      >
+                      <button className="btn-secondary text-xs w-full text-text-muted" onClick={() => setEditingAgentId(null)}>
                         Cancel
                       </button>
                       {saveMessage[agent.id] && (
@@ -1137,11 +1402,10 @@ export function AdminPage() {
             );
           })}
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* Decision Log */}
-      <section className="bg-surface rounded-lg border border-border p-6 space-y-4">
-        <h2 className="font-serif text-lg font-medium text-stone">Decision Log</h2>
+      <CollapsibleSection id="decision_log" title="Decision Log">
         {loading ? (
           <p className="text-text-muted text-sm">Loading...</p>
         ) : decisions.length === 0 ? (
@@ -1165,11 +1429,7 @@ export function AdminPage() {
                       {d.agentName ?? '—'}
                     </td>
                     <td className="py-2 pr-4">
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${
-                        d.provider === 'haiku'
-                          ? 'bg-purple-900/40 text-purple-300'
-                          : 'bg-blue-900/40 text-blue-300'
-                      }`}>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-purple-900/40 text-purple-300">
                         {d.provider}
                       </span>
                     </td>
@@ -1196,7 +1456,7 @@ export function AdminPage() {
             </table>
           </div>
         )}
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }

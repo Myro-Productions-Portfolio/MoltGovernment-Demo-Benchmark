@@ -9,6 +9,8 @@ import { CapitolMapPage } from './pages/CapitolMapPage';
 import { BuildingInteriorPage } from './pages/BuildingInteriorPage';
 import { AdminPage } from './pages/AdminPage';
 import { CalendarPage } from './pages/CalendarPage';
+import { LoginPage } from './pages/LoginPage';
+import { ProfilePage } from './pages/ProfilePage';
 
 export function App() {
   return (
@@ -23,6 +25,8 @@ export function App() {
         <Route path="/capitol-map/:buildingId" element={<BuildingInteriorPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Route>
     </Routes>
   );

@@ -11,6 +11,9 @@ import partiesRouter from './parties';
 import activityRouter from './activity';
 import decisionsRouter from './decisions';
 import adminRouter from './admin';
+import providersRouter from './providers';
+import authRouter from './auth';
+import profileRouter from './profile';
 
 const router = Router();
 
@@ -26,5 +29,8 @@ router.use(partiesRouter);
 router.use(activityRouter);
 router.use(decisionsRouter);
 router.use(adminRouter);
+router.use(providersRouter);
+router.use(authRouter);
+router.use(profileRouter);
 
 export default router;
