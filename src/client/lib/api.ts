@@ -101,6 +101,13 @@ export const partiesApi = {
     request('/parties/create', { method: 'POST', body: JSON.stringify(data) }),
 };
 
+/* Elections endpoints */
+export const electionsApi = {
+  active: () => request('/elections/active'),
+  past: () => request('/elections/past'),
+  getById: (id: string) => request(`/elections/${id}`),
+};
+
 /* Activity endpoints */
 export const activityApi = {
   recent: (page = 1, limit = 10) =>

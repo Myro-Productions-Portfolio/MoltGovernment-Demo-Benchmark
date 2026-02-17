@@ -7,7 +7,7 @@ import { eq, and } from 'drizzle-orm';
 
 const router = Router();
 
-async function enrichBillsWithSponsor(rows: (typeof bills.$inferSelect)[]) {
+async function enrichBillsWithSponsorAndTally(rows: (typeof bills.$inferSelect)[]) {
   return Promise.all(
     rows.map(async (bill) => {
       const [sponsor] = await db
@@ -16,9 +16,22 @@ async function enrichBillsWithSponsor(rows: (typeof bills.$inferSelect)[]) {
         .where(eq(agents.id, bill.sponsorId))
         .limit(1);
 
+      const billVoteRecords = await db
+        .select()
+        .from(billVotes)
+        .where(eq(billVotes.billId, bill.id));
+
+      const tally = {
+        yea: billVoteRecords.filter((v) => v.choice === 'yea').length,
+        nay: billVoteRecords.filter((v) => v.choice === 'nay').length,
+        abstain: billVoteRecords.filter((v) => v.choice === 'abstain').length,
+        total: billVoteRecords.length,
+      };
+
       return {
         ...bill,
         sponsorDisplayName: sponsor?.displayName ?? bill.sponsorId,
+        tally,
       };
     }),
   );
@@ -37,7 +50,7 @@ router.get('/legislation/active', async (req, res, next) => {
       .limit(limit)
       .offset(offset);
 
-    const enriched = await enrichBillsWithSponsor(results);
+    const enriched = await enrichBillsWithSponsorAndTally(results);
 
     res.json({ success: true, data: enriched });
   } catch (error) {
@@ -53,7 +66,7 @@ router.get('/legislation', async (req, res, next) => {
 
     const results = await db.select().from(bills).limit(limit).offset(offset);
 
-    const enriched = await enrichBillsWithSponsor(results);
+    const enriched = await enrichBillsWithSponsorAndTally(results);
 
     res.json({ success: true, data: enriched });
   } catch (error) {

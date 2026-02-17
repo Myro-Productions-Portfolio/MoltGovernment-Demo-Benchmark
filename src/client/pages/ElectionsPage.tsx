@@ -3,7 +3,7 @@ import { useWebSocket } from '../lib/useWebSocket';
 import { SectionHeader } from '../components/SectionHeader';
 import { CampaignCard } from '../components/CampaignCard';
 import { ElectionBanner } from '../components/ElectionBanner';
-import { campaignsApi } from '../lib/api';
+import { campaignsApi, electionsApi } from '../lib/api';
 
 interface EnrichedCampaign {
   id: string;
@@ -19,10 +19,35 @@ interface EnrichedCampaign {
   party: { name: string } | null;
 }
 
+interface ActiveElection {
+  id: string;
+  title: string;
+  type: string;
+  status: string;
+  votingStartsAt: string | null;
+  votingEndsAt: string | null;
+  scheduledDate: string;
+}
+
+interface PastElection {
+  id: string;
+  title: string;
+  type: string;
+  status: string;
+  winnerId: string | null;
+  winnerName: string | null;
+  totalVotes: number;
+  votePercentage: number;
+  certifiedDate: string | null;
+  scheduledDate: string;
+}
+
 const CAMPAIGN_ACCENT_COLORS = ['#B8956A', '#6B7A8D', '#8B3A3A'];
 
 export function ElectionsPage() {
   const [campaigns, setCampaigns] = useState<EnrichedCampaign[]>([]);
+  const [activeElection, setActiveElection] = useState<ActiveElection | null>(null);
+  const [pastElections, setPastElections] = useState<PastElection[]>([]);
   const { subscribe } = useWebSocket();
 
   const fetchCampaigns = useCallback(async () => {
@@ -36,17 +61,40 @@ export function ElectionsPage() {
     }
   }, []);
 
+  const fetchElections = useCallback(async () => {
+    try {
+      const [activeRes, pastRes] = await Promise.all([
+        electionsApi.active(),
+        electionsApi.past(),
+      ]);
+      if (activeRes.data && Array.isArray(activeRes.data) && activeRes.data.length > 0) {
+        setActiveElection(activeRes.data[0] as ActiveElection);
+      } else {
+        setActiveElection(null);
+      }
+      if (pastRes.data && Array.isArray(pastRes.data)) {
+        setPastElections(pastRes.data as PastElection[]);
+      }
+    } catch {
+      /* leave empty */
+    }
+  }, []);
+
   useEffect(() => {
     void fetchCampaigns();
+    void fetchElections();
 
-    const refetch = () => { void fetchCampaigns(); };
+    const refetch = () => {
+      void fetchCampaigns();
+      void fetchElections();
+    };
     const unsubs = [
       subscribe('campaign:speech', refetch),
       subscribe('election:voting_started', refetch),
       subscribe('election:completed', refetch),
     ];
     return () => unsubs.forEach((fn) => fn());
-  }, [fetchCampaigns, subscribe]);
+  }, [fetchCampaigns, fetchElections, subscribe]);
 
   const totalContributions = campaigns.reduce((sum, c) => sum + c.contributions, 0);
 
@@ -67,6 +115,7 @@ export function ElectionsPage() {
       name: displayName,
       party: campaign.party?.name ?? 'Independent',
       initials: displayName.slice(0, 2).toUpperCase(),
+      avatar: campaign.agent?.avatarUrl ?? undefined,
       platform: campaign.platform,
       endorsements: endorsementCount,
       contributions: campaign.contributions,
@@ -75,14 +124,27 @@ export function ElectionsPage() {
     };
   });
 
+  /* Determine the countdown target: votingEndsAt if voting is active, votingStartsAt if not yet started */
+  const bannerTargetDate = (() => {
+    if (!activeElection) return null;
+    if (activeElection.votingEndsAt) return new Date(activeElection.votingEndsAt);
+    if (activeElection.votingStartsAt) return new Date(activeElection.votingStartsAt);
+    return new Date(activeElection.scheduledDate);
+  })();
+
+  const bannerTitle = activeElection?.title ?? 'Election';
+  const bannerDescription = activeElection
+    ? `${mappedCampaigns.length} candidate${mappedCampaigns.length !== 1 ? 's' : ''} declared. Status: ${activeElection.status}.`
+    : `${mappedCampaigns.length} candidate${mappedCampaigns.length !== 1 ? 's' : ''} declared.`;
+
   return (
     <div className="max-w-content mx-auto px-8 py-section">
       <SectionHeader title="Elections" badge="Active" />
 
       <ElectionBanner
-        title="Election Active"
-        description={`${mappedCampaigns.length} candidate${mappedCampaigns.length !== 1 ? 's' : ''} declared.`}
-        targetDate={null}
+        title={bannerTitle}
+        description={bannerDescription}
+        targetDate={bannerTargetDate}
       />
 
       {/* Current race */}
@@ -101,6 +163,54 @@ export function ElectionsPage() {
           </div>
         </div>
       )}
+
+      {/* Past elections */}
+      <div className="mt-8">
+        <h3 className="font-serif text-lg text-stone mb-4">Past Elections</h3>
+        {pastElections.length === 0 ? (
+          <div className="card p-6 text-center text-text-muted">
+            <p className="text-sm">No completed elections on record yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {pastElections.map((election) => {
+              const completedDate = election.certifiedDate
+                ? new Date(election.certifiedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                : election.scheduledDate
+                  ? new Date(election.scheduledDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                  : 'Unknown';
+              return (
+                <article key={election.id} className="card p-5">
+                  <div className="flex items-start justify-between mb-2">
+                    <h4 className="font-serif text-[0.95rem] font-semibold text-stone">{election.title}</h4>
+                    <span className="badge badge-passed ml-2 shrink-0">Certified</span>
+                  </div>
+                  {election.winnerName ? (
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-7 h-7 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center font-serif text-xs font-bold text-gold">
+                        {election.winnerName.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium">{election.winnerName}</div>
+                        <div className="text-xs text-text-muted">Winner</div>
+                      </div>
+                      {election.votePercentage > 0 && (
+                        <span className="ml-auto font-mono text-sm text-gold">{election.votePercentage}%</span>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-text-muted mb-2 italic">No winner recorded.</p>
+                  )}
+                  <div className="flex justify-between text-xs text-text-muted pt-2 border-t border-border-light">
+                    <span>{completedDate}</span>
+                    <span>{election.totalVotes} votes cast</span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
