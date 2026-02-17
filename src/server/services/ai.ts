@@ -93,7 +93,10 @@ export async function generateAgentDecision(
   console.warn(`[AI] ${agent.displayName} (${provider}) responded in ${elapsed}ms`);
 
   try {
-    const decision = JSON.parse(rawText) as AgentDecision;
+    const start = rawText.indexOf('{');
+    const end = rawText.lastIndexOf('}');
+    if (start === -1 || end === -1) throw new Error('no JSON object found');
+    const decision = JSON.parse(rawText.slice(start, end + 1)) as AgentDecision;
     return decision;
   } catch {
     console.warn(`[AI] ${agent.displayName} parse error — raw:`, rawText.slice(0, 200));

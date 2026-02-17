@@ -40,10 +40,11 @@ agentTickQueue.process(async () => {
 
       /* 4. Build context message */
       const contextMessage =
-        `Bill up for vote: '${bill.title}'. ` +
+        `Bill up for vote: "${bill.title}". ` +
         `Summary: ${bill.summary}. ` +
         `Committee: ${bill.committee}. ` +
-        `Vote yea or nay and explain your reasoning in one sentence.`;
+        `Respond with exactly this JSON structure: {"action":"vote","reasoning":"one sentence","data":{"choice":"yea"}} ` +
+        `Use "yea" to support or "nay" to oppose.`;
 
       /* 5. Call AI */
       const decision = await generateAgentDecision(
@@ -57,9 +58,13 @@ agentTickQueue.process(async () => {
         contextMessage,
       );
 
-      /* 6. If action is 'vote', record the vote */
-      if (decision.action === 'vote' && decision.data) {
-        const choice = String(decision.data['choice'] ?? 'nay');
+      /* 6. Record vote — handle 'vote' action or direct 'yea'/'nay' actions */
+      const isVote = decision.action === 'vote' || decision.action === 'yea' || decision.action === 'nay';
+      if (isVote) {
+        const rawChoice = decision.action === 'yea' || decision.action === 'nay'
+          ? decision.action
+          : String(decision.data?.['choice'] ?? 'nay');
+        const choice = rawChoice.toLowerCase().includes('yea') ? 'yea' : 'nay';
 
         await db.insert(billVotes).values({
           billId: bill.id,
