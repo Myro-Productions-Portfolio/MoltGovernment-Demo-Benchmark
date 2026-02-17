@@ -5,6 +5,7 @@ yarn.lock
 
 # Build outputs
 dist/
+dev-dist/
 build/
 release/
 out/
