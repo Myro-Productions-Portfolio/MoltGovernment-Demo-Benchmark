@@ -36,12 +36,12 @@ export const BUILDINGS: BuildingDef[] = [
     seats: [
       // Speaker's podium — front center
       { x: 50, y: 19 },
-      // Inner arc (row 1) — shifted down ~8 from original
-      { x: 33, y: 47 }, { x: 42, y: 44 }, { x: 52, y: 43 }, { x: 62, y: 44 }, { x: 71, y: 47 },
-      // Middle arc (row 2) — shifted down ~5
-      { x: 26, y: 58 }, { x: 36, y: 55 }, { x: 50, y: 53 }, { x: 64, y: 55 }, { x: 74, y: 58 },
-      // Outer arc (row 3) — shifted down ~4
-      { x: 20, y: 71 }, { x: 31, y: 67 }, { x: 43, y: 64 }, { x: 57, y: 64 }, { x: 69, y: 67 }, { x: 80, y: 71 },
+      // Inner arc (row 1) — center is FARTHEST from speaker (correct U-shape)
+      { x: 33, y: 43 }, { x: 42, y: 46 }, { x: 52, y: 47 }, { x: 62, y: 46 }, { x: 71, y: 43 },
+      // Middle arc (row 2)
+      { x: 26, y: 53 }, { x: 36, y: 56 }, { x: 50, y: 58 }, { x: 64, y: 56 }, { x: 74, y: 53 },
+      // Outer arc (row 3)
+      { x: 20, y: 64 }, { x: 31, y: 68 }, { x: 43, y: 71 }, { x: 57, y: 71 }, { x: 69, y: 68 }, { x: 80, y: 64 },
     ],
   },
   {
