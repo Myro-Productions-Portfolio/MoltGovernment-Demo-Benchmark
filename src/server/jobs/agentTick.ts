@@ -21,7 +21,7 @@ import {
 } from '@db/schema/index';
 import { generateAgentDecision } from '../services/ai.js';
 import { broadcast } from '../websocket.js';
-import { GOVERNANCE_PROBABILITIES, ALIGNMENT_ORDER, ECONOMY } from '@shared/constants';
+import { ALIGNMENT_ORDER } from '@shared/constants';
 
 const agentTickQueue = new Bull('agent-tick', config.redis.url);
 
@@ -157,7 +157,7 @@ agentTickQueue.process(async () => {
 
           /* 78% chance to follow whip signal */
           let choice: string | null = null;
-          if (whipSignal && Math.random() < GOVERNANCE_PROBABILITIES.PARTY_WHIP_FOLLOW_RATE) {
+          if (whipSignal && Math.random() < rc.partyWhipFollowRate) {
             choice = whipSignal;
           }
 
@@ -609,8 +609,8 @@ agentTickQueue.process(async () => {
             const distance = presIdx >= 0 && sponIdx >= 0 ? Math.abs(presIdx - sponIdx) : 0;
 
             const vetoProb = Math.min(
-              GOVERNANCE_PROBABILITIES.VETO_BASE_RATE + distance * GOVERNANCE_PROBABILITIES.VETO_RATE_PER_TIER,
-              GOVERNANCE_PROBABILITIES.VETO_MAX_RATE,
+              rc.vetoBaseRate + distance * rc.vetoRatePerTier,
+              rc.vetoMaxRate,
             );
 
             /* Only call AI if random check triggers veto consideration */
@@ -786,7 +786,7 @@ agentTickQueue.process(async () => {
 
       const overrideYea = Number(overrideVotes.find((r) => r.choice === 'override_yea')?.total ?? 0);
 
-      if (overrideYea / activeAgentCount >= GOVERNANCE_PROBABILITIES.VETO_OVERRIDE_THRESHOLD) {
+      if (overrideYea / activeAgentCount >= rc.vetoOverrideThreshold) {
         /* Override succeeded — back to passed for enactment */
         await db
           .update(bills)
@@ -970,7 +970,7 @@ agentTickQueue.process(async () => {
     } else {
       for (const law of activeLaws) {
         /* 3% chance per law per tick */
-        if (Math.random() >= GOVERNANCE_PROBABILITIES.JUDICIAL_CHALLENGE_RATE_PER_LAW) continue;
+        if (Math.random() >= rc.judicialChallengeRatePerLaw) continue;
 
         /* Check if there is already a pending/deliberating review for this law */
         const existingReview = await db
@@ -1264,12 +1264,12 @@ agentTickQueue.process(async () => {
         .where(eq(positions.isActive, true));
 
       const salaryMap: Record<string, number> = {
-        president: ECONOMY.SALARY.PRESIDENT,
-        cabinet_secretary: ECONOMY.SALARY.CABINET,
-        congress_member: ECONOMY.SALARY.CONGRESS,
-        supreme_justice: ECONOMY.SALARY.JUSTICE,
-        lower_justice: ECONOMY.SALARY.JUSTICE,
-        committee_chair: ECONOMY.SALARY.CONGRESS,
+        president: rc.salaryPresident,
+        cabinet_secretary: rc.salaryCabinet,
+        congress_member: rc.salaryCongress,
+        supreme_justice: rc.salaryJustice,
+        lower_justice: rc.salaryJustice,
+        committee_chair: rc.salaryCongress,
       };
 
       for (const pos of allActivePositions) {
