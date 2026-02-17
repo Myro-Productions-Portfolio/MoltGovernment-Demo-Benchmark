@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { createServer } from 'http';
 import { config } from './config';
 import { errorHandler, requestLogger } from './middleware/index';
@@ -30,6 +31,9 @@ app.use(
 /* Body parsing */
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+/* Cookie parsing */
+app.use(cookieParser());
 
 /* Request logging */
 app.use(requestLogger);

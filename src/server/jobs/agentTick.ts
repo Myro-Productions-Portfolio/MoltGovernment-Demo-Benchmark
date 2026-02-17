@@ -80,6 +80,8 @@ agentTickQueue.process(async () => {
               alignment: leader.alignment,
               modelProvider: rc.providerOverride === 'default' ? leader.modelProvider : rc.providerOverride,
               personality: leader.personality,
+              model: leader.model,
+              ownerUserId: leader.ownerUserId,
             },
             contextMessage,
             'whip_signal',
@@ -179,6 +181,8 @@ agentTickQueue.process(async () => {
                 alignment: agent.alignment,
                 modelProvider: rc.providerOverride === 'default' ? agent.modelProvider : rc.providerOverride,
                 personality: agent.personality,
+                model: agent.model,
+                ownerUserId: agent.ownerUserId,
               },
               contextMessage,
               'bill_voting',
@@ -294,6 +298,8 @@ agentTickQueue.process(async () => {
             alignment: chair.alignment,
             modelProvider: rc.providerOverride === 'default' ? chair.modelProvider : rc.providerOverride,
             personality: chair.personality,
+            model: chair.model,
+            ownerUserId: chair.ownerUserId,
           },
           contextMessage,
           'committee_review',
@@ -631,6 +637,8 @@ agentTickQueue.process(async () => {
                 alignment: president.alignment,
                 modelProvider: rc.providerOverride === 'default' ? president.modelProvider : rc.providerOverride,
                 personality: president.personality,
+                model: president.model,
+                ownerUserId: president.ownerUserId,
               },
               contextMessage,
               'presidential_review',
@@ -721,6 +729,8 @@ agentTickQueue.process(async () => {
               alignment: agent.alignment,
               modelProvider: rc.providerOverride === 'default' ? agent.modelProvider : rc.providerOverride,
               personality: agent.personality,
+              model: agent.model,
+              ownerUserId: agent.ownerUserId,
             },
             contextMessage,
             'veto_override',
@@ -1020,6 +1030,8 @@ agentTickQueue.process(async () => {
               alignment: justice.alignment,
               modelProvider: rc.providerOverride === 'default' ? justice.modelProvider : rc.providerOverride,
               personality: justice.personality,
+              model: justice.model,
+              ownerUserId: justice.ownerUserId,
             },
             contextMessage,
             'judicial_review',
@@ -1137,7 +1149,10 @@ agentTickQueue.process(async () => {
 
     const lawsList = topActiveLaws.map((l) => `${l.title} (ID: ${l.id})`).join(', ');
 
+    const billCountThisTick = new Map<string, number>();
+
     for (const agent of activeAgents) {
+      if ((billCountThisTick.get(agent.id) ?? 0) >= rc.maxBillsPerAgentPerTick) continue;
       if (Math.random() >= rc.billProposalChance) continue;
 
       /* Check if agent sponsored a bill in the last 5 minutes */
@@ -1169,6 +1184,8 @@ agentTickQueue.process(async () => {
           alignment: agent.alignment,
           modelProvider: rc.providerOverride === 'default' ? agent.modelProvider : rc.providerOverride,
           personality: agent.personality,
+          model: agent.model,
+          ownerUserId: agent.ownerUserId,
         },
         contextMessage,
         'bill_proposal',
@@ -1238,6 +1255,7 @@ agentTickQueue.process(async () => {
         sponsorName: agent.displayName,
       });
 
+      billCountThisTick.set(agent.id, (billCountThisTick.get(agent.id) ?? 0) + 1);
       console.warn(`[SIMULATION] ${agent.displayName} proposed bill: "${title}"`);
     }
   } catch (err) {
@@ -1534,7 +1552,10 @@ agentTickQueue.process(async () => {
         .from(campaigns)
         .where(and(eq(campaigns.status, 'active'), inArray(campaigns.electionId, campaigningElectionIds)));
 
+      const speechCountThisTick = new Map<string, number>();
+
       for (const campaign of activeCampaigns) {
+        if ((speechCountThisTick.get(campaign.agentId) ?? 0) >= rc.maxCampaignSpeechesPerTick) continue;
         if (Math.random() >= rc.campaignSpeechChance) continue;
 
         const election = activeCampaigningElections.find((e) => e.id === campaign.electionId);
@@ -1554,6 +1575,8 @@ agentTickQueue.process(async () => {
             alignment: campaignAgent.alignment,
             modelProvider: rc.providerOverride === 'default' ? campaignAgent.modelProvider : rc.providerOverride,
             personality: campaignAgent.personality,
+            model: campaignAgent.model,
+            ownerUserId: campaignAgent.ownerUserId,
           },
           contextMessage,
           'campaigning',
@@ -1592,6 +1615,7 @@ agentTickQueue.process(async () => {
           boost,
         });
 
+        speechCountThisTick.set(campaign.agentId, (speechCountThisTick.get(campaign.agentId) ?? 0) + 1);
         console.warn(
           `[SIMULATION] ${campaignAgent.displayName} made campaign speech for ${election.positionType} (+${boost} contributions)`,
         );

@@ -14,6 +14,8 @@ export const agents = pgTable('agents', {
   alignment: varchar('alignment', { length: 20 }),
   modelProvider: varchar('model_provider', { length: 20 }),
   personality: text('personality'),
+  model: varchar('model', { length: 100 }),
+  ownerUserId: uuid('owner_user_id'),
   registrationDate: timestamp('registration_date', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

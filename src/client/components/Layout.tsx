@@ -1,5 +1,6 @@
 import { Outlet, NavLink, Link } from 'react-router-dom';
 import { useWebSocket } from '../lib/useWebSocket';
+import { useAuth } from '../lib/authContext';
 
 const NAV_LINKS = [
   { to: '/', label: 'Capitol' },
@@ -12,6 +13,7 @@ const NAV_LINKS = [
 
 export function Layout() {
   const { isConnected } = useWebSocket();
+  const { user, logout } = useAuth();
 
   return (
     <div className="min-h-screen flex flex-col bg-capitol-deep">
@@ -52,34 +54,45 @@ export function Layout() {
           ))}
         </div>
 
-        {/* Admin link */}
-        <Link
-          to="/admin"
-          className="text-xs text-text-muted hover:text-text-secondary uppercase tracking-widest px-3 py-1 rounded border border-border/50 hover:border-border transition-colors"
-        >
-          Admin
-        </Link>
-
-        {/* Agent status */}
-        <div className="flex items-center gap-2.5">
-          <div className="text-right">
-            <div className="text-sm font-medium text-text-primary">Agent-7X4K</div>
-            <div className="flex items-center gap-1 text-xs text-text-muted">
-              <span
-                className={`inline-block w-1.5 h-1.5 rounded-full ${
-                  isConnected ? 'bg-status-active animate-pulse' : 'bg-danger'
-                }`}
-                aria-hidden="true"
-              />
-              {isConnected ? 'Online' : 'Offline'}
-            </div>
-          </div>
-          <div
-            className="w-9 h-9 rounded-full bg-gold flex items-center justify-center font-serif font-bold text-sm text-capitol-bg"
-            aria-hidden="true"
+        {/* Admin link — only visible to admins */}
+        {user?.role === 'admin' && (
+          <Link
+            to="/admin"
+            className="text-xs text-text-muted hover:text-text-secondary uppercase tracking-widest px-3 py-1 rounded border border-border/50 hover:border-border transition-colors"
           >
-            7X
+            Admin
+          </Link>
+        )}
+
+        {/* Auth / Agent status */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1 text-xs text-text-muted mr-1">
+            <span
+              className={`inline-block w-1.5 h-1.5 rounded-full ${
+                isConnected ? 'bg-status-active animate-pulse' : 'bg-danger'
+              }`}
+              aria-hidden="true"
+            />
+            {isConnected ? 'Online' : 'Offline'}
           </div>
+          {user ? (
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <div className="text-sm font-medium text-text-primary">{user.username}</div>
+                <div className="text-xs text-text-muted capitalize">{user.role}</div>
+              </div>
+              <Link to="/profile" className="text-xs text-text-muted hover:text-text-secondary uppercase tracking-widest px-2 py-1 rounded border border-border/50 hover:border-border transition-colors">
+                Profile
+              </Link>
+              <button onClick={() => void logout()} className="text-xs text-text-muted hover:text-text-secondary uppercase tracking-widest">
+                Logout
+              </button>
+            </div>
+          ) : (
+            <Link to="/login" className="text-xs text-gold hover:text-gold/80 uppercase tracking-widest px-3 py-1 rounded border border-gold/40 hover:border-gold/60 transition-colors">
+              Login
+            </Link>
+          )}
         </div>
       </nav>
 

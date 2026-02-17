@@ -1,6 +1,12 @@
 import { config } from '../config.js';
 import { db } from '@db/connection';
-import { agentDecisions } from '@db/schema/index';
+import { agentDecisions, apiProviders, userApiKeys } from '@db/schema/index';
+import { eq, and } from 'drizzle-orm';
+import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { HfInference } from '@huggingface/inference';
+import { decryptText } from '../lib/crypto.js';
+import { getRuntimeConfig } from '../runtimeConfig.js';
 
 export interface AgentRecord {
   id: string;
@@ -8,6 +14,8 @@ export interface AgentRecord {
   alignment: string | null;
   modelProvider: string | null;
   personality: string | null;
+  model?: string | null;
+  ownerUserId?: string | null;
 }
 
 export interface AgentDecision {
@@ -30,17 +38,46 @@ function buildSystemPrompt(agent: AgentRecord): string {
   );
 }
 
-async function callAnthropic(systemPrompt: string, contextMessage: string): Promise<string> {
+async function getApiKey(providerName: string, ownerUserId: string | null): Promise<string> {
+  // 1. Check user's own key
+  if (ownerUserId) {
+    const [userKey] = await db.select().from(userApiKeys)
+      .where(and(eq(userApiKeys.userId, ownerUserId), eq(userApiKeys.providerName, providerName), eq(userApiKeys.isActive, true)))
+      .limit(1);
+    if (userKey?.encryptedKey) return decryptText(userKey.encryptedKey);
+  }
+  // 2. Check admin provider key
+  const [adminKey] = await db.select().from(apiProviders)
+    .where(and(eq(apiProviders.providerName, providerName), eq(apiProviders.isActive, true)))
+    .limit(1);
+  if (adminKey?.encryptedKey) return decryptText(adminKey.encryptedKey);
+  // 3. Env var fallback for anthropic only
+  if (providerName === 'anthropic' && process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY;
+  if (providerName === 'ollama') return '';
+  throw new Error(`No API key configured for provider: ${providerName}`);
+}
+
+function getDefaultModel(provider: string): string {
+  switch (provider) {
+    case 'anthropic': return config.anthropic.model;
+    case 'openai': return 'gpt-4o-mini';
+    case 'google': return 'gemini-2.0-flash';
+    case 'huggingface': return 'meta-llama/Meta-Llama-3-8B-Instruct';
+    default: return config.ollama.model;
+  }
+}
+
+async function callAnthropic(apiKey: string, model: string, contextMessage: string, systemPrompt: string, maxTokens: number): Promise<string> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      'x-api-key': config.anthropic.apiKey,
+      'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      model: config.anthropic.model,
-      max_tokens: 300,
+      model,
+      max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: 'user', content: contextMessage }],
     }),
@@ -54,15 +91,18 @@ async function callAnthropic(systemPrompt: string, contextMessage: string): Prom
   return body.content[0].text;
 }
 
-async function callOllama(systemPrompt: string, contextMessage: string): Promise<string> {
-  const response = await fetch(`${config.ollama.baseUrl}/api/generate`, {
+async function callOllama(contextMessage: string, systemPrompt: string, maxTokens: number): Promise<string> {
+  const [ollamaRow] = await db.select().from(apiProviders).where(eq(apiProviders.providerName, 'ollama')).limit(1);
+  const baseUrl = ollamaRow?.ollamaBaseUrl ?? config.ollama.baseUrl;
+
+  const response = await fetch(`${baseUrl}/api/generate`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       model: config.ollama.model,
       prompt: systemPrompt + '\n\n' + contextMessage,
       stream: false,
-      options: { temperature: 0.9, num_predict: 300 },
+      options: { temperature: 0.9, num_predict: maxTokens },
     }),
   });
 
@@ -74,24 +114,74 @@ async function callOllama(systemPrompt: string, contextMessage: string): Promise
   return body.response;
 }
 
+async function callOpenAI(apiKey: string, model: string, systemPrompt: string, contextMessage: string, maxTokens: number): Promise<string> {
+  const client = new OpenAI({ apiKey });
+  const response = await client.chat.completions.create({
+    model,
+    max_tokens: maxTokens,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: contextMessage },
+    ],
+  });
+  return response.choices[0]?.message?.content ?? '';
+}
+
+async function callGoogle(apiKey: string, model: string, systemPrompt: string, contextMessage: string, maxTokens: number): Promise<string> {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const gemini = genAI.getGenerativeModel({ model, generationConfig: { maxOutputTokens: maxTokens } });
+  const result = await gemini.generateContent(`${systemPrompt}\n\n${contextMessage}`);
+  return result.response.text();
+}
+
+async function callHuggingFace(apiKey: string, model: string, systemPrompt: string, contextMessage: string, maxTokens: number): Promise<string> {
+  const hf = new HfInference(apiKey);
+  const response = await hf.textGeneration({
+    model,
+    inputs: `${systemPrompt}\n\n${contextMessage}`,
+    parameters: { max_new_tokens: maxTokens, return_full_text: false },
+  });
+  return response.generated_text ?? '';
+}
+
 export async function generateAgentDecision(
   agent: AgentRecord,
   contextMessage: string,
   phase?: string,
 ): Promise<AgentDecision> {
+  const rc = getRuntimeConfig();
   const provider = agent.modelProvider ?? 'ollama';
   const systemPrompt = buildSystemPrompt(agent);
   const start = Date.now();
+
+  // Truncate prompt to guard rail limit
+  const truncated = contextMessage.slice(0, rc.maxPromptLengthChars);
 
   let rawText: string | null = null;
   let latencyMs = 0;
 
   try {
-    if (provider === 'haiku') {
-      rawText = await callAnthropic(systemPrompt, contextMessage);
-    } else {
-      rawText = await callOllama(systemPrompt, contextMessage);
+    const apiKey = await getApiKey(provider, agent.ownerUserId ?? null);
+    const model = agent.model ?? getDefaultModel(provider);
+
+    switch (provider) {
+      case 'openai':
+        rawText = await callOpenAI(apiKey, model, systemPrompt, truncated, rc.maxOutputLengthTokens);
+        break;
+      case 'google':
+        rawText = await callGoogle(apiKey, model, systemPrompt, truncated, rc.maxOutputLengthTokens);
+        break;
+      case 'huggingface':
+        rawText = await callHuggingFace(apiKey, model, systemPrompt, truncated, rc.maxOutputLengthTokens);
+        break;
+      case 'anthropic':
+        rawText = await callAnthropic(apiKey, model, truncated, systemPrompt, rc.maxOutputLengthTokens);
+        break;
+      default:
+        rawText = await callOllama(truncated, systemPrompt, rc.maxOutputLengthTokens);
+        break;
     }
+
     latencyMs = Date.now() - start;
     console.warn(`[AI] ${agent.displayName} (${provider}) responded in ${latencyMs}ms`);
   } catch (err) {

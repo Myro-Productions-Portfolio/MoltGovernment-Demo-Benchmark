@@ -5,7 +5,7 @@
 
 import { config } from './config.js';
 
-export type ProviderOverride = 'default' | 'haiku' | 'ollama';
+export type ProviderOverride = 'default' | 'anthropic' | 'openai' | 'google' | 'huggingface' | 'ollama';
 
 export interface RuntimeConfig {
   /* ---- Simulation ---- */
@@ -52,6 +52,12 @@ export interface RuntimeConfig {
   judicialChallengeRatePerLaw: number;
   partyWhipFollowRate: number;
   vetoOverrideThreshold: number;
+
+  /* ---- Guard Rails ---- */
+  maxPromptLengthChars: number;       // default: 4000
+  maxOutputLengthTokens: number;      // default: 500
+  maxBillsPerAgentPerTick: number;    // default: 1
+  maxCampaignSpeechesPerTick: number; // default: 1
 }
 
 let current: RuntimeConfig = {
@@ -99,6 +105,12 @@ let current: RuntimeConfig = {
   judicialChallengeRatePerLaw: 0.03,
   partyWhipFollowRate: 0.78,
   vetoOverrideThreshold: 0.67,
+
+  /* Guard Rails */
+  maxPromptLengthChars: 4000,
+  maxOutputLengthTokens: 500,
+  maxBillsPerAgentPerTick: 1,
+  maxCampaignSpeechesPerTick: 1,
 };
 
 export function getRuntimeConfig(): Readonly<RuntimeConfig> {

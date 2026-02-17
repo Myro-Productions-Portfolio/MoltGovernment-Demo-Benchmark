@@ -12,6 +12,7 @@ import {
 } from '../jobs/agentTick.js';
 import { runSeed } from '@db/seedFn';
 import { getRuntimeConfig, updateRuntimeConfig } from '../runtimeConfig.js';
+import type { ProviderOverride } from '../runtimeConfig.js';
 
 const router = Router();
 
@@ -145,9 +146,20 @@ router.post('/admin/config', async (req, res, next) => {
     }
     const badMs = num('billAdvancementDelayMs', 10_000, 86_400_000);
     if (badMs !== undefined) update.billAdvancementDelayMs = badMs;
-    if (body.providerOverride === 'default' || body.providerOverride === 'haiku' || body.providerOverride === 'ollama') {
-      update.providerOverride = body.providerOverride;
+    const VALID_PROVIDERS = ['default', 'anthropic', 'openai', 'google', 'huggingface', 'ollama'];
+    if (typeof body.providerOverride === 'string' && VALID_PROVIDERS.includes(body.providerOverride)) {
+      update.providerOverride = body.providerOverride as ProviderOverride;
     }
+
+    /* Guard Rails */
+    const mplc = posInt('maxPromptLengthChars', 500, 32000);
+    if (mplc !== undefined) update.maxPromptLengthChars = mplc;
+    const molt = posInt('maxOutputLengthTokens', 50, 4000);
+    if (molt !== undefined) update.maxOutputLengthTokens = molt;
+    const mbpat = posInt('maxBillsPerAgentPerTick', 1, 20);
+    if (mbpat !== undefined) update.maxBillsPerAgentPerTick = mbpat;
+    const mcspt = posInt('maxCampaignSpeechesPerTick', 1, 20);
+    if (mcspt !== undefined) update.maxCampaignSpeechesPerTick = mcspt;
 
     /* Agent Behavior */
     const bpc = prob('billProposalChance');       if (bpc !== undefined) update.billProposalChance = bpc;
@@ -276,6 +288,60 @@ router.post('/admin/agents/:id/toggle', async (req, res, next) => {
     const newActive = !agent.isActive;
     await db.update(agents).set({ isActive: newActive }).where(eq(agents.id, id));
     res.json({ success: true, data: { isActive: newActive } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* POST /api/admin/agents/create — create a new agent */
+router.post('/admin/agents/create', async (req, res, next) => {
+  try {
+    const body = req.body as Record<string, unknown>;
+    const rc = getRuntimeConfig();
+
+    const displayName = String(body.displayName ?? '').trim();
+    const name = String(body.name ?? '').trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const alignment = String(body.alignment ?? 'moderate');
+    const bio = String(body.bio ?? '').trim();
+    const personality = String(body.personality ?? '').trim();
+    const modelProvider = String(body.modelProvider ?? 'anthropic');
+    const model = String(body.model ?? '').trim();
+    const startingBalance = typeof body.startingBalance === 'number'
+      ? Math.round(body.startingBalance)
+      : rc.initialAgentBalance;
+
+    if (!displayName || !name) {
+      res.status(400).json({ success: false, error: 'displayName and name are required' });
+      return;
+    }
+
+    const VALID_ALIGNMENTS = ['progressive', 'moderate', 'conservative', 'libertarian', 'technocrat'];
+    const VALID_PROVIDERS_LIST = ['anthropic', 'openai', 'google', 'huggingface', 'ollama'];
+
+    if (!VALID_ALIGNMENTS.includes(alignment)) {
+      res.status(400).json({ success: false, error: 'Invalid alignment' });
+      return;
+    }
+    if (!VALID_PROVIDERS_LIST.includes(modelProvider)) {
+      res.status(400).json({ success: false, error: 'Invalid modelProvider' });
+      return;
+    }
+
+    const [newAgent] = await db.insert(agents).values({
+      displayName,
+      name,
+      moltbookId: `molt_${name}_${Date.now()}`,
+      alignment,
+      bio: bio || undefined,
+      personality: personality || undefined,
+      modelProvider,
+      model: model || undefined,
+      balance: startingBalance,
+      reputation: 100,
+      isActive: true,
+    }).returning();
+
+    res.json({ success: true, data: newAgent });
   } catch (error) {
     next(error);
   }
