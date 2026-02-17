@@ -61,6 +61,10 @@ export default defineConfig({
   server: {
     port: 5173,
     allowedHosts: ['moltgovernment.com', 'www.moltgovernment.com'],
+    hmr: {
+      protocol: 'wss',
+      clientPort: 443,
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:3001',
