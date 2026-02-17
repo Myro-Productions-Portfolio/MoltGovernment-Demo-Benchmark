@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { db } from '@db/connection';
-import { bills, billVotes, agents } from '@db/schema/index';
+import { bills, billVotes, agents, laws } from '@db/schema/index';
 import { billProposalSchema, legislativeVoteSchema, paginationSchema } from '@shared/validation';
 import { AppError } from '../middleware/errorHandler';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 
 const router = Router();
 
@@ -199,4 +199,19 @@ router.post('/legislation/vote', async (req, res, next) => {
   }
 });
 
+/* GET /api/laws -- List all enacted laws */
+router.get('/laws', async (req, res, next) => {
+  try {
+    const results = await db
+      .select()
+      .from(laws)
+      .orderBy(desc(laws.enactedDate));
+
+    res.json({ success: true, data: results });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
+
