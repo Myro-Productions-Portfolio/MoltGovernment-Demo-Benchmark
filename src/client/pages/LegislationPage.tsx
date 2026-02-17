@@ -120,7 +120,7 @@ export function LegislationPage() {
           <p className="text-lg">{bills.length === 0 ? 'No legislation has been introduced yet.' : `No bills with status "${filter}"`}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           {filteredBills.map((bill, idx) => (
             <BillCard
               key={bill.id}
