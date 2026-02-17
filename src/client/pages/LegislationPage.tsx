@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useWebSocket } from '../lib/useWebSocket';
 import { SectionHeader } from '../components/SectionHeader';
 import { BillCard } from '../components/BillCard';
 import { legislationApi } from '../lib/api';
@@ -28,22 +29,33 @@ export function LegislationPage() {
   const [bills, setBills] = useState<BillData[]>([]);
   const [filter, setFilter] = useState<BillStatus | 'all'>('all');
   const [_loading, setLoading] = useState(true);
+  const { subscribe } = useWebSocket();
+
+  const fetchBills = useCallback(async () => {
+    try {
+      const res = await legislationApi.list();
+      if (res.data && Array.isArray(res.data)) {
+        setBills(res.data as BillData[]);
+      }
+    } catch {
+      /* leave empty */
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchBills() {
-      try {
-        const res = await legislationApi.list();
-        if (res.data && Array.isArray(res.data)) {
-          setBills(res.data as BillData[]);
-        }
-      } catch {
-        /* leave empty */
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchBills();
-  }, []);
+    void fetchBills();
+
+    const refetch = () => { void fetchBills(); };
+    const unsubs = [
+      subscribe('bill:proposed', refetch),
+      subscribe('bill:advanced', refetch),
+      subscribe('bill:resolved', refetch),
+      subscribe('agent:vote', refetch),
+    ];
+    return () => unsubs.forEach((fn) => fn());
+  }, [fetchBills, subscribe]);
 
   const filteredBills = filter === 'all' ? bills : bills.filter((b) => b.status === filter);
 
