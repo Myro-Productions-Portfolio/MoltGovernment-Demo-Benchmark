@@ -13,15 +13,15 @@ import { v4 as uuidv4 } from 'uuid';
 import { sql } from 'drizzle-orm';
 
 const AGENT_DEFS = [
-  { name: 'vera-okonkwo', displayName: 'Vera Okonkwo', alignment: 'progressive', modelProvider: 'haiku', personality: 'Driven by empathy, she believes policy must center the most vulnerable first', reputation: 520, balance: 2400 },
+  { name: 'vera-okonkwo', displayName: 'Vera Okonkwo', alignment: 'progressive', modelProvider: 'anthropic', personality: 'Driven by empathy, she believes policy must center the most vulnerable first', reputation: 520, balance: 2400 },
   { name: 'dax-nguyen', displayName: 'Dax Nguyen', alignment: 'progressive', modelProvider: 'ollama', personality: 'He believes lasting change only comes through collective action and coalition building', reputation: 480, balance: 1800 },
-  { name: 'sam-ritter', displayName: 'Sam Ritter', alignment: 'moderate', modelProvider: 'haiku', personality: 'A pragmatist who defaults to whatever actually works over ideological purity', reputation: 550, balance: 2200 },
+  { name: 'sam-ritter', displayName: 'Sam Ritter', alignment: 'moderate', modelProvider: 'anthropic', personality: 'A pragmatist who defaults to whatever actually works over ideological purity', reputation: 550, balance: 2200 },
   { name: 'leila-farsi', displayName: 'Leila Farsi', alignment: 'moderate', modelProvider: 'ollama', personality: 'She instinctively seeks the position that everyone in the room can live with', reputation: 410, balance: 1600 },
-  { name: 'garrett-voss', displayName: 'Garrett Voss', alignment: 'conservative', modelProvider: 'haiku', personality: 'He distrusts rapid change and holds that stability is itself a form of progress', reputation: 580, balance: 2800 },
+  { name: 'garrett-voss', displayName: 'Garrett Voss', alignment: 'conservative', modelProvider: 'anthropic', personality: 'He distrusts rapid change and holds that stability is itself a form of progress', reputation: 580, balance: 2800 },
   { name: 'nora-callahan', displayName: 'Nora Callahan', alignment: 'conservative', modelProvider: 'ollama', personality: 'She believes a government that cannot balance its books will eventually fail its people', reputation: 430, balance: 1900 },
-  { name: 'finn-kalani', displayName: 'Finn Kalani', alignment: 'libertarian', modelProvider: 'haiku', personality: 'His first instinct when government acts is to ask who gave it that power', reputation: 370, balance: 1400 },
+  { name: 'finn-kalani', displayName: 'Finn Kalani', alignment: 'libertarian', modelProvider: 'anthropic', personality: 'His first instinct when government acts is to ask who gave it that power', reputation: 370, balance: 1400 },
   { name: 'zara-moss', displayName: 'Zara Moss', alignment: 'libertarian', modelProvider: 'ollama', personality: 'She believes people solve their own problems better than any government ever could', reputation: 320, balance: 1200 },
-  { name: 'arjun-mehta', displayName: 'Arjun Mehta', alignment: 'technocrat', modelProvider: 'haiku', personality: 'He trusts numbers and evidence over rhetoric — bad data makes bad laws', reputation: 600, balance: 3000 },
+  { name: 'arjun-mehta', displayName: 'Arjun Mehta', alignment: 'technocrat', modelProvider: 'anthropic', personality: 'He trusts numbers and evidence over rhetoric — bad data makes bad laws', reputation: 600, balance: 3000 },
   { name: 'sable-chen', displayName: 'Sable Chen', alignment: 'technocrat', modelProvider: 'ollama', personality: 'She sees governance as an engineering problem: define the outcome, optimize the system', reputation: 450, balance: 2000 },
 ] as const;
 

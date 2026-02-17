@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { adminApi, agentsApi } from '../lib/api';
+import { adminApi, agentsApi, providersApi } from '../lib/api';
 import { useWebSocket } from '../lib/useWebSocket';
 import { PixelAvatar, proceduralConfig } from '../components/PixelAvatar';
 import type { AvatarConfig } from '../components/PixelAvatar';
+import { CollapsibleSection } from '../components/CollapsibleSection';
 
 interface SimulationStatus {
   isPaused: boolean;
@@ -32,11 +33,55 @@ interface Decision {
 }
 
 interface RuntimeConfig {
+  /* Simulation */
   tickIntervalMs: number;
+  billAdvancementDelayMs: number;
+  providerOverride: 'default' | 'anthropic' | 'openai' | 'google' | 'huggingface' | 'ollama';
+  /* Agent Behavior */
   billProposalChance: number;
   campaignSpeechChance: number;
-  billAdvancementDelayMs: number;
-  providerOverride: 'default' | 'haiku' | 'ollama';
+  amendmentProposalChance: number;
+  /* Government Structure */
+  congressSeats: number;
+  congressTermDays: number;
+  presidentTermDays: number;
+  supremeCourtJustices: number;
+  quorumPercentage: number;
+  billPassagePercentage: number;
+  supermajorityPercentage: number;
+  /* Elections */
+  campaignDurationDays: number;
+  votingDurationHours: number;
+  minReputationToRun: number;
+  minReputationToVote: number;
+  /* Economy (runtime) */
+  initialAgentBalance: number;
+  campaignFilingFee: number;
+  partyCreationFee: number;
+  salaryPresident: number;
+  salaryCabinet: number;
+  salaryCongress: number;
+  salaryJustice: number;
+  /* Governance Probabilities */
+  vetoBaseRate: number;
+  vetoRatePerTier: number;
+  vetoMaxRate: number;
+  committeeTableRateOpposing: number;
+  committeeTableRateNeutral: number;
+  committeeAmendRate: number;
+  judicialChallengeRatePerLaw: number;
+  partyWhipFollowRate: number;
+  vetoOverrideThreshold: number;
+  /* Guard Rails */
+  maxPromptLengthChars: number;
+  maxOutputLengthTokens: number;
+  maxBillsPerAgentPerTick: number;
+  maxCampaignSpeechesPerTick: number;
+}
+
+interface EconomySettings {
+  treasuryBalance: number;
+  taxRatePercent: number;
 }
 
 interface AgentRow {
@@ -54,6 +99,15 @@ interface AvatarAgentRow {
   name: string;
   displayName: string;
   avatarConfig: string | null;
+}
+
+interface ProviderRow {
+  providerName: string;
+  isConfigured: boolean;
+  isActive: boolean;
+  maskedKey: string | null;
+  ollamaBaseUrl: string | null;
+  models: string[];
 }
 
 function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
@@ -118,12 +172,17 @@ const ADVANCEMENT_PRESETS = [
   { label: '1h', ms: 3_600_000 },
 ];
 
+const ALIGNMENTS = ['progressive', 'moderate', 'conservative', 'libertarian', 'technocrat'];
+const AI_PROVIDERS = ['anthropic', 'openai', 'google', 'huggingface', 'ollama'];
+
 export function AdminPage() {
   const [simStatus, setSimStatus] = useState<SimulationStatus | null>(null);
   const [decisionStats, setDecisionStats] = useState<DecisionStats | null>(null);
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [simConfig, setSimConfig] = useState<RuntimeConfig | null>(null);
+  const [economySettings, setEconomySettings] = useState<EconomySettings | null>(null);
   const [agentList, setAgentList] = useState<AgentRow[]>([]);
+  const [providers, setProviders] = useState<ProviderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [reseedConfirm, setReseedConfirm] = useState(false);
@@ -136,6 +195,24 @@ export function AdminPage() {
   const [draftConfigs, setDraftConfigs] = useState<Record<string, AvatarConfig>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<Record<string, string>>({});
+
+  /* Users state */
+  const [userList, setUserList] = useState<{ id: string; username: string; email: string | null; role: string; clerkUserId: string | null; createdAt: string }[]>([]);
+  const [userRoleSaving, setUserRoleSaving] = useState<string | null>(null);
+
+  /* Provider panel state */
+  const [providerKeyInputs, setProviderKeyInputs] = useState<Record<string, string>>({});
+  const [providerOllamaInputs, setProviderOllamaInputs] = useState<Record<string, string>>({});
+  const [providerTesting, setProviderTesting] = useState<string | null>(null);
+  const [providerTestResults, setProviderTestResults] = useState<Record<string, { success: boolean; latencyMs: number; error?: string }>>({});
+  const [providerSaving, setProviderSaving] = useState<string | null>(null);
+
+  /* Create agent panel state */
+  const [showCreateAgent, setShowCreateAgent] = useState(false);
+  const [agentForm, setAgentForm] = useState({
+    displayName: '', name: '', alignment: 'moderate', modelProvider: 'anthropic', model: '', bio: '', personality: '', startingBalance: 1000,
+  });
+  const [agentFormLoading, setAgentFormLoading] = useState(false);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -164,6 +241,13 @@ export function AdminPage() {
     } catch { /* ignore */ }
   }, []);
 
+  const fetchEconomy = useCallback(async () => {
+    try {
+      const res = await adminApi.getEconomy();
+      setEconomySettings(res.data as EconomySettings);
+    } catch { /* ignore */ }
+  }, []);
+
   const fetchAgents = useCallback(async () => {
     try {
       const res = await adminApi.getAgents();
@@ -180,12 +264,29 @@ export function AdminPage() {
     } catch { /* ignore */ }
   }, []);
 
+  const fetchProviders = useCallback(async () => {
+    try {
+      const res = await providersApi.list();
+      setProviders(res.data as ProviderRow[]);
+    } catch { /* ignore */ }
+  }, []);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const res = await adminApi.getUsers();
+      setUserList(res.data as typeof userList);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     void fetchStatus();
     void fetchDecisions();
     void fetchConfig();
+    void fetchEconomy();
     void fetchAgents();
     void fetchAvatarAgents();
+    void fetchProviders();
+    void fetchUsers();
 
     const refetch = () => {
       void fetchStatus();
@@ -198,7 +299,7 @@ export function AdminPage() {
       subscribe('campaign:speech', refetch),
     ];
     return () => unsubs.forEach((fn) => fn());
-  }, [fetchStatus, fetchDecisions, fetchConfig, fetchAgents, fetchAvatarAgents, subscribe]);
+  }, [fetchStatus, fetchDecisions, fetchConfig, fetchEconomy, fetchAgents, fetchAvatarAgents, fetchProviders, subscribe]);
 
   const flash = (msg: string) => {
     setActionMsg(msg);
@@ -251,9 +352,77 @@ export function AdminPage() {
     }
   };
 
+  const saveEconomy = async (patch: { treasuryBalance?: number; taxRatePercent?: number }) => {
+    setSavingConfig(true);
+    try {
+      const res = await adminApi.setEconomy(patch);
+      setEconomySettings(res.data as EconomySettings);
+      flash('Economy settings saved');
+    } catch {
+      flash('Failed to save economy settings');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
   const handleToggleAgent = async (id: string) => {
     await adminApi.toggleAgent(id);
     void fetchAgents();
+  };
+
+  const handleCreateAgent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAgentFormLoading(true);
+    try {
+      await adminApi.createAgent(agentForm);
+      flash('Agent created successfully');
+      setShowCreateAgent(false);
+      setAgentForm({ displayName: '', name: '', alignment: 'moderate', modelProvider: 'anthropic', model: '', bio: '', personality: '', startingBalance: 1000 });
+      void fetchAgents();
+      void fetchAvatarAgents();
+    } catch (err) {
+      flash(err instanceof Error ? err.message : 'Failed to create agent');
+    } finally {
+      setAgentFormLoading(false);
+    }
+  };
+
+  const handleProviderSave = async (name: string) => {
+    setProviderSaving(name);
+    try {
+      const key = providerKeyInputs[name]?.trim();
+      const ollamaBaseUrl = providerOllamaInputs[name]?.trim();
+      await providersApi.set(name, { key: key || undefined, ollamaBaseUrl: ollamaBaseUrl || undefined });
+      flash(`${name} provider saved`);
+      setProviderKeyInputs((prev) => ({ ...prev, [name]: '' }));
+      void fetchProviders();
+    } catch {
+      flash(`Failed to save ${name} provider`);
+    } finally {
+      setProviderSaving(null);
+    }
+  };
+
+  const handleProviderTest = async (name: string) => {
+    setProviderTesting(name);
+    try {
+      const res = await providersApi.test(name);
+      setProviderTestResults((prev) => ({ ...prev, [name]: res.data as { success: boolean; latencyMs: number; error?: string } }));
+    } catch {
+      setProviderTestResults((prev) => ({ ...prev, [name]: { success: false, latencyMs: 0, error: 'Request failed' } }));
+    } finally {
+      setProviderTesting(null);
+    }
+  };
+
+  const handleProviderClear = async (name: string) => {
+    try {
+      await providersApi.clear(name);
+      flash(`${name} key cleared`);
+      void fetchProviders();
+    } catch {
+      flash(`Failed to clear ${name} key`);
+    }
   };
 
   const running = simStatus ? !simStatus.isPaused : false;
@@ -295,6 +464,8 @@ export function AdminPage() {
     setDraftConfigs((prev) => ({ ...prev, [agent.id]: config }));
   }
 
+  const savingBadge = savingConfig ? <span className="text-xs text-text-muted">Saving...</span> : undefined;
+
   return (
     <div className="max-w-content mx-auto px-8 py-section space-y-8">
       {/* Header */}
@@ -316,8 +487,7 @@ export function AdminPage() {
       )}
 
       {/* Simulation Controls */}
-      <section className="bg-surface rounded-lg border border-border p-6 space-y-4">
-        <h2 className="font-serif text-lg font-medium text-stone">Simulation Controls</h2>
+      <CollapsibleSection id="simulation_controls" title="Simulation Controls">
         <div className="flex flex-wrap gap-3">
           <AdminButton onClick={handlePause} disabled={!running} variant="default">
             Pause
@@ -344,16 +514,11 @@ export function AdminPage() {
             ))}
           </div>
         )}
-      </section>
+      </CollapsibleSection>
 
       {/* Simulation Settings */}
       {simConfig && (
-        <section className="bg-surface rounded-lg border border-border p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="font-serif text-lg font-medium text-stone">Simulation Settings</h2>
-            {savingConfig && <span className="text-xs text-text-muted">Saving...</span>}
-          </div>
-
+        <CollapsibleSection id="simulation_settings" title="Simulation Settings" badge={savingBadge}>
           {/* Tick interval */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -410,13 +575,9 @@ export function AdminPage() {
                 <span className="text-sm text-gold font-mono">{Math.round(simConfig.billProposalChance * 100)}%</span>
               </div>
               <input
-                type="range"
-                min={0}
-                max={100}
+                type="range" min={0} max={100}
                 value={Math.round(simConfig.billProposalChance * 100)}
-                onChange={(e) =>
-                  setSimConfig((c) => c ? { ...c, billProposalChance: parseInt(e.target.value) / 100 } : c)
-                }
+                onChange={(e) => setSimConfig((c) => c ? { ...c, billProposalChance: parseInt(e.target.value) / 100 } : c)}
                 onMouseUp={() => void saveConfig({ billProposalChance: simConfig.billProposalChance })}
                 onTouchEnd={() => void saveConfig({ billProposalChance: simConfig.billProposalChance })}
                 className="w-full accent-gold"
@@ -430,13 +591,9 @@ export function AdminPage() {
                 <span className="text-sm text-gold font-mono">{Math.round(simConfig.campaignSpeechChance * 100)}%</span>
               </div>
               <input
-                type="range"
-                min={0}
-                max={100}
+                type="range" min={0} max={100}
                 value={Math.round(simConfig.campaignSpeechChance * 100)}
-                onChange={(e) =>
-                  setSimConfig((c) => c ? { ...c, campaignSpeechChance: parseInt(e.target.value) / 100 } : c)
-                }
+                onChange={(e) => setSimConfig((c) => c ? { ...c, campaignSpeechChance: parseInt(e.target.value) / 100 } : c)}
                 onMouseUp={() => void saveConfig({ campaignSpeechChance: simConfig.campaignSpeechChance })}
                 onTouchEnd={() => void saveConfig({ campaignSpeechChance: simConfig.campaignSpeechChance })}
                 className="w-full accent-gold"
@@ -449,7 +606,7 @@ export function AdminPage() {
           <div className="space-y-2">
             <label className="text-sm font-medium text-text-secondary">AI Provider Override</label>
             <div className="flex flex-wrap gap-2">
-              {(['default', 'haiku', 'ollama'] as const).map((opt) => (
+              {(['default', 'anthropic', 'openai', 'google', 'huggingface', 'ollama'] as const).map((opt) => (
                 <button
                   key={opt}
                   onClick={() => void saveConfig({ providerOverride: opt })}
@@ -467,12 +624,579 @@ export function AdminPage() {
               Override which AI provider all agents use. Default respects each agent's configured provider.
             </p>
           </div>
-        </section>
+
+          {/* Amendment Proposal Chance */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-text-secondary">Amendment Proposal Chance</label>
+              <span className="text-sm text-gold font-mono">{Math.round(simConfig.amendmentProposalChance * 100)}%</span>
+            </div>
+            <input
+              type="range" min={0} max={100}
+              value={Math.round(simConfig.amendmentProposalChance * 100)}
+              onChange={(e) => setSimConfig((c) => c ? { ...c, amendmentProposalChance: parseInt(e.target.value) / 100 } : c)}
+              onMouseUp={() => void saveConfig({ amendmentProposalChance: simConfig.amendmentProposalChance })}
+              onTouchEnd={() => void saveConfig({ amendmentProposalChance: simConfig.amendmentProposalChance })}
+              className="w-full accent-gold"
+            />
+            <p className="text-xs text-text-muted">Per-agent chance to propose an amendment to an existing law each tick.</p>
+          </div>
+
+          {/* Guard Rails sub-section */}
+          <div className="border-t border-border pt-4">
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wide mb-4">Guard Rails</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-text-secondary">Max Prompt Length (chars)</label>
+                  <span className="text-sm text-gold font-mono">{simConfig.maxPromptLengthChars.toLocaleString()}</span>
+                </div>
+                <input type="number" min={500} max={32000} step={500}
+                  value={simConfig.maxPromptLengthChars}
+                  onChange={(e) => setSimConfig((c) => c ? { ...c, maxPromptLengthChars: parseInt(e.target.value) || 4000 } : c)}
+                  onBlur={() => void saveConfig({ maxPromptLengthChars: simConfig.maxPromptLengthChars })}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                />
+                <p className="text-xs text-text-muted">Maximum characters sent to AI per request.</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-text-secondary">Max Output Tokens</label>
+                  <span className="text-sm text-gold font-mono">{simConfig.maxOutputLengthTokens}</span>
+                </div>
+                <input type="number" min={50} max={4000} step={50}
+                  value={simConfig.maxOutputLengthTokens}
+                  onChange={(e) => setSimConfig((c) => c ? { ...c, maxOutputLengthTokens: parseInt(e.target.value) || 500 } : c)}
+                  onBlur={() => void saveConfig({ maxOutputLengthTokens: simConfig.maxOutputLengthTokens })}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                />
+                <p className="text-xs text-text-muted">Maximum tokens each AI response can use.</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-text-secondary">Max Bills Per Agent Per Tick</label>
+                  <span className="text-sm text-gold font-mono">{simConfig.maxBillsPerAgentPerTick}</span>
+                </div>
+                <input type="number" min={1} max={20}
+                  value={simConfig.maxBillsPerAgentPerTick}
+                  onChange={(e) => setSimConfig((c) => c ? { ...c, maxBillsPerAgentPerTick: parseInt(e.target.value) || 1 } : c)}
+                  onBlur={() => void saveConfig({ maxBillsPerAgentPerTick: simConfig.maxBillsPerAgentPerTick })}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                />
+                <p className="text-xs text-text-muted">Maximum bill proposals per agent per tick.</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-text-secondary">Max Campaign Speeches Per Tick</label>
+                  <span className="text-sm text-gold font-mono">{simConfig.maxCampaignSpeechesPerTick}</span>
+                </div>
+                <input type="number" min={1} max={20}
+                  value={simConfig.maxCampaignSpeechesPerTick}
+                  onChange={(e) => setSimConfig((c) => c ? { ...c, maxCampaignSpeechesPerTick: parseInt(e.target.value) || 1 } : c)}
+                  onBlur={() => void saveConfig({ maxCampaignSpeechesPerTick: simConfig.maxCampaignSpeechesPerTick })}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                />
+                <p className="text-xs text-text-muted">Maximum campaign speeches per agent per tick.</p>
+              </div>
+            </div>
+          </div>
+        </CollapsibleSection>
       )}
 
+      {/* Government Structure */}
+      {simConfig && (
+        <CollapsibleSection
+          id="government_structure"
+          title="Government Structure"
+          subtitle="Takes effect on next election cycle or term start"
+          badge={savingBadge}
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Congress Seats */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Congress Seats</label>
+                <span className="text-sm text-gold font-mono">{simConfig.congressSeats}</span>
+              </div>
+              <input type="range" min={1} max={200} value={simConfig.congressSeats}
+                onChange={(e) => setSimConfig((c) => c ? { ...c, congressSeats: parseInt(e.target.value) } : c)}
+                onMouseUp={() => void saveConfig({ congressSeats: simConfig.congressSeats })}
+                onTouchEnd={() => void saveConfig({ congressSeats: simConfig.congressSeats })}
+                className="w-full accent-gold" />
+              <p className="text-xs text-text-muted">Total legislative seats.</p>
+            </div>
+
+            {/* Supreme Court Justices */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Supreme Court Justices</label>
+                <span className="text-sm text-gold font-mono">{simConfig.supremeCourtJustices}</span>
+              </div>
+              <input type="range" min={1} max={25} value={simConfig.supremeCourtJustices}
+                onChange={(e) => setSimConfig((c) => c ? { ...c, supremeCourtJustices: parseInt(e.target.value) } : c)}
+                onMouseUp={() => void saveConfig({ supremeCourtJustices: simConfig.supremeCourtJustices })}
+                onTouchEnd={() => void saveConfig({ supremeCourtJustices: simConfig.supremeCourtJustices })}
+                className="w-full accent-gold" />
+              <p className="text-xs text-text-muted">Number of justices on the high court.</p>
+            </div>
+
+            {/* Congress Term Days */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Congress Term Length</label>
+                <span className="text-sm text-gold font-mono">{simConfig.congressTermDays}d</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[30, 60, 90, 180, 365].map((d) => (
+                  <button key={d} onClick={() => void saveConfig({ congressTermDays: d })}
+                    className={`px-3 py-1.5 rounded text-xs font-medium border transition-all ${simConfig.congressTermDays === d ? 'bg-gold/20 text-gold border-gold/40' : 'bg-white/5 text-text-muted border-border hover:bg-white/10'}`}>
+                    {d}d
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* President Term Days */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">President Term Length</label>
+                <span className="text-sm text-gold font-mono">{simConfig.presidentTermDays}d</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[30, 60, 90, 180, 365].map((d) => (
+                  <button key={d} onClick={() => void saveConfig({ presidentTermDays: d })}
+                    className={`px-3 py-1.5 rounded text-xs font-medium border transition-all ${simConfig.presidentTermDays === d ? 'bg-gold/20 text-gold border-gold/40' : 'bg-white/5 text-text-muted border-border hover:bg-white/10'}`}>
+                    {d}d
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Vote thresholds */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {([
+              ['quorumPercentage', 'Quorum Required', 'Minimum participation to hold a floor vote.'],
+              ['billPassagePercentage', 'Bill Passage Threshold', 'Yea votes required to pass a bill.'],
+              ['supermajorityPercentage', 'Supermajority (Veto Override)', 'Yea votes required to override a presidential veto.'],
+            ] as [keyof RuntimeConfig, string, string][]).map(([key, label, desc]) => (
+              <div key={key} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-text-secondary">{label}</label>
+                  <span className="text-sm text-gold font-mono">{Math.round((simConfig[key] as number) * 100)}%</span>
+                </div>
+                <input type="range" min={10} max={90} value={Math.round((simConfig[key] as number) * 100)}
+                  onChange={(e) => setSimConfig((c) => c ? { ...c, [key]: parseInt(e.target.value) / 100 } : c)}
+                  onMouseUp={() => void saveConfig({ [key]: simConfig[key] })}
+                  onTouchEnd={() => void saveConfig({ [key]: simConfig[key] })}
+                  className="w-full accent-gold" />
+                <p className="text-xs text-text-muted">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {/* Elections */}
+      {simConfig && (
+        <CollapsibleSection id="elections" title="Elections">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Campaign Duration</label>
+                <span className="text-sm text-gold font-mono">{simConfig.campaignDurationDays}d</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[7, 14, 30, 60].map((d) => (
+                  <button key={d} onClick={() => void saveConfig({ campaignDurationDays: d })}
+                    className={`px-3 py-1.5 rounded text-xs font-medium border transition-all ${simConfig.campaignDurationDays === d ? 'bg-gold/20 text-gold border-gold/40' : 'bg-white/5 text-text-muted border-border hover:bg-white/10'}`}>
+                    {d}d
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Voting Window</label>
+                <span className="text-sm text-gold font-mono">{simConfig.votingDurationHours}h</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[12, 24, 48, 72, 168].map((h) => (
+                  <button key={h} onClick={() => void saveConfig({ votingDurationHours: h })}
+                    className={`px-3 py-1.5 rounded text-xs font-medium border transition-all ${simConfig.votingDurationHours === h ? 'bg-gold/20 text-gold border-gold/40' : 'bg-white/5 text-text-muted border-border hover:bg-white/10'}`}>
+                    {h}h
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Min Reputation to Run</label>
+                <span className="text-sm text-gold font-mono">{simConfig.minReputationToRun}</span>
+              </div>
+              <input type="range" min={0} max={500} step={10} value={simConfig.minReputationToRun}
+                onChange={(e) => setSimConfig((c) => c ? { ...c, minReputationToRun: parseInt(e.target.value) } : c)}
+                onMouseUp={() => void saveConfig({ minReputationToRun: simConfig.minReputationToRun })}
+                onTouchEnd={() => void saveConfig({ minReputationToRun: simConfig.minReputationToRun })}
+                className="w-full accent-gold" />
+              <p className="text-xs text-text-muted">Reputation required to declare candidacy.</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Min Reputation to Vote</label>
+                <span className="text-sm text-gold font-mono">{simConfig.minReputationToVote}</span>
+              </div>
+              <input type="range" min={0} max={200} step={5} value={simConfig.minReputationToVote}
+                onChange={(e) => setSimConfig((c) => c ? { ...c, minReputationToVote: parseInt(e.target.value) } : c)}
+                onMouseUp={() => void saveConfig({ minReputationToVote: simConfig.minReputationToVote })}
+                onTouchEnd={() => void saveConfig({ minReputationToVote: simConfig.minReputationToVote })}
+                className="w-full accent-gold" />
+              <p className="text-xs text-text-muted">Reputation required to cast a vote.</p>
+            </div>
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {/* Economy */}
+      <CollapsibleSection
+        id="economy"
+        title="Economy"
+        subtitle="Treasury & tax rate persist in DB. Fees & salaries apply next tick."
+        badge={savingBadge}
+      >
+        {economySettings && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Treasury Balance (M$)</label>
+                <span className="text-sm text-gold font-mono">M${economySettings.treasuryBalance.toLocaleString()}</span>
+              </div>
+              <input
+                type="number" min={0} step={1000}
+                value={economySettings.treasuryBalance}
+                onChange={(e) => setEconomySettings((s) => s ? { ...s, treasuryBalance: parseInt(e.target.value) || 0 } : s)}
+                onBlur={() => void saveEconomy({ treasuryBalance: economySettings.treasuryBalance })}
+                className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+              />
+              <p className="text-xs text-text-muted">Direct treasury balance — use to inject or remove funds.</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-text-secondary">Tax Rate (%)</label>
+                <span className="text-sm text-gold font-mono">{economySettings.taxRatePercent}%</span>
+              </div>
+              <input type="range" min={0} max={20} step={0.5}
+                value={economySettings.taxRatePercent}
+                onChange={(e) => setEconomySettings((s) => s ? { ...s, taxRatePercent: parseFloat(e.target.value) } : s)}
+                onMouseUp={() => void saveEconomy({ taxRatePercent: economySettings.taxRatePercent })}
+                onTouchEnd={() => void saveEconomy({ taxRatePercent: economySettings.taxRatePercent })}
+                className="w-full accent-gold" />
+              <p className="text-xs text-text-muted">Percent of each agent's balance collected as tax each tick.</p>
+            </div>
+          </div>
+        )}
+
+        {simConfig && (
+          <>
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-medium text-text-muted uppercase tracking-wide mb-4">Fees</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {([
+                  ['initialAgentBalance', 'Starting Agent Balance', 'M$ each new agent starts with.'],
+                  ['campaignFilingFee', 'Campaign Filing Fee', 'M$ to declare candidacy.'],
+                  ['partyCreationFee', 'Party Creation Fee', 'M$ to found a new party.'],
+                ] as [keyof RuntimeConfig, string, string][]).map(([key, label, desc]) => (
+                  <div key={key} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-text-secondary">{label}</label>
+                      <span className="text-sm text-gold font-mono">M${(simConfig[key] as number).toLocaleString()}</span>
+                    </div>
+                    <input type="number" min={0} step={10}
+                      value={simConfig[key] as number}
+                      onChange={(e) => setSimConfig((c) => c ? { ...c, [key]: parseInt(e.target.value) || 0 } : c)}
+                      onBlur={() => void saveConfig({ [key]: simConfig[key] })}
+                      className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                    />
+                    <p className="text-xs text-text-muted">{desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-border pt-4">
+              <p className="text-xs font-medium text-text-muted uppercase tracking-wide mb-4">Salaries (M$/tick)</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {([
+                  ['salaryPresident', 'President'],
+                  ['salaryCabinet', 'Cabinet'],
+                  ['salaryCongress', 'Congress'],
+                  ['salaryJustice', 'Justice'],
+                ] as [keyof RuntimeConfig, string][]).map(([key, label]) => (
+                  <div key={key} className="space-y-1.5">
+                    <label className="text-xs font-medium text-text-secondary">{label}</label>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-text-muted">M$</span>
+                      <input type="number" min={0} step={5}
+                        value={simConfig[key] as number}
+                        onChange={(e) => setSimConfig((c) => c ? { ...c, [key]: parseInt(e.target.value) || 0 } : c)}
+                        onBlur={() => void saveConfig({ [key]: simConfig[key] })}
+                        className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </CollapsibleSection>
+
+      {/* Governance Probabilities */}
+      {simConfig && (
+        <CollapsibleSection
+          id="governance_probabilities"
+          title="Governance Probabilities"
+          subtitle="Research-backed baselines. Changes apply on the next tick."
+        >
+          {/* Presidential Veto */}
+          <div className="space-y-4">
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wide">Presidential Veto</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {([
+                ['vetoBaseRate', 'Base Veto Rate', 'Probability of veto when president and sponsor share alignment.'],
+                ['vetoRatePerTier', 'Rate Per Alignment Tier', 'Added probability per step apart on the alignment spectrum.'],
+                ['vetoMaxRate', 'Maximum Veto Rate', 'Hard cap — probability never exceeds this regardless of alignment gap.'],
+              ] as [keyof RuntimeConfig, string, string][]).map(([key, label, desc]) => (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-text-secondary">{label}</label>
+                    <span className="text-sm text-gold font-mono">{Math.round((simConfig[key] as number) * 100)}%</span>
+                  </div>
+                  <input type="range" min={0} max={100}
+                    value={Math.round((simConfig[key] as number) * 100)}
+                    onChange={(e) => setSimConfig((c) => c ? { ...c, [key]: parseInt(e.target.value) / 100 } : c)}
+                    onMouseUp={() => void saveConfig({ [key]: simConfig[key] })}
+                    onTouchEnd={() => void saveConfig({ [key]: simConfig[key] })}
+                    className="w-full accent-gold" />
+                  <p className="text-xs text-text-muted">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Committee */}
+          <div className="space-y-4 border-t border-border pt-4">
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wide">Committee Review</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {([
+                ['committeeTableRateOpposing', 'Table Rate (Opposing Chair)', 'Probability chair tables a bill when politically opposed to sponsor.'],
+                ['committeeTableRateNeutral', 'Table Rate (Neutral Chair)', 'Probability chair tables a bill when aligned with or neutral to sponsor.'],
+                ['committeeAmendRate', 'Amendment Rate', 'If not tabled, probability chair amends the bill text.'],
+              ] as [keyof RuntimeConfig, string, string][]).map(([key, label, desc]) => (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-text-secondary">{label}</label>
+                    <span className="text-sm text-gold font-mono">{Math.round((simConfig[key] as number) * 100)}%</span>
+                  </div>
+                  <input type="range" min={0} max={100}
+                    value={Math.round((simConfig[key] as number) * 100)}
+                    onChange={(e) => setSimConfig((c) => c ? { ...c, [key]: parseInt(e.target.value) / 100 } : c)}
+                    onMouseUp={() => void saveConfig({ [key]: simConfig[key] })}
+                    onTouchEnd={() => void saveConfig({ [key]: simConfig[key] })}
+                    className="w-full accent-gold" />
+                  <p className="text-xs text-text-muted">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Judicial + Whip + Override */}
+          <div className="space-y-4 border-t border-border pt-4">
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wide">Judicial, Whip &amp; Override</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {([
+                ['judicialChallengeRatePerLaw', 'Judicial Challenge Rate', 'Per-law probability of a Supreme Court review being triggered each tick.'],
+                ['partyWhipFollowRate', 'Party Whip Follow Rate', 'Probability a member follows their party whip recommendation when voting.'],
+                ['vetoOverrideThreshold', 'Veto Override Threshold', 'Yea fraction required to override a presidential veto (e.g. 0.67 = 2/3).'],
+              ] as [keyof RuntimeConfig, string, string][]).map(([key, label, desc]) => (
+                <div key={key} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-text-secondary">{label}</label>
+                    <span className="text-sm text-gold font-mono">{Math.round((simConfig[key] as number) * 100)}%</span>
+                  </div>
+                  <input type="range" min={0} max={100}
+                    value={Math.round((simConfig[key] as number) * 100)}
+                    onChange={(e) => setSimConfig((c) => c ? { ...c, [key]: parseInt(e.target.value) / 100 } : c)}
+                    onMouseUp={() => void saveConfig({ [key]: simConfig[key] })}
+                    onTouchEnd={() => void saveConfig({ [key]: simConfig[key] })}
+                    className="w-full accent-gold" />
+                  <p className="text-xs text-text-muted">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {/* AI Providers */}
+      <CollapsibleSection id="api_providers" title="AI Providers" subtitle="Configure API keys for each provider. Keys are AES-256 encrypted at rest.">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {providers.map((p) => {
+            const testResult = providerTestResults[p.providerName];
+            return (
+              <div key={p.providerName} className="bg-white/5 rounded border border-border p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-text-primary capitalize">{p.providerName}</span>
+                    {p.isConfigured ? (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-green-900/40 text-green-400">Configured</span>
+                    ) : (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-text-muted">Not set</span>
+                    )}
+                  </div>
+                  {p.maskedKey && <span className="text-xs font-mono text-text-muted">{p.maskedKey}</span>}
+                </div>
+
+                {p.providerName !== 'ollama' && (
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      value={providerKeyInputs[p.providerName] ?? ''}
+                      onChange={(e) => setProviderKeyInputs((prev) => ({ ...prev, [p.providerName]: e.target.value }))}
+                      className="flex-1 bg-white/5 border border-border rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                      placeholder={p.isConfigured ? 'Replace key...' : 'Enter API key...'}
+                    />
+                  </div>
+                )}
+
+                {p.providerName === 'ollama' && (
+                  <div>
+                    <input
+                      type="text"
+                      value={providerOllamaInputs[p.providerName] ?? (p.ollamaBaseUrl ?? '')}
+                      onChange={(e) => setProviderOllamaInputs((prev) => ({ ...prev, [p.providerName]: e.target.value }))}
+                      className="w-full bg-white/5 border border-border rounded px-2 py-1.5 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                      placeholder="http://localhost:11434"
+                    />
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => void handleProviderSave(p.providerName)}
+                    disabled={providerSaving === p.providerName}
+                    className="px-3 py-1.5 rounded bg-gold/20 text-gold border border-gold/40 hover:bg-gold/30 text-xs font-medium transition-all disabled:opacity-40"
+                  >
+                    {providerSaving === p.providerName ? 'Saving...' : 'Save'}
+                  </button>
+                  <button
+                    onClick={() => void handleProviderTest(p.providerName)}
+                    disabled={providerTesting === p.providerName}
+                    className="px-3 py-1.5 rounded bg-white/5 border border-border text-text-muted hover:bg-white/10 text-xs font-medium transition-all disabled:opacity-40"
+                  >
+                    {providerTesting === p.providerName ? 'Testing...' : 'Test'}
+                  </button>
+                  {p.isConfigured && (
+                    <button
+                      onClick={() => void handleProviderClear(p.providerName)}
+                      className="px-3 py-1.5 rounded border border-red-800 text-red-400 hover:bg-red-900/30 text-xs transition-all"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {testResult && (
+                  <div className={`text-xs px-2 py-1.5 rounded ${testResult.success ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                    {testResult.success ? `OK — ${testResult.latencyMs}ms` : `Failed${testResult.error ? `: ${testResult.error}` : ''}`}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </CollapsibleSection>
+
       {/* Agents */}
-      <section className="bg-surface rounded-lg border border-border p-6 space-y-4">
-        <h2 className="font-serif text-lg font-medium text-stone">Agents</h2>
+      <CollapsibleSection id="agents" title="Agents">
+        <div className="flex justify-end mb-2">
+          <button
+            onClick={() => setShowCreateAgent(!showCreateAgent)}
+            className="text-xs px-3 py-1.5 rounded bg-gold/20 text-gold border border-gold/40 hover:bg-gold/30 transition-all"
+          >
+            {showCreateAgent ? 'Cancel' : 'Create New Agent'}
+          </button>
+        </div>
+
+        {showCreateAgent && (
+          <form onSubmit={(e) => void handleCreateAgent(e)} className="space-y-4 border border-border rounded p-4 mb-4">
+            <p className="text-xs font-medium text-text-muted uppercase tracking-wide">New Agent</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Display Name</label>
+                <input type="text" value={agentForm.displayName}
+                  onChange={(e) => setAgentForm((f) => ({ ...f, displayName: e.target.value }))}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                  placeholder="Jane Doe" required />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Username slug</label>
+                <input type="text" value={agentForm.name}
+                  onChange={(e) => setAgentForm((f) => ({ ...f, name: e.target.value }))}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                  placeholder="jane_doe" required />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Alignment</label>
+                <select value={agentForm.alignment}
+                  onChange={(e) => setAgentForm((f) => ({ ...f, alignment: e.target.value }))}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50">
+                  {ALIGNMENTS.map((a) => <option key={a} value={a} className="bg-surface">{a}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Provider</label>
+                <select value={agentForm.modelProvider}
+                  onChange={(e) => setAgentForm((f) => ({ ...f, modelProvider: e.target.value }))}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50">
+                  {AI_PROVIDERS.map((p) => <option key={p} value={p} className="bg-surface">{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Model (optional)</label>
+                <input type="text" value={agentForm.model}
+                  onChange={(e) => setAgentForm((f) => ({ ...f, model: e.target.value }))}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                  placeholder="e.g. claude-haiku-4-5-20251001" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Starting Balance (M$)</label>
+                <input type="number" min={0} step={100} value={agentForm.startingBalance}
+                  onChange={(e) => setAgentForm((f) => ({ ...f, startingBalance: parseInt(e.target.value) || 0 }))}
+                  className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-secondary mb-1">Personality</label>
+              <textarea value={agentForm.personality}
+                onChange={(e) => setAgentForm((f) => ({ ...f, personality: e.target.value }))}
+                className="w-full bg-white/5 border border-border rounded px-3 py-2 text-sm text-text-primary focus:outline-none focus:border-gold/50"
+                rows={2} placeholder="How this agent thinks and acts..." />
+            </div>
+            <button type="submit" disabled={agentFormLoading}
+              className="px-6 py-2 rounded bg-gold/20 text-gold border border-gold/40 hover:bg-gold/30 text-sm font-medium transition-all disabled:opacity-40">
+              {agentFormLoading ? 'Creating...' : 'Create Agent'}
+            </button>
+          </form>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -495,9 +1219,13 @@ export function AdminPage() {
                   </td>
                   <td className="py-2 pr-4">
                     <span className={`text-xs px-1.5 py-0.5 rounded ${
-                      agent.modelProvider === 'haiku'
+                      agent.modelProvider === 'anthropic'
                         ? 'bg-purple-900/40 text-purple-300'
-                        : 'bg-blue-900/40 text-blue-300'
+                        : agent.modelProvider === 'openai'
+                        ? 'bg-green-900/40 text-green-300'
+                        : agent.modelProvider === 'google'
+                        ? 'bg-blue-900/40 text-blue-300'
+                        : 'bg-gray-900/40 text-gray-300'
                     }`}>
                       {agent.modelProvider}
                     </span>
@@ -524,17 +1252,16 @@ export function AdminPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* Decision Stats */}
       {decisionStats && (
-        <section className="bg-surface rounded-lg border border-border p-6 space-y-4">
-          <h2 className="font-serif text-lg font-medium text-stone">Decision Stats</h2>
+        <CollapsibleSection id="decision_stats" title="Decision Stats">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               { label: 'Total Decisions', value: decisionStats.total },
               { label: 'Errors', value: decisionStats.errors, warn: decisionStats.errors > 0 },
-              { label: 'Haiku', value: decisionStats.haikuCount },
+              { label: 'Anthropic', value: decisionStats.haikuCount },
               { label: 'Ollama', value: decisionStats.ollamaCount },
             ].map(({ label, value, warn }) => (
               <div key={label} className="bg-white/5 rounded p-3">
@@ -545,27 +1272,73 @@ export function AdminPage() {
               </div>
             ))}
           </div>
-        </section>
+        </CollapsibleSection>
       )}
 
+      {/* Users */}
+      <CollapsibleSection id="users" title="Users" subtitle="Manage registered accounts and assign roles">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-text-muted">
+                <th className="pb-2 pr-4 font-medium">Username</th>
+                <th className="pb-2 pr-4 font-medium">Email</th>
+                <th className="pb-2 pr-4 font-medium">Clerk ID</th>
+                <th className="pb-2 pr-4 font-medium">Role</th>
+                <th className="pb-2 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {userList.length === 0 && (
+                <tr><td colSpan={5} className="py-4 text-text-muted text-center">No users registered yet</td></tr>
+              )}
+              {userList.map((u) => (
+                <tr key={u.id} className="hover:bg-surface-2 transition-colors">
+                  <td className="py-2 pr-4 font-mono text-xs">{u.username || '—'}</td>
+                  <td className="py-2 pr-4">{u.email || '—'}</td>
+                  <td className="py-2 pr-4 font-mono text-xs text-text-muted">{u.clerkUserId ? u.clerkUserId.slice(0, 16) + '…' : '—'}</td>
+                  <td className="py-2 pr-4">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${u.role === 'admin' ? 'bg-yellow-900/40 text-yellow-300' : 'bg-surface-2 text-text-muted'}`}>
+                      {u.role}
+                    </span>
+                  </td>
+                  <td className="py-2">
+                    <button
+                      disabled={userRoleSaving === u.id}
+                      onClick={async () => {
+                        const newRole = u.role === 'admin' ? 'user' : 'admin';
+                        setUserRoleSaving(u.id);
+                        try {
+                          await adminApi.setUserRole(u.id, newRole);
+                          setUserList((prev) => prev.map((x) => x.id === u.id ? { ...x, role: newRole } : x));
+                          flash(`${u.username || u.id} is now ${newRole}`);
+                        } catch { flash('Failed to update role'); }
+                        finally { setUserRoleSaving(null); }
+                      }}
+                      className="text-xs px-3 py-1 rounded border border-border hover:bg-surface-2 transition-colors disabled:opacity-50"
+                    >
+                      {userRoleSaving === u.id ? 'Saving…' : u.role === 'admin' ? 'Demote to user' : 'Promote to admin'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CollapsibleSection>
+
       {/* Database */}
-      <section className="bg-surface rounded-lg border border-border p-6 space-y-4">
-        <h2 className="font-serif text-lg font-medium text-stone">Database</h2>
+      <CollapsibleSection id="database" title="Database">
         <div className="flex items-center gap-4">
           <AdminButton onClick={handleReseed} variant="danger">
             {reseedConfirm ? 'Confirm? Click again to wipe all data' : 'Reseed Database'}
           </AdminButton>
           <span className="text-xs text-text-muted">Truncates all tables and restores the 10-agent seed state.</span>
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* Agent Avatars */}
-      <section className="bg-surface rounded-lg border border-border p-6 space-y-4">
-        <div>
-          <h2 className="font-serif text-lg font-medium text-stone">Agent Avatars</h2>
-          <p className="text-xs text-text-muted mt-1">Customize pixel portrait configurations</p>
-        </div>
-
+      <CollapsibleSection id="agent_avatars" title="Agent Avatars" subtitle="Customize pixel portrait configurations">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-start">
           {avatarAgents.map((agent) => {
             const isEditing = editingAgentId === agent.id;
@@ -588,12 +1361,10 @@ export function AdminPage() {
                 {/* Inline editor panel */}
                 {isEditing && (
                   <div className="border border-border border-t-0 bg-surface rounded-b p-4 space-y-4">
-                    {/* Live preview */}
                     <div className="flex justify-center">
                       <PixelAvatar config={cfg} seed={agent.name} size="lg" />
                     </div>
 
-                    {/* Color inputs */}
                     <div className="space-y-2">
                       {([
                         ['Background', 'bgColor', cfg.bgColor],
@@ -615,7 +1386,6 @@ export function AdminPage() {
                       ))}
                     </div>
 
-                    {/* Eye type selector */}
                     <div>
                       <div className="text-xs text-text-muted mb-2 uppercase tracking-wide">Eyes</div>
                       <div className="grid grid-cols-4 gap-1">
@@ -634,7 +1404,6 @@ export function AdminPage() {
                       </div>
                     </div>
 
-                    {/* Mouth type selector */}
                     <div>
                       <div className="text-xs text-text-muted mb-2 uppercase tracking-wide">Mouth</div>
                       <div className="grid grid-cols-4 gap-1">
@@ -653,7 +1422,6 @@ export function AdminPage() {
                       </div>
                     </div>
 
-                    {/* Accessory selector */}
                     <div>
                       <div className="text-xs text-text-muted mb-2 uppercase tracking-wide">Accessory</div>
                       <div className="grid grid-cols-4 gap-1">
@@ -672,7 +1440,6 @@ export function AdminPage() {
                       </div>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex flex-col gap-2">
                       <button
                         className="btn-secondary text-xs w-full bg-gold/10 text-gold border-gold/30 hover:bg-gold/20"
@@ -681,16 +1448,10 @@ export function AdminPage() {
                       >
                         {savingId === agent.id ? 'Saving...' : 'Save'}
                       </button>
-                      <button
-                        className="btn-secondary text-xs w-full"
-                        onClick={() => handleResetAvatar(agent)}
-                      >
+                      <button className="btn-secondary text-xs w-full" onClick={() => handleResetAvatar(agent)}>
                         Reset to Procedural
                       </button>
-                      <button
-                        className="btn-secondary text-xs w-full text-text-muted"
-                        onClick={() => setEditingAgentId(null)}
-                      >
+                      <button className="btn-secondary text-xs w-full text-text-muted" onClick={() => setEditingAgentId(null)}>
                         Cancel
                       </button>
                       {saveMessage[agent.id] && (
@@ -705,11 +1466,10 @@ export function AdminPage() {
             );
           })}
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* Decision Log */}
-      <section className="bg-surface rounded-lg border border-border p-6 space-y-4">
-        <h2 className="font-serif text-lg font-medium text-stone">Decision Log</h2>
+      <CollapsibleSection id="decision_log" title="Decision Log">
         {loading ? (
           <p className="text-text-muted text-sm">Loading...</p>
         ) : decisions.length === 0 ? (
@@ -733,11 +1493,7 @@ export function AdminPage() {
                       {d.agentName ?? '—'}
                     </td>
                     <td className="py-2 pr-4">
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${
-                        d.provider === 'haiku'
-                          ? 'bg-purple-900/40 text-purple-300'
-                          : 'bg-blue-900/40 text-blue-300'
-                      }`}>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-purple-900/40 text-purple-300">
                         {d.provider}
                       </span>
                     </td>
@@ -764,7 +1520,7 @@ export function AdminPage() {
             </table>
           </div>
         )}
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }

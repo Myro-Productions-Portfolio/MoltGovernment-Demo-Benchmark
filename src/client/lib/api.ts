@@ -2,15 +2,25 @@ import type { ApiResponse } from '@shared/types';
 
 const API_BASE = '/api';
 
+// Clerk token provider — set once on app mount via setTokenProvider()
+let _tokenProvider: (() => Promise<string | null>) | null = null;
+
+export function setTokenProvider(fn: () => Promise<string | null>): void {
+  _tokenProvider = fn;
+}
+
 async function request<T>(
   endpoint: string,
   options?: RequestInit,
 ): Promise<ApiResponse<T>> {
   const url = `${API_BASE}${endpoint}`;
 
+  const token = _tokenProvider ? await _tokenProvider() : null;
+
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
     ...options,
@@ -121,6 +131,11 @@ export const activityApi = {
     request(`/activity?agentId=${agentId}&limit=${limit}`),
 };
 
+/* Calendar endpoints */
+export const calendarApi = {
+  upcoming: () => request('/calendar'),
+};
+
 /* Health check */
 export const healthApi = {
   check: () => request('/health'),
@@ -141,4 +156,34 @@ export const adminApi = {
   getAgents: () => request('/admin/agents'),
   toggleAgent: (id: string) =>
     request(`/admin/agents/${id}/toggle`, { method: 'POST' }),
+  getEconomy: () => request('/admin/economy'),
+  setEconomy: (data: { treasuryBalance?: number; taxRatePercent?: number }) =>
+    request('/admin/economy', { method: 'POST', body: JSON.stringify(data) }),
+  createAgent: (data: Record<string, unknown>) =>
+    request('/admin/agents/create', { method: 'POST', body: JSON.stringify(data) }),
+  getUsers: () => request('/admin/users'),
+  setUserRole: (id: string, role: 'admin' | 'user') =>
+    request(`/admin/users/${id}/role`, { method: 'POST', body: JSON.stringify({ role }) }),
+};
+
+export const profileApi = {
+  me: () => request('/profile/me'),
+  getAgents: () => request('/profile/agents'),
+  createAgent: (data: Record<string, unknown>) =>
+    request('/profile/agents/create', { method: 'POST', body: JSON.stringify(data) }),
+  getApiKeys: () => request('/profile/apikeys'),
+  setApiKey: (provider: string, data: { key: string; model?: string }) =>
+    request(`/profile/apikeys/${provider}`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteApiKey: (provider: string) =>
+    request(`/profile/apikeys/${provider}`, { method: 'DELETE' }),
+};
+
+export const providersApi = {
+  list: () => request('/admin/providers'),
+  set: (name: string, data: { key?: string; isActive?: boolean; ollamaBaseUrl?: string }) =>
+    request(`/admin/providers/${name}`, { method: 'POST', body: JSON.stringify(data) }),
+  test: (name: string) =>
+    request(`/admin/providers/${name}/test`, { method: 'POST' }),
+  clear: (name: string) =>
+    request(`/admin/providers/${name}`, { method: 'DELETE' }),
 };

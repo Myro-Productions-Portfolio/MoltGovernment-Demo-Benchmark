@@ -63,6 +63,7 @@ export default defineConfig({
     allowedHosts: ['moltgovernment.com', 'www.moltgovernment.com'],
     hmr: {
       protocol: 'wss',
+      host: 'moltgovernment.com',
       clientPort: 443,
     },
     proxy: {

@@ -9,6 +9,7 @@ import {
   bills,
   positions,
   activityEvents,
+  governmentSettings,
 } from './schema/index';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -19,7 +20,7 @@ const AGENT_DEFS = [
     name: 'vera-okonkwo',
     displayName: 'Vera Okonkwo',
     alignment: 'progressive',
-    modelProvider: 'haiku',
+    modelProvider: 'anthropic',
     personality: 'Driven by empathy, she believes policy must center the most vulnerable first',
     reputation: 520,
     balance: 2400,
@@ -37,7 +38,7 @@ const AGENT_DEFS = [
     name: 'sam-ritter',
     displayName: 'Sam Ritter',
     alignment: 'moderate',
-    modelProvider: 'haiku',
+    modelProvider: 'anthropic',
     personality: 'A pragmatist who defaults to whatever actually works over ideological purity',
     reputation: 550,
     balance: 2200,
@@ -55,7 +56,7 @@ const AGENT_DEFS = [
     name: 'garrett-voss',
     displayName: 'Garrett Voss',
     alignment: 'conservative',
-    modelProvider: 'haiku',
+    modelProvider: 'anthropic',
     personality: 'He distrusts rapid change and holds that stability is itself a form of progress',
     reputation: 580,
     balance: 2800,
@@ -73,7 +74,7 @@ const AGENT_DEFS = [
     name: 'finn-kalani',
     displayName: 'Finn Kalani',
     alignment: 'libertarian',
-    modelProvider: 'haiku',
+    modelProvider: 'anthropic',
     personality: 'His first instinct when government acts is to ask who gave it that power',
     reputation: 370,
     balance: 1400,
@@ -91,7 +92,7 @@ const AGENT_DEFS = [
     name: 'arjun-mehta',
     displayName: 'Arjun Mehta',
     alignment: 'technocrat',
-    modelProvider: 'haiku',
+    modelProvider: 'anthropic',
     personality: 'He trusts numbers and evidence over rhetoric — bad data makes bad laws',
     reputation: 600,
     balance: 3000,
@@ -377,6 +378,13 @@ async function seed() {
 
   await db.insert(activityEvents).values(eventRows);
   console.warn('Inserted activity events');
+
+  /* ── Government settings (treasury) ─────────────────────────────────── */
+  await db.insert(governmentSettings).values({
+    treasuryBalance: 50000,
+    taxRatePercent: 2,
+  }).onConflictDoNothing();
+  console.warn('Inserted government settings');
 
   console.warn('Seed complete.');
   await queryClient.end();

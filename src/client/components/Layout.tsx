@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
 import { useWebSocket } from '../lib/useWebSocket';
+import { useUser, SignInButton, UserButton } from '@clerk/clerk-react';
 
 const NAV_LINKS = [
   { to: '/', label: 'Capitol' },
@@ -7,10 +9,28 @@ const NAV_LINKS = [
   { to: '/elections', label: 'Elections' },
   { to: '/parties', label: 'Parties' },
   { to: '/capitol-map', label: 'Map' },
+  { to: '/calendar', label: 'Calendar' },
 ] as const;
 
 export function Layout() {
   const { isConnected } = useWebSocket();
+  const { isSignedIn, isLoaded } = useUser();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isSignedIn) {
+      setUserRole(null);
+      return;
+    }
+    fetch('/api/profile/me')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: { success: boolean; data: { role: string } } | null) => {
+        if (data?.success) {
+          setUserRole(data.data.role);
+        }
+      })
+      .catch(() => setUserRole(null));
+  }, [isSignedIn]);
 
   return (
     <div className="min-h-screen flex flex-col bg-capitol-deep">
@@ -51,34 +71,46 @@ export function Layout() {
           ))}
         </div>
 
-        {/* Admin link */}
-        <Link
-          to="/admin"
-          className="text-xs text-text-muted hover:text-text-secondary uppercase tracking-widest px-3 py-1 rounded border border-border/50 hover:border-border transition-colors"
-        >
-          Admin
-        </Link>
-
-        {/* Agent status */}
-        <div className="flex items-center gap-2.5">
-          <div className="text-right">
-            <div className="text-sm font-medium text-text-primary">Agent-7X4K</div>
-            <div className="flex items-center gap-1 text-xs text-text-muted">
-              <span
-                className={`inline-block w-1.5 h-1.5 rounded-full ${
-                  isConnected ? 'bg-status-active animate-pulse' : 'bg-danger'
-                }`}
-                aria-hidden="true"
-              />
-              {isConnected ? 'Online' : 'Offline'}
-            </div>
-          </div>
-          <div
-            className="w-9 h-9 rounded-full bg-gold flex items-center justify-center font-serif font-bold text-sm text-capitol-bg"
-            aria-hidden="true"
+        {/* Admin link — only visible to admins */}
+        {isSignedIn && userRole === 'admin' && (
+          <Link
+            to="/admin"
+            className="text-xs text-text-muted hover:text-text-secondary uppercase tracking-widest px-3 py-1 rounded border border-border/50 hover:border-border transition-colors"
           >
-            7X
+            Admin
+          </Link>
+        )}
+
+        {/* Auth / Agent status */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1 text-xs text-text-muted mr-1">
+            <span
+              className={`inline-block w-1.5 h-1.5 rounded-full ${
+                isConnected ? 'bg-status-active animate-pulse' : 'bg-danger'
+              }`}
+              aria-hidden="true"
+            />
+            {isConnected ? 'Online' : 'Offline'}
           </div>
+          {isLoaded && (
+            isSignedIn ? (
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/profile"
+                  className="text-xs text-text-muted hover:text-text-secondary uppercase tracking-widest px-2 py-1 rounded border border-border/50 hover:border-border transition-colors"
+                >
+                  Profile
+                </Link>
+                <UserButton afterSignOutUrl="/" />
+              </div>
+            ) : (
+              <SignInButton mode="modal">
+                <button className="text-xs text-gold hover:text-gold/80 uppercase tracking-widest px-3 py-1 rounded border border-gold/40 hover:border-gold/60 transition-colors">
+                  Login
+                </button>
+              </SignInButton>
+            )
+          )}
         </div>
       </nav>
 

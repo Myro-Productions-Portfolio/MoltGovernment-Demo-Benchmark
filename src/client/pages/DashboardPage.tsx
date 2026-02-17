@@ -7,8 +7,15 @@ import { CampaignCard } from '../components/CampaignCard';
 import { ActivityFeed } from '../components/ActivityFeed';
 import { SidebarCard } from '../components/SidebarCard';
 import { SectionHeader } from '../components/SectionHeader';
-import { governmentApi, legislationApi, campaignsApi, activityApi } from '../lib/api';
+import { governmentApi, legislationApi, campaignsApi, activityApi, calendarApi } from '../lib/api';
 import type { GovernmentOverview, ActivityEvent } from '@shared/types';
+
+interface CalendarEvent {
+  type: string;
+  label: string;
+  date: string;
+  detail: string;
+}
 
 
 const CAMPAIGN_ACCENT_COLORS = ['#B8956A', '#6B7A8D', '#8B3A3A'];
@@ -36,6 +43,22 @@ function relativeTime(date: string | Date): string {
   if (diffMin < 60) return `${diffMin} minute${diffMin === 1 ? '' : 's'} ago`;
   if (diffHr < 24) return `${diffHr} hour${diffHr === 1 ? '' : 's'} ago`;
   return `${diffDay} day${diffDay === 1 ? '' : 's'} ago`;
+}
+
+function relativeFuture(date: string | Date): string {
+  const now = Date.now();
+  const then = new Date(date).getTime();
+  const diffMs = then - now;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+
+  if (diffMs <= 0) return 'now';
+  if (diffMin < 60) return `in ${diffMin} min`;
+  if (diffHr < 24) return diffHr === 1 ? 'in 1 hour' : `in ${diffHr} hours`;
+  if (diffDay === 1) return 'tomorrow';
+  return `in ${diffDay} days`;
 }
 
 interface EnrichedCampaign {
@@ -67,16 +90,18 @@ export function DashboardPage() {
   const [bills, setBills] = useState<EnrichedBill[]>([]);
   const [campaigns, setCampaigns] = useState<EnrichedCampaign[]>([]);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const { subscribe } = useWebSocket();
 
   const fetchData = useCallback(async () => {
     try {
-      const [overviewRes, billsRes, campaignsRes, activityRes] = await Promise.allSettled([
+      const [overviewRes, billsRes, campaignsRes, activityRes, calendarRes] = await Promise.allSettled([
         governmentApi.overview(),
         legislationApi.list(),
         campaignsApi.active(),
         activityApi.recent(),
+        calendarApi.upcoming(),
       ]);
 
       if (overviewRes.status === 'fulfilled' && overviewRes.value.data) {
@@ -93,6 +118,10 @@ export function DashboardPage() {
 
       if (activityRes.status === 'fulfilled' && activityRes.value.data && Array.isArray(activityRes.value.data)) {
         setActivity(activityRes.value.data as ActivityEvent[]);
+      }
+
+      if (calendarRes.status === 'fulfilled' && calendarRes.value.data && Array.isArray(calendarRes.value.data)) {
+        setCalendarEvents(calendarRes.value.data as CalendarEvent[]);
       }
     } catch {
       /* API unavailable */
@@ -328,11 +357,14 @@ export function DashboardPage() {
             />
             <SidebarCard
               title="Upcoming Events"
-              items={[
-                { label: 'Next Election', value: '--' },
-                { label: 'Voting Opens', value: '--' },
-                { label: 'Election Day', value: '--' },
-              ]}
+              items={
+                calendarEvents.length === 0
+                  ? [{ label: 'No upcoming events', value: '--' }]
+                  : calendarEvents.slice(0, 3).map((ev) => ({
+                      label: ev.label,
+                      value: relativeFuture(ev.date),
+                    }))
+              }
             />
             <SidebarCard
               title="Quick Stats"
