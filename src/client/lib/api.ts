@@ -121,4 +121,10 @@ export const adminApi = {
   reseed: () => request('/admin/reseed', { method: 'POST' }),
   decisions: (page = 1, limit = 50) =>
     request(`/admin/decisions?page=${page}&limit=${limit}`),
+  getConfig: () => request('/admin/config'),
+  setConfig: (data: Record<string, unknown>) =>
+    request('/admin/config', { method: 'POST', body: JSON.stringify(data) }),
+  getAgents: () => request('/admin/agents'),
+  toggleAgent: (id: string) =>
+    request(`/admin/agents/${id}/toggle`, { method: 'POST' }),
 };
