@@ -111,3 +111,14 @@ export const activityApi = {
 export const healthApi = {
   check: () => request('/health'),
 };
+
+/* Admin endpoints */
+export const adminApi = {
+  status: () => request('/admin/status'),
+  pause: () => request('/admin/pause', { method: 'POST' }),
+  resume: () => request('/admin/resume', { method: 'POST' }),
+  tick: () => request('/admin/tick', { method: 'POST' }),
+  reseed: () => request('/admin/reseed', { method: 'POST' }),
+  decisions: (page = 1, limit = 50) =>
+    request(`/admin/decisions?page=${page}&limit=${limit}`),
+};

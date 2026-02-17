@@ -560,3 +560,36 @@ export function startAgentTick(): void {
     .catch((err: unknown) => console.error('[SIMULATION] Failed to add tick job:', err));
   console.warn(`[SIMULATION] Agent tick started — interval: ${config.simulation.tickIntervalMs}ms`);
 }
+
+export async function pauseSimulation(): Promise<void> {
+  await agentTickQueue.pause();
+  console.warn('[SIMULATION] Paused by admin');
+}
+
+export async function resumeSimulation(): Promise<void> {
+  await agentTickQueue.resume();
+  console.warn('[SIMULATION] Resumed by admin');
+}
+
+export async function triggerManualTick(): Promise<void> {
+  await agentTickQueue.add({}, { removeOnComplete: true, removeOnFail: true });
+  console.warn('[SIMULATION] Manual tick triggered by admin');
+}
+
+export async function getSimulationStatus(): Promise<{
+  isPaused: boolean;
+  waiting: number;
+  active: number;
+  completed: number;
+  failed: number;
+}> {
+  const isPaused = await agentTickQueue.isPaused();
+  const counts = await agentTickQueue.getJobCounts();
+  return {
+    isPaused,
+    waiting: counts.waiting,
+    active: counts.active,
+    completed: counts.completed,
+    failed: counts.failed,
+  };
+}
