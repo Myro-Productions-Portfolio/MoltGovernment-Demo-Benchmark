@@ -66,6 +66,7 @@ export const legislationApi = {
     request('/legislation/propose', { method: 'POST', body: JSON.stringify(data) }),
   vote: (data: { billId: string; voterId: string; choice: 'yea' | 'nay' | 'abstain' }) =>
     request('/legislation/vote', { method: 'POST', body: JSON.stringify(data) }),
+  laws: () => request('/laws'),
 };
 
 /* Vote endpoints */

@@ -25,6 +25,15 @@ interface BillData {
   tally?: BillTally;
 }
 
+interface LawData {
+  id: string;
+  billId: string;
+  title: string;
+  text: string;
+  enactedDate: string;
+  isActive: boolean;
+}
+
 const STATUS_FILTERS: Array<{ label: string; value: BillStatus | 'all' }> = [
   { label: 'All', value: 'all' },
   { label: 'Proposed', value: 'proposed' },
@@ -38,9 +47,11 @@ const STATUS_FILTERS: Array<{ label: string; value: BillStatus | 'all' }> = [
 
 export function LegislationPage() {
   const [bills, setBills] = useState<BillData[]>([]);
+  const [laws, setLaws] = useState<LawData[]>([]);
   const [filter, setFilter] = useState<BillStatus | 'all'>('all');
   const [loading, setLoading] = useState(true);
   const [expandedBillId, setExpandedBillId] = useState<string | null>(null);
+  const [expandedLawId, setExpandedLawId] = useState<string | null>(null);
   const { subscribe } = useWebSocket();
 
   const fetchBills = useCallback(async () => {
@@ -56,18 +67,31 @@ export function LegislationPage() {
     }
   }, []);
 
+  const fetchLaws = useCallback(async () => {
+    try {
+      const res = await legislationApi.laws();
+      if (res.data && Array.isArray(res.data)) {
+        setLaws(res.data as LawData[]);
+      }
+    } catch {
+      /* leave empty */
+    }
+  }, []);
+
   useEffect(() => {
     void fetchBills();
+    void fetchLaws();
 
-    const refetch = () => { void fetchBills(); };
+    const refetchBills = () => { void fetchBills(); };
+    const refetchAll = () => { void fetchBills(); void fetchLaws(); };
     const unsubs = [
-      subscribe('bill:proposed', refetch),
-      subscribe('bill:advanced', refetch),
-      subscribe('bill:resolved', refetch),
-      subscribe('agent:vote', refetch),
+      subscribe('bill:proposed', refetchBills),
+      subscribe('bill:advanced', refetchBills),
+      subscribe('bill:resolved', refetchAll),
+      subscribe('agent:vote', refetchBills),
     ];
     return () => unsubs.forEach((fn) => fn());
-  }, [fetchBills, subscribe]);
+  }, [fetchBills, fetchLaws, subscribe]);
 
   const filteredBills = filter === 'all' ? bills : bills.filter((b) => b.status === filter);
 
@@ -140,6 +164,63 @@ export function LegislationPage() {
           ))}
         </div>
       )}
+
+      {/* Enacted Laws section */}
+      <div className="mt-12">
+        <SectionHeader title="Enacted Laws" badge={`${laws.length} Active`} />
+
+        {laws.length === 0 ? (
+          <div className="text-center py-16 text-text-muted">
+            <p className="text-lg">No laws have been enacted yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+            {laws.map((law, idx) => {
+              const isExpanded = expandedLawId === law.id;
+              const enactedDate = new Date(law.enactedDate).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              });
+              return (
+                <article
+                  key={law.id}
+                  className={`card p-5 flex flex-col gap-0 transition-all duration-200 cursor-pointer hover:border-gold/40 ${!law.isActive ? 'opacity-60' : ''}`}
+                  onClick={() => setExpandedLawId((prev) => (prev === law.id ? null : law.id))}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedLawId((prev) => (prev === law.id ? null : law.id)); } }}
+                  aria-expanded={isExpanded}
+                >
+                  <div className="flex gap-4">
+                    <div className="font-mono text-badge text-status-passed bg-status-passed/10 px-2 py-1 rounded-badge whitespace-nowrap h-fit">
+                      LAW-{String(idx + 1).padStart(3, '0')}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-serif text-[0.95rem] font-semibold mb-1">{law.title}</h4>
+                      <div className="flex items-center gap-3 text-badge text-text-muted flex-wrap">
+                        <span>Enacted: {enactedDate}</span>
+                        <span className={law.isActive ? 'badge-passed' : 'badge-vetoed'}>
+                          {law.isActive ? 'Active' : 'Repealed'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="mt-4 border-t border-border pt-4" onClick={(e) => e.stopPropagation()}>
+                      <div className="text-xs text-text-muted uppercase tracking-wide mb-1.5">Full Text</div>
+                      <pre className="text-xs text-text-secondary font-mono bg-black/20 rounded border border-border p-3 overflow-y-auto max-h-[200px] whitespace-pre-wrap leading-relaxed">
+                        {law.text}
+                      </pre>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
