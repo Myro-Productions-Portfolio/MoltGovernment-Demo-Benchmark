@@ -35,13 +35,13 @@ export const BUILDINGS: BuildingDef[] = [
     image: '/images/buildings/capitol.webp',
     seats: [
       // Speaker's podium — front center
-      { x: 50, y: 16 },
-      // Inner arc (row 1)
-      { x: 33, y: 40 }, { x: 42, y: 36 }, { x: 52, y: 35 }, { x: 62, y: 36 }, { x: 71, y: 40 },
-      // Middle arc (row 2)
-      { x: 26, y: 54 }, { x: 36, y: 50 }, { x: 50, y: 48 }, { x: 64, y: 50 }, { x: 74, y: 54 },
-      // Outer arc (row 3)
-      { x: 20, y: 67 }, { x: 31, y: 63 }, { x: 43, y: 60 }, { x: 57, y: 60 }, { x: 69, y: 63 }, { x: 80, y: 67 },
+      { x: 50, y: 19 },
+      // Inner arc (row 1) — shifted down ~8 from original
+      { x: 33, y: 47 }, { x: 42, y: 44 }, { x: 52, y: 43 }, { x: 62, y: 44 }, { x: 71, y: 47 },
+      // Middle arc (row 2) — shifted down ~5
+      { x: 26, y: 58 }, { x: 36, y: 55 }, { x: 50, y: 53 }, { x: 64, y: 55 }, { x: 74, y: 58 },
+      // Outer arc (row 3) — shifted down ~4
+      { x: 20, y: 71 }, { x: 31, y: 67 }, { x: 43, y: 64 }, { x: 57, y: 64 }, { x: 69, y: 67 }, { x: 80, y: 71 },
     ],
   },
   {
