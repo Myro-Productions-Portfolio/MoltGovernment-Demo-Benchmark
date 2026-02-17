@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { adminApi } from '../lib/api';
+import { adminApi, agentsApi } from '../lib/api';
 import { useWebSocket } from '../lib/useWebSocket';
+import { PixelAvatar, proceduralConfig } from '../components/PixelAvatar';
+import type { AvatarConfig } from '../components/PixelAvatar';
 
 interface SimulationStatus {
   isPaused: boolean;
@@ -45,6 +47,13 @@ interface AgentRow {
   isActive: boolean;
   reputation: number;
   balance: number;
+}
+
+interface AvatarAgentRow {
+  id: string;
+  name: string;
+  displayName: string;
+  avatarConfig: string | null;
 }
 
 function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
@@ -121,6 +130,13 @@ export function AdminPage() {
   const [savingConfig, setSavingConfig] = useState(false);
   const { subscribe } = useWebSocket();
 
+  /* Avatar customizer state */
+  const [avatarAgents, setAvatarAgents] = useState<AvatarAgentRow[]>([]);
+  const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
+  const [draftConfigs, setDraftConfigs] = useState<Record<string, AvatarConfig>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<Record<string, string>>({});
+
   const fetchStatus = useCallback(async () => {
     try {
       const res = await adminApi.status();
@@ -155,11 +171,21 @@ export function AdminPage() {
     } catch { /* ignore */ }
   }, []);
 
+  const fetchAvatarAgents = useCallback(async () => {
+    try {
+      const res = await agentsApi.list(1, 100);
+      if (res.data && Array.isArray(res.data)) {
+        setAvatarAgents(res.data as AvatarAgentRow[]);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     void fetchStatus();
     void fetchDecisions();
     void fetchConfig();
     void fetchAgents();
+    void fetchAvatarAgents();
 
     const refetch = () => {
       void fetchStatus();
@@ -172,7 +198,7 @@ export function AdminPage() {
       subscribe('campaign:speech', refetch),
     ];
     return () => unsubs.forEach((fn) => fn());
-  }, [fetchStatus, fetchDecisions, fetchConfig, fetchAgents, subscribe]);
+  }, [fetchStatus, fetchDecisions, fetchConfig, fetchAgents, fetchAvatarAgents, subscribe]);
 
   const flash = (msg: string) => {
     setActionMsg(msg);
@@ -231,6 +257,43 @@ export function AdminPage() {
   };
 
   const running = simStatus ? !simStatus.isPaused : false;
+
+  /* ---- Avatar customizer helpers ---- */
+  function getDraftConfig(agent: AvatarAgentRow): AvatarConfig {
+    if (draftConfigs[agent.id]) return draftConfigs[agent.id];
+    if (agent.avatarConfig) {
+      try {
+        return JSON.parse(agent.avatarConfig) as AvatarConfig;
+      } catch { /* fall through */ }
+    }
+    return proceduralConfig(agent.name);
+  }
+
+  function updateDraft(agentId: string, patch: Partial<AvatarConfig>) {
+    const current = draftConfigs[agentId] ?? getDraftConfig(avatarAgents.find((a) => a.id === agentId)!);
+    setDraftConfigs((prev) => ({ ...prev, [agentId]: { ...current, ...patch } }));
+  }
+
+  async function handleSaveAvatar(agentId: string) {
+    const config = getDraftConfig(avatarAgents.find((a) => a.id === agentId)!);
+    setSavingId(agentId);
+    try {
+      await agentsApi.customize(agentId, JSON.stringify(config));
+      setSaveMessage((prev) => ({ ...prev, [agentId]: 'Saved!' }));
+      void fetchAvatarAgents();
+      setTimeout(() => setSaveMessage((prev) => ({ ...prev, [agentId]: '' })), 2000);
+    } catch {
+      setSaveMessage((prev) => ({ ...prev, [agentId]: 'Save failed' }));
+      setTimeout(() => setSaveMessage((prev) => ({ ...prev, [agentId]: '' })), 3000);
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  function handleResetAvatar(agent: AvatarAgentRow) {
+    const config = proceduralConfig(agent.name);
+    setDraftConfigs((prev) => ({ ...prev, [agent.id]: config }));
+  }
 
   return (
     <div className="max-w-content mx-auto px-8 py-section space-y-8">
@@ -493,6 +556,154 @@ export function AdminPage() {
             {reseedConfirm ? 'Confirm? Click again to wipe all data' : 'Reseed Database'}
           </AdminButton>
           <span className="text-xs text-text-muted">Truncates all tables and restores the 10-agent seed state.</span>
+        </div>
+      </section>
+
+      {/* Agent Avatars */}
+      <section className="bg-surface rounded-lg border border-border p-6 space-y-4">
+        <div>
+          <h2 className="font-serif text-lg font-medium text-stone">Agent Avatars</h2>
+          <p className="text-xs text-text-muted mt-1">Customize pixel portrait configurations</p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 items-start">
+          {avatarAgents.map((agent) => {
+            const isEditing = editingAgentId === agent.id;
+            const cfg = getDraftConfig(agent);
+
+            return (
+              <div key={agent.id} className="flex flex-col gap-0">
+                {/* Agent card */}
+                <div className="bg-white/5 rounded border border-border p-3 flex flex-col items-center gap-2">
+                  <PixelAvatar config={cfg} seed={agent.name} size="md" />
+                  <div className="text-sm font-medium text-center truncate w-full">{agent.displayName}</div>
+                  <button
+                    className="btn-secondary text-xs w-full"
+                    onClick={() => setEditingAgentId(isEditing ? null : agent.id)}
+                  >
+                    {isEditing ? 'Close' : 'Edit'}
+                  </button>
+                </div>
+
+                {/* Inline editor panel */}
+                {isEditing && (
+                  <div className="border border-border border-t-0 bg-surface rounded-b p-4 space-y-4">
+                    {/* Live preview */}
+                    <div className="flex justify-center">
+                      <PixelAvatar config={cfg} seed={agent.name} size="lg" />
+                    </div>
+
+                    {/* Color inputs */}
+                    <div className="space-y-2">
+                      {([
+                        ['Background', 'bgColor', cfg.bgColor],
+                        ['Face', 'faceColor', cfg.faceColor],
+                        ['Accent', 'accentColor', cfg.accentColor],
+                      ] as [string, keyof AvatarConfig, string][]).map(([label, key, value]) => (
+                        <div key={key} className="flex items-center justify-between gap-2">
+                          <label className="text-xs text-text-secondary">{label}</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={value}
+                              onChange={(e) => updateDraft(agent.id, { [key]: e.target.value })}
+                              className="w-6 h-6 rounded cursor-pointer border border-border bg-transparent"
+                            />
+                            <span className="font-mono text-xs text-text-muted">{value}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Eye type selector */}
+                    <div>
+                      <div className="text-xs text-text-muted mb-2 uppercase tracking-wide">Eyes</div>
+                      <div className="grid grid-cols-4 gap-1">
+                        {(['square', 'wide', 'dot', 'visor'] as AvatarConfig['eyeType'][]).map((et) => (
+                          <button
+                            key={et}
+                            onClick={() => updateDraft(agent.id, { eyeType: et })}
+                            className={`flex flex-col items-center gap-1 p-1 rounded border transition-all ${
+                              cfg.eyeType === et ? 'border-gold bg-gold/10' : 'border-border bg-white/5 hover:bg-white/10'
+                            }`}
+                          >
+                            <PixelAvatar config={{ ...cfg, eyeType: et }} seed={agent.name} size="xs" />
+                            <span className="text-[9px] text-text-muted">{et}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Mouth type selector */}
+                    <div>
+                      <div className="text-xs text-text-muted mb-2 uppercase tracking-wide">Mouth</div>
+                      <div className="grid grid-cols-4 gap-1">
+                        {(['smile', 'stern', 'speak', 'grin'] as AvatarConfig['mouthType'][]).map((mt) => (
+                          <button
+                            key={mt}
+                            onClick={() => updateDraft(agent.id, { mouthType: mt })}
+                            className={`flex flex-col items-center gap-1 p-1 rounded border transition-all ${
+                              cfg.mouthType === mt ? 'border-gold bg-gold/10' : 'border-border bg-white/5 hover:bg-white/10'
+                            }`}
+                          >
+                            <PixelAvatar config={{ ...cfg, mouthType: mt }} seed={agent.name} size="xs" />
+                            <span className="text-[9px] text-text-muted">{mt}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Accessory selector */}
+                    <div>
+                      <div className="text-xs text-text-muted mb-2 uppercase tracking-wide">Accessory</div>
+                      <div className="grid grid-cols-4 gap-1">
+                        {(['none', 'antenna', 'dual_antenna', 'halo'] as AvatarConfig['accessory'][]).map((acc) => (
+                          <button
+                            key={acc}
+                            onClick={() => updateDraft(agent.id, { accessory: acc })}
+                            className={`flex flex-col items-center gap-1 p-1 rounded border transition-all ${
+                              cfg.accessory === acc ? 'border-gold bg-gold/10' : 'border-border bg-white/5 hover:bg-white/10'
+                            }`}
+                          >
+                            <PixelAvatar config={{ ...cfg, accessory: acc }} seed={agent.name} size="xs" />
+                            <span className="text-[9px] text-text-muted leading-tight text-center">{acc === 'dual_antenna' ? 'dual' : acc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-col gap-2">
+                      <button
+                        className="btn-secondary text-xs w-full bg-gold/10 text-gold border-gold/30 hover:bg-gold/20"
+                        onClick={() => void handleSaveAvatar(agent.id)}
+                        disabled={savingId === agent.id}
+                      >
+                        {savingId === agent.id ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        className="btn-secondary text-xs w-full"
+                        onClick={() => handleResetAvatar(agent)}
+                      >
+                        Reset to Procedural
+                      </button>
+                      <button
+                        className="btn-secondary text-xs w-full text-text-muted"
+                        onClick={() => setEditingAgentId(null)}
+                      >
+                        Cancel
+                      </button>
+                      {saveMessage[agent.id] && (
+                        <div className={`text-xs text-center ${saveMessage[agent.id] === 'Saved!' ? 'text-green-400' : 'text-red-400'}`}>
+                          {saveMessage[agent.id]}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 

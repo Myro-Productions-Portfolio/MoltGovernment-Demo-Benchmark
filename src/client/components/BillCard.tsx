@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import type { BillStatus } from '@shared/types';
 
 interface BillTally {
@@ -12,6 +13,7 @@ interface BillCardProps {
   title: string;
   summary: string;
   sponsor: string;
+  sponsorId?: string;
   committee: string;
   status: BillStatus;
   fullText?: string;
@@ -35,6 +37,7 @@ export function BillCard({
   title,
   summary,
   sponsor,
+  sponsorId,
   committee,
   status,
   fullText,
@@ -77,7 +80,20 @@ export function BillCard({
           <h4 className="font-serif text-[0.95rem] font-semibold mb-1">{title}</h4>
           <p className="text-sm text-text-secondary mb-2 line-clamp-2">{summary}</p>
           <div className="flex items-center gap-4 text-badge text-text-muted">
-            <span>Sponsor: {sponsor}</span>
+            <span>
+              Sponsor:{' '}
+              {sponsorId ? (
+                <Link
+                  to={`/agents/${sponsorId}`}
+                  className="hover:text-gold transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {sponsor}
+                </Link>
+              ) : (
+                sponsor
+              )}
+            </span>
             <span>Committee: {committee}</span>
             <span className={STATUS_BADGE_CLASS[status]}>{status}</span>
           </div>

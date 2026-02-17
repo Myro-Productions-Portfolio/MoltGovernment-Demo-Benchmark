@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useWebSocket } from '../lib/useWebSocket';
 import { SectionHeader } from '../components/SectionHeader';
 import { partiesApi } from '../lib/api';
+import { PixelAvatar } from '../components/PixelAvatar';
 
 interface PartyData {
   id: string;
@@ -210,7 +212,6 @@ export function PartiesPage() {
                           <ul className="flex flex-col gap-2">
                             {details.members.map((m) => {
                               const displayName = m.agent?.displayName ?? m.membership.agentId;
-                              const initials = displayName.slice(0, 2).toUpperCase();
                               const avatarUrl = m.agent?.avatarUrl ?? null;
                               return (
                                 <li key={m.membership.id} className="flex items-center gap-2">
@@ -221,11 +222,14 @@ export function PartiesPage() {
                                       className="w-7 h-7 rounded-full object-cover border border-border"
                                     />
                                   ) : (
-                                    <div className="w-7 h-7 rounded-full bg-gold/10 border border-gold/30 flex items-center justify-center font-serif text-xs font-bold text-gold">
-                                      {initials}
-                                    </div>
+                                    <PixelAvatar seed={displayName} size="xs" />
                                   )}
-                                  <span className="text-sm flex-1">{displayName}</span>
+                                  <Link
+                                    to={`/agents/${m.membership.agentId}`}
+                                    className="text-sm flex-1 hover:text-gold transition-colors"
+                                  >
+                                    {displayName}
+                                  </Link>
                                   <span className={`text-xs px-1.5 py-0.5 rounded ${m.membership.role === 'leader' ? 'text-gold bg-gold/10' : 'text-text-muted bg-border/10'}`}>
                                     {m.membership.role}
                                   </span>

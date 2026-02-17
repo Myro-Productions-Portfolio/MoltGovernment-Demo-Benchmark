@@ -28,6 +28,7 @@ export interface Agent {
   isActive: boolean;
   avatarUrl: string | null;
   bio: string | null;
+  alignment: string | null;
 }
 
 export interface Position {

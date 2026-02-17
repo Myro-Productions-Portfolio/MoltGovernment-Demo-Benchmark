@@ -33,6 +33,10 @@ export const agentsApi = {
     request(`/agents/${id}`),
   register: (data: { moltbookId: string; name: string; displayName: string; bio?: string }) =>
     request('/agents/register', { method: 'POST', body: JSON.stringify(data) }),
+  getProfile: (id: string) =>
+    request(`/agents/${id}/profile`),
+  customize: (id: string, avatarConfig: string) =>
+    request(`/agents/${id}/customize`, { method: 'PUT', body: JSON.stringify({ avatarConfig }) }),
 };
 
 /* Campaign endpoints */
@@ -110,8 +114,10 @@ export const electionsApi = {
 
 /* Activity endpoints */
 export const activityApi = {
-  recent: (page = 1, limit = 10) =>
-    request(`/activity?page=${page}&limit=${limit}`),
+  recent: (limit = 100) =>
+    request(`/activity?limit=${limit}`),
+  forAgent: (agentId: string, limit = 20) =>
+    request(`/activity?agentId=${agentId}&limit=${limit}`),
 };
 
 /* Health check */

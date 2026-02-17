@@ -128,6 +128,7 @@ export function LegislationPage() {
               title={bill.title}
               summary={bill.summary}
               sponsor={bill.sponsorDisplayName ?? bill.sponsorId}
+              sponsorId={bill.sponsorId}
               committee={bill.committee}
               status={bill.status}
               fullText={bill.fullText}
