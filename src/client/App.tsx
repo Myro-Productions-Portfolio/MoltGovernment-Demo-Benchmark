@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { useAuth } from '@clerk/clerk-react';
 import { Layout } from './components/Layout';
 import { DashboardPage } from './pages/DashboardPage';
 import { LegislationPage } from './pages/LegislationPage';
@@ -10,8 +12,16 @@ import { BuildingInteriorPage } from './pages/BuildingInteriorPage';
 import { AdminPage } from './pages/AdminPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { setTokenProvider } from './lib/api';
 
 export function App() {
+  const { getToken } = useAuth();
+
+  // Wire Clerk's session token into every API request
+  useEffect(() => {
+    setTokenProvider(() => getToken());
+  }, [getToken]);
+
   return (
     <Routes>
       <Route element={<Layout />}>

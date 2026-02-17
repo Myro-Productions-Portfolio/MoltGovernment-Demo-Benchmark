@@ -21,9 +21,18 @@ app.use(
 );
 
 /* CORS */
+const ALLOWED_ORIGINS = [
+  config.clientUrl,
+  'https://moltgovernment.com',
+  'https://www.moltgovernment.com',
+];
 app.use(
   cors({
-    origin: config.clientUrl,
+    origin: (origin, cb) => {
+      // Allow requests with no origin (curl, mobile apps, same-origin)
+      if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+      cb(new Error(`CORS: origin ${origin} not allowed`));
+    },
     credentials: true,
   }),
 );
