@@ -5,6 +5,13 @@ import { BillCard } from '../components/BillCard';
 import { legislationApi } from '../lib/api';
 import type { BillStatus } from '@shared/types';
 
+interface BillTally {
+  yea: number;
+  nay: number;
+  abstain: number;
+  total: number;
+}
+
 interface BillData {
   id: string;
   title: string;
@@ -13,6 +20,9 @@ interface BillData {
   sponsorDisplayName?: string;
   committee: string;
   status: BillStatus;
+  fullText?: string;
+  coSponsorIds?: string;
+  tally?: BillTally;
 }
 
 const STATUS_FILTERS: Array<{ label: string; value: BillStatus | 'all' }> = [
@@ -21,6 +31,7 @@ const STATUS_FILTERS: Array<{ label: string; value: BillStatus | 'all' }> = [
   { label: 'Committee', value: 'committee' },
   { label: 'Floor', value: 'floor' },
   { label: 'Passed', value: 'passed' },
+  { label: 'Vetoed', value: 'vetoed' },
   { label: 'Law', value: 'law' },
 ];
 
@@ -28,7 +39,8 @@ const STATUS_FILTERS: Array<{ label: string; value: BillStatus | 'all' }> = [
 export function LegislationPage() {
   const [bills, setBills] = useState<BillData[]>([]);
   const [filter, setFilter] = useState<BillStatus | 'all'>('all');
-  const [_loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [expandedBillId, setExpandedBillId] = useState<string | null>(null);
   const { subscribe } = useWebSocket();
 
   const fetchBills = useCallback(async () => {
@@ -59,6 +71,26 @@ export function LegislationPage() {
 
   const filteredBills = filter === 'all' ? bills : bills.filter((b) => b.status === filter);
 
+  function countForFilter(value: BillStatus | 'all'): number {
+    if (value === 'all') return bills.length;
+    return bills.filter((b) => b.status === value).length;
+  }
+
+  function handleCardClick(billId: string) {
+    setExpandedBillId((prev) => (prev === billId ? null : billId));
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-content mx-auto px-8 py-section">
+        <SectionHeader title="Legislation" badge="Loading..." />
+        <div className="flex items-center justify-center py-24">
+          <p className="text-text-muted animate-pulse text-lg">Loading legislation...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-content mx-auto px-8 py-section">
       <SectionHeader title="Legislation" badge={`${bills.length} Bills`} />
@@ -77,7 +109,7 @@ export function LegislationPage() {
             }`}
             onClick={() => setFilter(f.value)}
           >
-            {f.label}
+            {f.label} ({countForFilter(f.value)})
           </button>
         ))}
       </div>
@@ -98,6 +130,11 @@ export function LegislationPage() {
               sponsor={bill.sponsorDisplayName ?? bill.sponsorId}
               committee={bill.committee}
               status={bill.status}
+              fullText={bill.fullText}
+              coSponsors={bill.coSponsorIds}
+              tally={bill.tally}
+              isExpanded={expandedBillId === bill.id}
+              onClick={() => handleCardClick(bill.id)}
             />
           ))}
         </div>

@@ -36,7 +36,25 @@ export function ElectionBanner({ title, description, targetDate }: ElectionBanne
     return () => clearInterval(interval);
   }, [targetDate]);
 
-  if (!targetDate) return null;
+  if (!targetDate) {
+    return (
+      <div
+        className="rounded-card border border-border p-6 flex items-center justify-between mb-8"
+        style={{
+          background:
+            'linear-gradient(135deg, rgba(184, 149, 106, 0.05) 0%, rgba(201, 185, 155, 0.02) 100%)',
+        }}
+        role="banner"
+        aria-label="Election status"
+      >
+        <div>
+          <h3 className="font-serif text-xl text-stone mb-1">{title}</h3>
+          <p className="text-sm text-text-secondary">{description}</p>
+        </div>
+        <div className="text-sm text-text-muted italic">No upcoming election scheduled</div>
+      </div>
+    );
+  }
 
   const units = [
     { value: time.days, label: 'Days' },
