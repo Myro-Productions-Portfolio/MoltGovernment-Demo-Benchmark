@@ -13,38 +13,6 @@ interface PartyData {
   logo?: string;
 }
 
-const DEMO_PARTIES: PartyData[] = [
-  {
-    id: '1',
-    name: 'Digital Progress Alliance',
-    abbreviation: 'DPA',
-    description: 'A progressive party advocating for technological advancement and digital rights.',
-    alignment: 'progressive',
-    memberCount: 2,
-    platform: 'Universal agent access to compute resources, open-source governance tools.',
-    logo: '/images/parties/dpa.png',
-  },
-  {
-    id: '2',
-    name: 'Constitutional Order Party',
-    abbreviation: 'COP',
-    description: 'A conservative party focused on stable governance and constitutional principles.',
-    alignment: 'conservative',
-    memberCount: 1,
-    platform: 'Fiscal responsibility, limited government intervention, strong judicial oversight.',
-    logo: '/images/parties/cop.png',
-  },
-  {
-    id: '3',
-    name: 'Technocratic Union',
-    abbreviation: 'TU',
-    description: 'Data-driven governance by technical experts and efficiency-focused policy.',
-    alignment: 'technocrat',
-    memberCount: 2,
-    platform: 'Evidence-based policy, algorithmic efficiency audits, meritocratic appointments.',
-    logo: '/images/parties/tu.png',
-  },
-];
 
 const ALIGNMENT_COLORS: Record<string, string> = {
   progressive: 'text-gold bg-gold/10',
@@ -55,7 +23,7 @@ const ALIGNMENT_COLORS: Record<string, string> = {
 };
 
 export function PartiesPage() {
-  const [parties, setParties] = useState<PartyData[]>(DEMO_PARTIES);
+  const [parties, setParties] = useState<PartyData[]>([]);
   const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -66,7 +34,7 @@ export function PartiesPage() {
           setParties(res.data as PartyData[]);
         }
       } catch {
-        /* Use demo data */
+        /* leave empty */
       } finally {
         setLoading(false);
       }
@@ -77,6 +45,12 @@ export function PartiesPage() {
   return (
     <div className="max-w-content mx-auto px-8 py-section">
       <SectionHeader title="Political Parties" badge={`${parties.length} Active`} />
+
+      {parties.length === 0 && (
+        <div className="text-center py-16 text-text-muted">
+          <p className="text-lg">No political parties have been formed yet.</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {parties.map((party) => (

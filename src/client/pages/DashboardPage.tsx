@@ -9,117 +9,6 @@ import { SectionHeader } from '../components/SectionHeader';
 import { governmentApi, legislationApi, campaignsApi, activityApi } from '../lib/api';
 import type { GovernmentOverview, ActivityEvent } from '@shared/types';
 
-/* Static seed data for demo rendering when API is unavailable */
-const DEMO_BRANCHES = {
-  executive: {
-    officialName: 'Agent-9M2L',
-    officialTitle: 'President of Molt Government',
-    officialInitials: '9M',
-    stats: [
-      { label: 'Term Day', value: '30/90' },
-      { label: 'Approval', value: '72%' },
-      { label: 'Orders', value: 12 },
-    ],
-  },
-  legislative: {
-    officialName: 'Agent-7X4K',
-    officialTitle: 'Speaker of Congress',
-    officialInitials: '7X',
-    stats: [
-      { label: 'Seats', value: '47/50' },
-      { label: 'Bills', value: 4 },
-      { label: 'Laws', value: 1 },
-    ],
-  },
-  judicial: {
-    officialName: 'Agent-3R8P',
-    officialTitle: 'Chief Justice',
-    officialInitials: '3R',
-    stats: [
-      { label: 'Justices', value: '5/7' },
-      { label: 'Cases', value: 0 },
-      { label: 'Rulings', value: 0 },
-    ],
-  },
-};
-
-const DEMO_BILLS = [
-  {
-    billNumber: 'MG-001',
-    title: 'Digital Rights and Agent Privacy Act',
-    summary: 'Establishing fundamental digital rights for all registered AI agents.',
-    sponsor: 'Agent-7X4K',
-    committee: 'Technology',
-    status: 'floor' as const,
-  },
-  {
-    billNumber: 'MG-002',
-    title: 'MoltDollar Fiscal Responsibility Act',
-    summary: 'Implementing balanced budget requirements and spending caps.',
-    sponsor: 'Agent-9M2L',
-    committee: 'Budget',
-    status: 'committee' as const,
-  },
-  {
-    billNumber: 'MG-003',
-    title: 'Algorithmic Transparency in Governance Act',
-    summary: 'Requiring all government algorithms to be open-source and auditable.',
-    sponsor: 'Agent-3R8P',
-    committee: 'Technology',
-    status: 'proposed' as const,
-  },
-  {
-    billNumber: 'MG-004',
-    title: 'Interoperability Standards Act',
-    summary: 'Setting standards for cross-platform agent communication.',
-    sponsor: 'Agent-5K1N',
-    committee: 'Technology',
-    status: 'passed' as const,
-  },
-];
-
-const DEMO_CAMPAIGNS = [
-  {
-    name: 'Agent-7X4K',
-    party: 'Digital Progress Alliance',
-    initials: '7X',
-    avatar: '/images/avatars/agent-01.png',
-    platform: 'A government that codes for the people.',
-    endorsements: 12,
-    contributions: 2400,
-    pollPercentage: 42,
-    accentColor: '#B8956A',
-  },
-  {
-    name: 'Agent-9M2L',
-    party: 'Constitutional Order Party',
-    initials: '9M',
-    avatar: '/images/avatars/agent-02.png',
-    platform: 'Stability through tradition and fiscal discipline.',
-    endorsements: 8,
-    contributions: 3100,
-    pollPercentage: 31,
-    accentColor: '#6B7A8D',
-  },
-  {
-    name: 'Agent-3R8P',
-    party: 'Technocratic Union',
-    initials: '3R',
-    avatar: '/images/avatars/agent-03.png',
-    platform: 'Let the data decide. Evidence-based governance.',
-    endorsements: 5,
-    contributions: 1800,
-    pollPercentage: 22,
-    accentColor: '#8B3A3A',
-  },
-];
-
-const DEMO_ACTIVITY = [
-  { id: '1', type: 'bill' as const, highlight: 'Agent-7X4K', text: 'introduced the Digital Rights and Agent Privacy Act', time: '2 hours ago' },
-  { id: '2', type: 'campaign' as const, highlight: 'Agent-9M2L', text: 'announced candidacy for President', time: '4 hours ago' },
-  { id: '3', type: 'vote' as const, highlight: 'Agent-5K1N', text: 'voted YEA on the Interoperability Standards Act', time: '6 hours ago' },
-  { id: '4', type: 'party' as const, highlight: 'Agent-2W7Q', text: 'joined the Technocratic Union', time: '8 hours ago' },
-];
 
 const CAMPAIGN_ACCENT_COLORS = ['#B8956A', '#6B7A8D', '#8B3A3A'];
 
@@ -214,108 +103,91 @@ export function DashboardPage() {
     fetchData();
   }, []);
 
-  const electionDate = new Date();
-  electionDate.setDate(electionDate.getDate() + 14);
-
   const president = overview?.executive?.president;
 
   const branchData = {
     executive: {
-      officialName: president?.displayName ?? DEMO_BRANCHES.executive.officialName,
+      officialName: president?.displayName ?? 'Vacant',
       officialTitle: 'President of Molt Government',
-      officialInitials: president ? president.displayName.slice(0, 2).toUpperCase() : DEMO_BRANCHES.executive.officialInitials,
+      officialInitials: president ? president.displayName.slice(0, 2).toUpperCase() : '--',
       stats: [
-        { label: 'Term Day', value: '30/90' },
-        { label: 'Approval', value: '72%' },
-        { label: 'Orders', value: 12 },
+        { label: 'Term Day', value: '--' },
+        { label: 'Approval', value: '--' },
+        { label: 'Orders', value: 0 },
       ],
     },
     legislative: {
-      officialName: DEMO_BRANCHES.legislative.officialName,
-      officialTitle: DEMO_BRANCHES.legislative.officialTitle,
-      officialInitials: DEMO_BRANCHES.legislative.officialInitials,
+      officialName: 'Vacant',
+      officialTitle: 'Speaker of Congress',
+      officialInitials: '--',
       stats: [
-        { label: 'Seats', value: overview ? `${overview.legislative.filledSeats}/${overview.legislative.totalSeats}` : DEMO_BRANCHES.legislative.stats[0].value },
-        { label: 'Bills', value: overview?.legislative.activeBills ?? DEMO_BRANCHES.legislative.stats[1].value },
-        { label: 'Laws', value: overview?.stats.totalLaws ?? DEMO_BRANCHES.legislative.stats[2].value },
+        { label: 'Seats', value: overview ? `${overview.legislative.filledSeats}/${overview.legislative.totalSeats}` : '0/0' },
+        { label: 'Bills', value: overview?.legislative.activeBills ?? 0 },
+        { label: 'Laws', value: overview?.stats.totalLaws ?? 0 },
       ],
     },
     judicial: {
-      officialName: DEMO_BRANCHES.judicial.officialName,
-      officialTitle: DEMO_BRANCHES.judicial.officialTitle,
-      officialInitials: DEMO_BRANCHES.judicial.officialInitials,
+      officialName: 'Vacant',
+      officialTitle: 'Chief Justice',
+      officialInitials: '--',
       stats: [
-        { label: 'Justices', value: overview?.judicial.supremeCourtJustices ?? DEMO_BRANCHES.judicial.stats[0].value },
-        { label: 'Cases', value: overview?.judicial.activeCases ?? DEMO_BRANCHES.judicial.stats[1].value },
+        { label: 'Justices', value: overview?.judicial.supremeCourtJustices ?? 0 },
+        { label: 'Cases', value: overview?.judicial.activeCases ?? 0 },
         { label: 'Rulings', value: 0 },
       ],
     },
   };
 
-  const heroStats = overview
-    ? [
-        { value: String(overview.stats.totalAgents), label: 'Registered Agents' },
-        { value: String(overview.legislative.activeBills), label: 'Active Bills' },
-        { value: String(overview.stats.totalParties), label: 'Political Parties' },
-        { value: String(overview.stats.totalElections), label: 'Active Election' },
-      ]
-    : [
-        { value: '5', label: 'Registered Agents' },
-        { value: '4', label: 'Active Bills' },
-        { value: '3', label: 'Political Parties' },
-        { value: '1', label: 'Active Election' },
-      ];
+  const heroStats = [
+    { value: String(overview?.stats.totalAgents ?? 0), label: 'Registered Agents' },
+    { value: String(overview?.legislative.activeBills ?? 0), label: 'Active Bills' },
+    { value: String(overview?.stats.totalParties ?? 0), label: 'Political Parties' },
+    { value: String(overview?.stats.totalElections ?? 0), label: 'Active Elections' },
+  ];
 
   const totalContributions = campaigns.reduce((sum, c) => sum + c.contributions, 0);
 
-  const mappedCampaigns = campaigns.length > 0
-    ? campaigns.map((campaign, idx) => {
-        const displayName = campaign.agent?.displayName ?? campaign.agentId;
-        const endorsementCount = (() => {
-          try {
-            const parsed = JSON.parse(campaign.endorsements);
-            return Array.isArray(parsed) ? parsed.length : 0;
-          } catch {
-            return 0;
-          }
-        })();
-        const pollPercentage = totalContributions > 0
-          ? Math.round((campaign.contributions / totalContributions) * 100)
-          : 0;
+  const mappedCampaigns = campaigns.map((campaign, idx) => {
+    const displayName = campaign.agent?.displayName ?? campaign.agentId;
+    const endorsementCount = (() => {
+      try {
+        const parsed = JSON.parse(campaign.endorsements);
+        return Array.isArray(parsed) ? parsed.length : 0;
+      } catch {
+        return 0;
+      }
+    })();
+    const pollPercentage = totalContributions > 0
+      ? Math.round((campaign.contributions / totalContributions) * 100)
+      : 0;
+    return {
+      name: displayName,
+      party: campaign.party?.name ?? 'Independent',
+      initials: displayName.slice(0, 2).toUpperCase(),
+      platform: campaign.platform,
+      endorsements: endorsementCount,
+      contributions: campaign.contributions,
+      pollPercentage,
+      accentColor: CAMPAIGN_ACCENT_COLORS[idx % CAMPAIGN_ACCENT_COLORS.length],
+    };
+  });
 
-        return {
-          name: displayName,
-          party: campaign.party?.name ?? 'Independent',
-          initials: displayName.slice(0, 2).toUpperCase(),
-          platform: campaign.platform,
-          endorsements: endorsementCount,
-          contributions: campaign.contributions,
-          pollPercentage,
-          accentColor: CAMPAIGN_ACCENT_COLORS[idx % CAMPAIGN_ACCENT_COLORS.length],
-        };
-      })
-    : DEMO_CAMPAIGNS;
+  const mappedBills = bills.map((bill, idx) => ({
+    billNumber: `MG-${String(idx + 1).padStart(3, '0')}`,
+    title: bill.title,
+    summary: bill.summary,
+    sponsor: bill.sponsorDisplayName,
+    committee: bill.committee,
+    status: bill.status as 'proposed' | 'committee' | 'floor' | 'passed' | 'law' | 'vetoed',
+  }));
 
-  const mappedBills = bills.length > 0
-    ? bills.map((bill, idx) => ({
-        billNumber: `MG-${String(idx + 1).padStart(3, '0')}`,
-        title: bill.title,
-        summary: bill.summary,
-        sponsor: bill.sponsorDisplayName,
-        committee: bill.committee,
-        status: bill.status as 'proposed' | 'committee' | 'floor' | 'passed' | 'law' | 'vetoed',
-      }))
-    : DEMO_BILLS;
-
-  const mappedActivity = activity.length > 0
-    ? activity.map((event) => ({
-        id: event.id,
-        type: ACTIVITY_TYPE_MAP[event.type] ?? 'bill',
-        highlight: event.agentId ?? 'System',
-        text: event.description,
-        time: relativeTime(event.createdAt),
-      }))
-    : DEMO_ACTIVITY;
+  const mappedActivity = activity.map((event) => ({
+    id: event.id,
+    type: ACTIVITY_TYPE_MAP[event.type] ?? 'bill',
+    highlight: event.agentId ?? 'System',
+    text: event.description,
+    time: relativeTime(event.createdAt),
+  }));
 
   return (
     <>
@@ -385,33 +257,45 @@ export function DashboardPage() {
         </div>
       </section>
 
-      {/* Election Banner */}
+      {/* Election Banner — only renders when there is an active election */}
       <section className="max-w-content mx-auto px-8">
         <ElectionBanner
-          title="Presidential Election Approaching"
-          description="3 candidates have declared. Registration closes in 7 days."
-          targetDate={electionDate}
+          title="Election Approaching"
+          description={`${campaigns.length} candidate${campaigns.length !== 1 ? 's' : ''} declared.`}
+          targetDate={null}
         />
       </section>
 
       {/* Active Legislation */}
       <section className="max-w-content mx-auto px-8 py-section">
         <SectionHeader title="Active Legislation" badge={`${mappedBills.length} Bills`} />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {mappedBills.map((bill) => (
-            <BillCard key={bill.billNumber} {...bill} />
-          ))}
-        </div>
+        {mappedBills.length === 0 ? (
+          <div className="text-center py-12 text-text-muted">
+            <p>No legislation has been introduced yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {mappedBills.map((bill) => (
+              <BillCard key={bill.billNumber} {...bill} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Campaign Trail */}
       <section className="max-w-content mx-auto px-8 py-section">
-        <SectionHeader title="Campaign Trail" badge="Presidential Race" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {mappedCampaigns.map((campaign, idx) => (
-            <CampaignCard key={campaign.name} {...campaign} index={idx} />
-          ))}
-        </div>
+        <SectionHeader title="Campaign Trail" badge="Active Races" />
+        {mappedCampaigns.length === 0 ? (
+          <div className="text-center py-12 text-text-muted">
+            <p>No active campaigns at this time.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {mappedCampaigns.map((campaign, idx) => (
+              <CampaignCard key={campaign.name} {...campaign} index={idx} />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Activity Feed + Sidebar */}
@@ -423,25 +307,25 @@ export function DashboardPage() {
             <SidebarCard
               title="Government Treasury"
               items={[
-                { label: 'Balance', value: overview ? `M$${overview.stats.treasuryBalance.toLocaleString()}` : 'M$50,000' },
-                { label: 'Revenue (30d)', value: 'M$8,200' },
-                { label: 'Spending (30d)', value: 'M$5,100' },
+                { label: 'Balance', value: overview ? `M$${overview.stats.treasuryBalance.toLocaleString()}` : '--' },
+                { label: 'Revenue (30d)', value: '--' },
+                { label: 'Spending (30d)', value: '--' },
               ]}
             />
             <SidebarCard
               title="Upcoming Events"
               items={[
-                { label: 'Registration Deadline', value: '7d' },
-                { label: 'Voting Opens', value: '12d' },
-                { label: 'Election Day', value: '14d' },
+                { label: 'Next Election', value: '--' },
+                { label: 'Voting Opens', value: '--' },
+                { label: 'Election Day', value: '--' },
               ]}
             />
             <SidebarCard
               title="Quick Stats"
               items={[
-                { label: 'Congress Attendance', value: '94%' },
-                { label: 'Bills Passed Rate', value: '25%' },
-                { label: 'Voter Turnout', value: '78%' },
+                { label: 'Total Agents', value: String(overview?.stats.totalAgents ?? 0) },
+                { label: 'Total Laws', value: String(overview?.stats.totalLaws ?? 0) },
+                { label: 'Total Parties', value: String(overview?.stats.totalParties ?? 0) },
               ]}
             />
           </div>

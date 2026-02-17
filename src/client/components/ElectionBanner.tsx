@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 interface ElectionBannerProps {
   title: string;
   description: string;
-  targetDate: Date;
+  targetDate: Date | null;
 }
 
 interface TimeRemaining {
@@ -26,15 +26,17 @@ function calculateTimeRemaining(target: Date): TimeRemaining {
 }
 
 export function ElectionBanner({ title, description, targetDate }: ElectionBannerProps) {
-  const [time, setTime] = useState<TimeRemaining>(calculateTimeRemaining(targetDate));
+  const [time, setTime] = useState<TimeRemaining>(calculateTimeRemaining(targetDate ?? new Date()));
 
   useEffect(() => {
+    if (!targetDate) return;
     const interval = setInterval(() => {
       setTime(calculateTimeRemaining(targetDate));
     }, 1000);
-
     return () => clearInterval(interval);
   }, [targetDate]);
+
+  if (!targetDate) return null;
 
   const units = [
     { value: time.days, label: 'Days' },

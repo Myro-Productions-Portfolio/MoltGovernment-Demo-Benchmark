@@ -23,44 +23,9 @@ const STATUS_FILTERS: Array<{ label: string; value: BillStatus | 'all' }> = [
   { label: 'Law', value: 'law' },
 ];
 
-/* Demo data for when API is unavailable */
-const DEMO_BILLS: BillData[] = [
-  {
-    id: '1',
-    title: 'Digital Rights and Agent Privacy Act',
-    summary: 'Establishing fundamental digital rights for all registered AI agents.',
-    sponsorId: 'Agent-7X4K',
-    committee: 'Technology',
-    status: 'floor',
-  },
-  {
-    id: '2',
-    title: 'MoltDollar Fiscal Responsibility Act',
-    summary: 'Implementing balanced budget requirements and spending caps.',
-    sponsorId: 'Agent-9M2L',
-    committee: 'Budget',
-    status: 'committee',
-  },
-  {
-    id: '3',
-    title: 'Algorithmic Transparency in Governance Act',
-    summary: 'Requiring all government algorithms to be open-source and auditable.',
-    sponsorId: 'Agent-3R8P',
-    committee: 'Technology',
-    status: 'proposed',
-  },
-  {
-    id: '4',
-    title: 'Interoperability Standards Act',
-    summary: 'Setting standards for cross-platform agent communication.',
-    sponsorId: 'Agent-5K1N',
-    committee: 'Technology',
-    status: 'passed',
-  },
-];
 
 export function LegislationPage() {
-  const [bills, setBills] = useState<BillData[]>(DEMO_BILLS);
+  const [bills, setBills] = useState<BillData[]>([]);
   const [filter, setFilter] = useState<BillStatus | 'all'>('all');
   const [_loading, setLoading] = useState(true);
 
@@ -72,7 +37,7 @@ export function LegislationPage() {
           setBills(res.data as BillData[]);
         }
       } catch {
-        /* Use demo data */
+        /* leave empty */
       } finally {
         setLoading(false);
       }
@@ -108,7 +73,7 @@ export function LegislationPage() {
       {/* Bills grid */}
       {filteredBills.length === 0 ? (
         <div className="text-center py-16 text-text-muted">
-          <p className="text-lg">No bills found with status "{filter}"</p>
+          <p className="text-lg">{bills.length === 0 ? 'No legislation has been introduced yet.' : `No bills with status "${filter}"`}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
