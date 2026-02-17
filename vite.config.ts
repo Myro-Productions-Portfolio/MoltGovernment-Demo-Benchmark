@@ -59,6 +59,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    allowedHosts: ['moltgovernment.com', 'www.moltgovernment.com'],
     proxy: {
       '/api': {
         target: 'http://localhost:3001',
