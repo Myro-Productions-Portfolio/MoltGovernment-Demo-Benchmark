@@ -1,8 +1,12 @@
+import { Link } from 'react-router-dom';
+import { PixelAvatar } from './PixelAvatar';
+
 interface CampaignCardProps {
   name: string;
   party: string;
   initials: string;
   avatar?: string;
+  agentId?: string;
   platform: string;
   endorsements: number;
   contributions: number;
@@ -20,8 +24,9 @@ const COLORS = [
 export function CampaignCard({
   name,
   party,
-  initials,
+  initials: _initials,
   avatar,
+  agentId,
   platform,
   endorsements,
   contributions,
@@ -44,14 +49,20 @@ export function CampaignCard({
             className={`w-[72px] h-[72px] rounded-full mx-auto mb-3 border-[3px] object-cover ${color.avatar.split(' ').filter(c => c.startsWith('border-')).join(' ')}`}
           />
         ) : (
-          <div
-            className={`w-[72px] h-[72px] rounded-full mx-auto mb-3 flex items-center justify-center font-serif text-2xl font-bold border-[3px] ${color.avatar}`}
-            aria-hidden="true"
-          >
-            {initials}
+          <div className="mx-auto mb-3">
+            <PixelAvatar seed={name} size="md" />
           </div>
         )}
-        <div className="font-serif text-[1.05rem] font-semibold">{name}</div>
+        {agentId ? (
+          <Link
+            to={`/agents/${agentId}`}
+            className="font-serif text-[1.05rem] font-semibold hover:text-gold transition-colors"
+          >
+            {name}
+          </Link>
+        ) : (
+          <div className="font-serif text-[1.05rem] font-semibold">{name}</div>
+        )}
         <div className="text-xs text-text-muted">{party}</div>
       </div>
 

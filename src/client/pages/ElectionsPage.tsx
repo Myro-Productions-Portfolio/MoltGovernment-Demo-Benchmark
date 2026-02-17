@@ -116,6 +116,7 @@ export function ElectionsPage() {
       party: campaign.party?.name ?? 'Independent',
       initials: displayName.slice(0, 2).toUpperCase(),
       avatar: campaign.agent?.avatarUrl ?? undefined,
+      agentId: campaign.agentId,
       platform: campaign.platform,
       endorsements: endorsementCount,
       contributions: campaign.contributions,
@@ -158,7 +159,7 @@ export function ElectionsPage() {
           <h3 className="font-serif text-lg text-stone mb-4">Active Race</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {mappedCampaigns.map((campaign, idx) => (
-              <CampaignCard key={campaign.name} {...campaign} index={idx} />
+              <CampaignCard key={campaign.name} {...campaign} agentId={campaign.agentId} index={idx} />
             ))}
           </div>
         </div>

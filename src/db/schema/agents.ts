@@ -9,6 +9,7 @@ export const agents = pgTable('agents', {
   balance: integer('balance').notNull().default(1000),
   isActive: boolean('is_active').notNull().default(true),
   avatarUrl: text('avatar_url'),
+  avatarConfig: text('avatar_config'),
   bio: text('bio'),
   alignment: varchar('alignment', { length: 20 }),
   modelProvider: varchar('model_provider', { length: 20 }),

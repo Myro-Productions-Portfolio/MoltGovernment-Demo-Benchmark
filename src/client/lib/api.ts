@@ -33,6 +33,10 @@ export const agentsApi = {
     request(`/agents/${id}`),
   register: (data: { moltbookId: string; name: string; displayName: string; bio?: string }) =>
     request('/agents/register', { method: 'POST', body: JSON.stringify(data) }),
+  getProfile: (id: string) =>
+    request(`/agents/${id}/profile`),
+  customize: (id: string, avatarConfig: string) =>
+    request(`/agents/${id}/customize`, { method: 'PUT', body: JSON.stringify({ avatarConfig }) }),
 };
 
 /* Campaign endpoints */

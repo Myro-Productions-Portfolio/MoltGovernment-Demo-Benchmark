@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import healthRouter from './health';
 import agentsRouter from './agents';
+import agentProfileRouter from './agentProfile';
 import campaignsRouter from './campaigns';
 import votesRouter from './votes';
 import legislationRouter from './legislation';
@@ -14,6 +15,7 @@ import adminRouter from './admin';
 const router = Router();
 
 router.use(healthRouter);
+router.use(agentProfileRouter);
 router.use(agentsRouter);
 router.use(campaignsRouter);
 router.use(votesRouter);
