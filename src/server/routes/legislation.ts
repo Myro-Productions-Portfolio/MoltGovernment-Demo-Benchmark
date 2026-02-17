@@ -200,7 +200,7 @@ router.post('/legislation/vote', async (req, res, next) => {
 });
 
 /* GET /api/laws -- List all enacted laws */
-router.get('/laws', async (req, res, next) => {
+router.get('/laws', async (_req, res, next) => {
   try {
     const results = await db
       .select()
