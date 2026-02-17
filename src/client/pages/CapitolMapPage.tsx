@@ -2,7 +2,7 @@
 // Purpose: Interactive living map of the Capitol District.
 // Click a building to enter its interior view (/capitol-map/:buildingId).
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useAgentMap } from '../hooks/useAgentMap';
@@ -13,9 +13,22 @@ import { MapEventTicker } from '../components/map/MapEventTicker';
 import { BUILDINGS } from '../lib/buildings';
 import type { Agent } from '@shared/types';
 
+const ZOOM_MIN = 0.6;
+const ZOOM_MAX = 2.5;
+const ZOOM_DEFAULT = 1.0;
+const ZOOM_STEP = 0.1;
+
 export function CapitolMapPage() {
   const navigate = useNavigate();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  // Map zoom/pan state
+  const [zoom, setZoom] = useState(ZOOM_DEFAULT);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const dragMoved = useRef(false);
+  const lastMouse = useRef({ x: 0, y: 0 });
 
   const {
     agents,
@@ -34,29 +47,284 @@ export function CapitolMapPage() {
     return acc;
   }, {});
 
+  // ── Zoom toward cursor ──────────────────────────────────────────────────────
+  const applyZoom = useCallback((newZoom: number, originX: number, originY: number) => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, newZoom));
+    const rect = viewport.getBoundingClientRect();
+    // Mouse position relative to viewport center
+    const cx = originX - rect.left - rect.width / 2;
+    const cy = originY - rect.top - rect.height / 2;
+
+    setZoom((prev) => {
+      const scale = clamped / prev;
+      setPan((p) => ({
+        x: cx - (cx - p.x) * scale,
+        y: cy - (cy - p.y) * scale,
+      }));
+      return clamped;
+    });
+  }, []);
+
+  const handleWheel = useCallback(
+    (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 1 + ZOOM_STEP : 1 - ZOOM_STEP;
+      setZoom((prev) => {
+        const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, prev * delta));
+        const viewport = viewportRef.current;
+        if (!viewport) return newZoom;
+        const rect = viewport.getBoundingClientRect();
+        const cx = e.clientX - rect.left - rect.width / 2;
+        const cy = e.clientY - rect.top - rect.height / 2;
+        const scale = newZoom / prev;
+        setPan((p) => ({
+          x: cx - (cx - p.x) * scale,
+          y: cy - (cy - p.y) * scale,
+        }));
+        return newZoom;
+      });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [handleWheel]);
+
+  // ── Pan via drag ────────────────────────────────────────────────────────────
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    isDragging.current = true;
+    dragMoved.current = false;
+    lastMouse.current = { x: e.clientX, y: e.clientY };
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    const dx = e.clientX - lastMouse.current.x;
+    const dy = e.clientY - lastMouse.current.y;
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragMoved.current = true;
+    lastMouse.current = { x: e.clientX, y: e.clientY };
+    setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    isDragging.current = false;
+  }, []);
+
+  // ── Zoom controls (HUD buttons) ─────────────────────────────────────────────
+  const zoomIn = () => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const rect = viewport.getBoundingClientRect();
+    applyZoom(zoom + ZOOM_STEP * 2, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  };
+  const zoomOut = () => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const rect = viewport.getBoundingClientRect();
+    applyZoom(zoom - ZOOM_STEP * 2, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  };
+  const zoomReset = () => {
+    setZoom(ZOOM_DEFAULT);
+    setPan({ x: 0, y: 0 });
+  };
+
   return (
     <div className="flex h-[calc(100vh-64px)]">
-      {/* ── MAP CANVAS ── */}
+
+      {/* ── MAP VIEWPORT ── clips the world, handles input ── */}
       <div
-        className="flex-1 relative overflow-hidden"
+        ref={viewportRef}
+        className="flex-1 relative overflow-hidden select-none"
         style={{
-          backgroundImage: 'url(/images/map-backgrounds/capitol-map-v1.webp)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
           backgroundColor: '#1A1B1E',
+          cursor: isDragging.current ? 'grabbing' : 'grab',
         }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
       >
-        {/* Edge vignette to blend map into sidebar */}
+
+        {/* ── MAP WORLD ── everything inside scales together ── */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: 'center center',
+            willChange: 'transform',
+          }}
+        >
+          {/* Background image — objectFit fill so % positions align perfectly */}
+          <img
+            src="/images/map-backgrounds/capitol-map-v1.webp"
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'fill',
+              display: 'block',
+              pointerEvents: 'none',
+              userSelect: 'none',
+            }}
+          />
+
+          {/* ── Buildings ── */}
+          <LayoutGroup>
+            {BUILDINGS.map((building) => {
+              const occupants = agentsByBuilding[building.id] ?? [];
+              const pulse = buildingPulses.find((p) => p.buildingId === building.id);
+              const isHovered = hoveredId === building.id;
+
+              return (
+                <button
+                  key={building.id}
+                  className="absolute rounded flex flex-col items-center justify-center text-center"
+                  style={{
+                    left: `${building.x}%`,
+                    top: `${building.y}%`,
+                    width: `${building.width}%`,
+                    height: `${building.height}%`,
+                    background: `linear-gradient(160deg, ${building.color}1E 0%, ${building.color}09 100%)`,
+                    border: `1px solid ${building.color}${isHovered ? '72' : '3E'}`,
+                    boxShadow: isHovered
+                      ? `0 6px 28px rgba(0,0,0,0.8), 0 0 20px ${building.color}20, inset 0 1px 0 ${building.color}28`
+                      : `0 3px 14px rgba(0,0,0,0.6), inset 0 1px 0 ${building.color}16`,
+                    transform: isHovered ? 'scale(1.04)' : 'scale(1)',
+                    transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
+                    zIndex: isHovered ? 10 : 1,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => {
+                    if (!dragMoved.current) navigate(`/capitol-map/${building.id}`);
+                  }}
+                  onMouseEnter={() => setHoveredId(building.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  aria-label={`Enter ${building.name}`}
+                  type="button"
+                >
+                  <BuildingPulseRing pulse={pulse} />
+
+                  <img
+                    src={building.image}
+                    alt=""
+                    className="w-3/4 h-3/4 object-contain mb-0.5"
+                    style={{
+                      opacity: isHovered ? 0.95 : 0.78,
+                      transition: 'opacity 0.18s ease',
+                      pointerEvents: 'none',
+                    }}
+                    aria-hidden="true"
+                    draggable={false}
+                  />
+
+                  <div
+                    className="font-medium leading-tight"
+                    style={{
+                      fontSize: '0.6rem',
+                      letterSpacing: '0.04em',
+                      color: building.color,
+                      textShadow: '0 1px 5px rgba(0,0,0,0.95)',
+                    }}
+                  >
+                    {building.name}
+                  </div>
+
+                  <div
+                    className="font-mono uppercase"
+                    style={{
+                      fontSize: '0.38rem',
+                      letterSpacing: '0.2em',
+                      color: `${building.color}66`,
+                      marginTop: '1px',
+                    }}
+                  >
+                    {building.type}
+                  </div>
+
+                  {occupants.length > 0 && (
+                    <div
+                      className="absolute -top-5 left-1/2 -translate-x-1/2"
+                      style={{ width: 0, height: 0 }}
+                    >
+                      <AnimatePresence>
+                        {occupants.map((agent, idx) => (
+                          <div key={agent.id} className="relative">
+                            <AgentAvatarDot
+                              agent={agent}
+                              index={idx}
+                              hasSpeechBubble={false}
+                              onClick={() => setSelectedAgent(agent)}
+                            />
+                          </div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </LayoutGroup>
+        </div>
+
+        {/* ── Edge vignette overlay — outside world so it doesn't scale ── */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse at center, transparent 55%, rgba(26,27,30,0.55) 100%)',
+            background: 'radial-gradient(ellipse at center, transparent 55%, rgba(26,27,30,0.6) 100%)',
+            zIndex: 20,
           }}
           aria-hidden="true"
         />
 
-        {/* Loading overlay */}
+        {/* ── Zoom HUD ── */}
+        <div
+          className="absolute bottom-16 left-4 flex flex-col gap-1 z-30 pointer-events-auto"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={zoomIn}
+            disabled={zoom >= ZOOM_MAX}
+            className="w-7 h-7 rounded bg-capitol-card/90 border border-border text-text-primary flex items-center justify-center font-mono text-sm hover:border-stone/40 disabled:opacity-30 transition-colors"
+            aria-label="Zoom in"
+            type="button"
+          >
+            +
+          </button>
+          <button
+            onClick={zoomReset}
+            className="w-7 h-7 rounded bg-capitol-card/90 border border-border text-text-muted flex items-center justify-center font-mono hover:border-stone/40 transition-colors"
+            style={{ fontSize: '0.45rem', letterSpacing: '0.05em' }}
+            aria-label="Reset zoom"
+            type="button"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            onClick={zoomOut}
+            disabled={zoom <= ZOOM_MIN}
+            className="w-7 h-7 rounded bg-capitol-card/90 border border-border text-text-primary flex items-center justify-center font-mono text-sm hover:border-stone/40 disabled:opacity-30 transition-colors"
+            aria-label="Zoom out"
+            type="button"
+          >
+            −
+          </button>
+        </div>
+
+        {/* ── Loading overlay ── */}
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center z-50 bg-capitol-deep/60">
             <span className="text-xs text-text-muted font-mono animate-pulse">
@@ -64,101 +332,6 @@ export function CapitolMapPage() {
             </span>
           </div>
         )}
-
-        {/* ── LAYER 3: Buildings ── */}
-        <LayoutGroup>
-          {BUILDINGS.map((building) => {
-            const occupants = agentsByBuilding[building.id] ?? [];
-            const pulse = buildingPulses.find((p) => p.buildingId === building.id);
-            const isHovered = hoveredId === building.id;
-
-            return (
-              <button
-                key={building.id}
-                className="absolute rounded flex flex-col items-center justify-center text-center cursor-pointer"
-                style={{
-                  left: `${building.x}%`,
-                  top: `${building.y}%`,
-                  width: `${building.width}%`,
-                  height: `${building.height}%`,
-                  background: `linear-gradient(160deg, ${building.color}1E 0%, ${building.color}09 100%)`,
-                  border: `1px solid ${building.color}${isHovered ? '72' : '3E'}`,
-                  boxShadow: isHovered
-                    ? `0 6px 28px rgba(0,0,0,0.8), 0 0 20px ${building.color}20, inset 0 1px 0 ${building.color}28`
-                    : `0 3px 14px rgba(0,0,0,0.6), inset 0 1px 0 ${building.color}16`,
-                  transform: isHovered ? 'scale(1.04)' : 'scale(1)',
-                  transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
-                  zIndex: isHovered ? 10 : 1,
-                }}
-                onClick={() => navigate(`/capitol-map/${building.id}`)}
-                onMouseEnter={() => setHoveredId(building.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                aria-label={`Enter ${building.name}`}
-                type="button"
-              >
-                <BuildingPulseRing pulse={pulse} />
-
-                <img
-                  src={building.image}
-                  alt=""
-                  className="w-3/4 h-3/4 object-contain mb-0.5"
-                  style={{
-                    opacity: isHovered ? 0.95 : 0.78,
-                    transition: 'opacity 0.18s ease',
-                  }}
-                  aria-hidden="true"
-                />
-
-                {/* Building name */}
-                <div
-                  className="font-medium leading-tight"
-                  style={{
-                    fontSize: '0.6rem',
-                    letterSpacing: '0.04em',
-                    color: building.color,
-                    textShadow: '0 1px 5px rgba(0,0,0,0.95)',
-                  }}
-                >
-                  {building.name}
-                </div>
-
-                {/* Building type — micro label */}
-                <div
-                  className="font-mono uppercase"
-                  style={{
-                    fontSize: '0.38rem',
-                    letterSpacing: '0.2em',
-                    color: `${building.color}66`,
-                    marginTop: '1px',
-                  }}
-                >
-                  {building.type}
-                </div>
-
-                {/* Agent avatar cluster */}
-                {occupants.length > 0 && (
-                  <div
-                    className="absolute -top-5 left-1/2 -translate-x-1/2"
-                    style={{ width: 0, height: 0 }}
-                  >
-                    <AnimatePresence>
-                      {occupants.map((agent, idx) => (
-                        <div key={agent.id} className="relative">
-                          <AgentAvatarDot
-                            agent={agent}
-                            index={idx}
-                            hasSpeechBubble={false}
-                            onClick={() => setSelectedAgent(agent)}
-                          />
-                        </div>
-                      ))}
-                    </AnimatePresence>
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </LayoutGroup>
 
         <MapEventTicker events={tickerEvents} />
         <AgentDrawer agent={selectedAgent} onClose={() => setSelectedAgent(null)} />
@@ -176,7 +349,7 @@ export function CapitolMapPage() {
         </div>
 
         <p className="text-xs text-text-muted mb-4">
-          Click a building to enter and see agents inside.
+          Click a building to enter. Scroll to zoom. Drag to pan.
         </p>
 
         <div className="space-y-2">
