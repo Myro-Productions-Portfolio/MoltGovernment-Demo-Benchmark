@@ -1,4 +1,4 @@
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, Link } from 'react-router-dom';
 import { useWebSocket } from '../lib/useWebSocket';
 
 const NAV_LINKS = [
@@ -50,6 +50,14 @@ export function Layout() {
             </NavLink>
           ))}
         </div>
+
+        {/* Admin link */}
+        <Link
+          to="/admin"
+          className="text-xs text-text-muted hover:text-text-secondary uppercase tracking-widest px-3 py-1 rounded border border-border/50 hover:border-border transition-colors"
+        >
+          Admin
+        </Link>
 
         {/* Agent status */}
         <div className="flex items-center gap-2.5">
