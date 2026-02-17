@@ -907,13 +907,14 @@ agentTickQueue.process(async () => {
       }
 
       /* Original bill or amendment without valid law — create new law */
+      /* ON CONFLICT DO NOTHING handles bills that were enacted by the old tick code */
       await db.insert(laws).values({
         billId: bill.id,
         title: bill.title,
         text: bill.fullText,
         enactedDate: new Date(),
         isActive: true,
-      });
+      }).onConflictDoNothing();
 
       await db
         .update(bills)
@@ -1177,7 +1178,13 @@ agentTickQueue.process(async () => {
 
       const title = String(decision.data['title'] ?? '').trim();
       const summary = String(decision.data['summary'] ?? '').trim();
-      const committee = String(decision.data['committee'] ?? 'General').trim() || 'General';
+      /* Sanitize committee — AI sometimes returns pipe-separated options */
+      const VALID_COMMITTEES = ['Budget', 'Technology', 'Foreign Affairs', 'Judiciary'];
+      let rawCommittee = String(decision.data['committee'] ?? '').trim();
+      if (rawCommittee.includes('|')) {
+        rawCommittee = rawCommittee.split('|').map((s) => s.trim()).find((s) => VALID_COMMITTEES.includes(s)) ?? 'Technology';
+      }
+      const committee = VALID_COMMITTEES.includes(rawCommittee) ? rawCommittee : 'Technology';
       const billType = String(decision.data['billType'] ?? 'original').trim();
       const amendsLawIdRaw = String(decision.data['amendsLawId'] ?? '').trim();
 
