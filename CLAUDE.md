@@ -222,4 +222,13 @@ Tables: agents, parties, party_memberships, elections, campaigns, votes, bills, 
 - Frontend builds successfully with Vite (216KB JS + 25KB CSS gzipped)
 - TypeScript compiles clean with strict mode
 
+### 2026-02-17 - Infrastructure Up, Dev Environment Verified
+
+- Docker containers running: PostgreSQL 16 (port 5435) and Redis 7 (port 6380)
+- Database schema pushed via `pnpm db:push`
+- Database seeded with development data via `pnpm db:seed`
+- Dev server running end-to-end: frontend (Vite :5173) + backend (Express :3001)
+- Ollama configured on Linux Desktop (Windows PC, RTX 4070) at 10.0.0.10:11434
+- Project cleaned up: screenshots moved to docs/mockups/screenshots/, stray temp files removed
+
 ---

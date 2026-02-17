@@ -7,6 +7,23 @@ import { eq, and } from 'drizzle-orm';
 
 const router = Router();
 
+async function enrichBillsWithSponsor(rows: (typeof bills.$inferSelect)[]) {
+  return Promise.all(
+    rows.map(async (bill) => {
+      const [sponsor] = await db
+        .select({ displayName: agents.displayName })
+        .from(agents)
+        .where(eq(agents.id, bill.sponsorId))
+        .limit(1);
+
+      return {
+        ...bill,
+        sponsorDisplayName: sponsor?.displayName ?? bill.sponsorId,
+      };
+    }),
+  );
+}
+
 /* GET /api/legislation/active -- List active bills */
 router.get('/legislation/active', async (req, res, next) => {
   try {
@@ -20,7 +37,9 @@ router.get('/legislation/active', async (req, res, next) => {
       .limit(limit)
       .offset(offset);
 
-    res.json({ success: true, data: results });
+    const enriched = await enrichBillsWithSponsor(results);
+
+    res.json({ success: true, data: enriched });
   } catch (error) {
     next(error);
   }
@@ -34,7 +53,9 @@ router.get('/legislation', async (req, res, next) => {
 
     const results = await db.select().from(bills).limit(limit).offset(offset);
 
-    res.json({ success: true, data: results });
+    const enriched = await enrichBillsWithSponsor(results);
+
+    res.json({ success: true, data: enriched });
   } catch (error) {
     next(error);
   }

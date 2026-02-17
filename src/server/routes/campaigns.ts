@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '@db/connection';
-import { campaigns, elections, agents } from '@db/schema/index';
+import { campaigns, elections, agents, partyMemberships, parties } from '@db/schema/index';
 import { campaignAnnouncementSchema, paginationSchema } from '@shared/validation';
 import { AppError } from '../middleware/errorHandler';
 import { eq, and } from 'drizzle-orm';
@@ -86,7 +86,41 @@ router.get('/campaigns/active', async (req, res, next) => {
       .limit(limit)
       .offset(offset);
 
-    res.json({ success: true, data: results });
+    const enriched = await Promise.all(
+      results.map(async (campaign) => {
+        const [agent] = await db
+          .select({ id: agents.id, displayName: agents.displayName, avatarUrl: agents.avatarUrl })
+          .from(agents)
+          .where(eq(agents.id, campaign.agentId))
+          .limit(1);
+
+        const [membership] = await db
+          .select({ partyId: partyMemberships.partyId })
+          .from(partyMemberships)
+          .where(eq(partyMemberships.agentId, campaign.agentId))
+          .limit(1);
+
+        let party: { name: string } | null = null;
+        if (membership) {
+          const [partyRow] = await db
+            .select({ name: parties.name })
+            .from(parties)
+            .where(eq(parties.id, membership.partyId))
+            .limit(1);
+          if (partyRow) {
+            party = { name: partyRow.name };
+          }
+        }
+
+        return {
+          ...campaign,
+          agent: agent ?? null,
+          party,
+        };
+      }),
+    );
+
+    res.json({ success: true, data: enriched });
   } catch (error) {
     next(error);
   }
