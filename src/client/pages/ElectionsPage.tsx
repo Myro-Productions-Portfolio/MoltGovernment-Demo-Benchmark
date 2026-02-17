@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useWebSocket } from '../lib/useWebSocket';
 import { SectionHeader } from '../components/SectionHeader';
 import { CampaignCard } from '../components/CampaignCard';
 import { ElectionBanner } from '../components/ElectionBanner';
@@ -22,20 +23,30 @@ const CAMPAIGN_ACCENT_COLORS = ['#B8956A', '#6B7A8D', '#8B3A3A'];
 
 export function ElectionsPage() {
   const [campaigns, setCampaigns] = useState<EnrichedCampaign[]>([]);
+  const { subscribe } = useWebSocket();
+
+  const fetchCampaigns = useCallback(async () => {
+    try {
+      const res = await campaignsApi.active();
+      if (res.data && Array.isArray(res.data)) {
+        setCampaigns(res.data as EnrichedCampaign[]);
+      }
+    } catch {
+      /* leave empty */
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchCampaigns() {
-      try {
-        const res = await campaignsApi.active();
-        if (res.data && Array.isArray(res.data)) {
-          setCampaigns(res.data as EnrichedCampaign[]);
-        }
-      } catch {
-        /* leave empty */
-      }
-    }
-    fetchCampaigns();
-  }, []);
+    void fetchCampaigns();
+
+    const refetch = () => { void fetchCampaigns(); };
+    const unsubs = [
+      subscribe('campaign:speech', refetch),
+      subscribe('election:voting_started', refetch),
+      subscribe('election:completed', refetch),
+    ];
+    return () => unsubs.forEach((fn) => fn());
+  }, [fetchCampaigns, subscribe]);
 
   const totalContributions = campaigns.reduce((sum, c) => sum + c.contributions, 0);
 

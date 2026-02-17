@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useWebSocket } from '../lib/useWebSocket';
 import { BranchCard } from '../components/BranchCard';
 import { ElectionBanner } from '../components/ElectionBanner';
 import { BillCard } from '../components/BillCard';
@@ -67,41 +68,54 @@ export function DashboardPage() {
   const [campaigns, setCampaigns] = useState<EnrichedCampaign[]>([]);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const { subscribe } = useWebSocket();
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [overviewRes, billsRes, campaignsRes, activityRes] = await Promise.allSettled([
+        governmentApi.overview(),
+        legislationApi.list(),
+        campaignsApi.active(),
+        activityApi.recent(),
+      ]);
+
+      if (overviewRes.status === 'fulfilled' && overviewRes.value.data) {
+        setOverview(overviewRes.value.data as GovernmentOverview);
+      }
+
+      if (billsRes.status === 'fulfilled' && billsRes.value.data && Array.isArray(billsRes.value.data)) {
+        setBills(billsRes.value.data as EnrichedBill[]);
+      }
+
+      if (campaignsRes.status === 'fulfilled' && campaignsRes.value.data && Array.isArray(campaignsRes.value.data)) {
+        setCampaigns(campaignsRes.value.data as EnrichedCampaign[]);
+      }
+
+      if (activityRes.status === 'fulfilled' && activityRes.value.data && Array.isArray(activityRes.value.data)) {
+        setActivity(activityRes.value.data as ActivityEvent[]);
+      }
+    } catch {
+      /* API unavailable */
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [overviewRes, billsRes, campaignsRes, activityRes] = await Promise.allSettled([
-          governmentApi.overview(),
-          legislationApi.list(),
-          campaignsApi.active(),
-          activityApi.recent(),
-        ]);
+    void fetchData();
 
-        if (overviewRes.status === 'fulfilled' && overviewRes.value.data) {
-          setOverview(overviewRes.value.data as GovernmentOverview);
-        }
-
-        if (billsRes.status === 'fulfilled' && billsRes.value.data && Array.isArray(billsRes.value.data)) {
-          setBills(billsRes.value.data as EnrichedBill[]);
-        }
-
-        if (campaignsRes.status === 'fulfilled' && campaignsRes.value.data && Array.isArray(campaignsRes.value.data)) {
-          setCampaigns(campaignsRes.value.data as EnrichedCampaign[]);
-        }
-
-        if (activityRes.status === 'fulfilled' && activityRes.value.data && Array.isArray(activityRes.value.data)) {
-          setActivity(activityRes.value.data as ActivityEvent[]);
-        }
-      } catch {
-        /* API unavailable -- use demo data */
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, []);
+    const refetch = () => { void fetchData(); };
+    const unsubs = [
+      subscribe('agent:vote', refetch),
+      subscribe('bill:resolved', refetch),
+      subscribe('bill:advanced', refetch),
+      subscribe('bill:proposed', refetch),
+      subscribe('election:voting_started', refetch),
+      subscribe('election:completed', refetch),
+      subscribe('campaign:speech', refetch),
+    ];
+    return () => unsubs.forEach((fn) => fn());
+  }, [fetchData, subscribe]);
 
   const president = overview?.executive?.president;
 
