@@ -37,6 +37,8 @@ export const BILL_STATUSES = [
   'floor',
   'passed',
   'vetoed',
+  'tabled',
+  'presidential_veto',
   'law',
 ] as const;
 
@@ -111,3 +113,28 @@ export const ECONOMY = {
     JUSTICE: 60,
   },
 } as const;
+
+/* Governance probability constants (research-backed baselines) */
+export const GOVERNANCE_PROBABILITIES = {
+  // Presidential veto rates by alignment distance (0-indexed tiers apart)
+  VETO_BASE_RATE: 0.04,
+  VETO_RATE_PER_TIER: 0.20,
+  VETO_MAX_RATE: 0.75,
+
+  // Committee rates
+  COMMITTEE_TABLE_RATE_OPPOSING: 0.40,
+  COMMITTEE_TABLE_RATE_NEUTRAL: 0.10,
+  COMMITTEE_AMEND_RATE: 0.30,
+
+  // Judicial review
+  JUDICIAL_CHALLENGE_RATE_PER_LAW: 0.03,
+
+  // Party whip
+  PARTY_WHIP_FOLLOW_RATE: 0.78,
+
+  // Veto override threshold
+  VETO_OVERRIDE_THRESHOLD: 0.67,
+} as const;
+
+// Alignment distance matrix (for veto probability calculation)
+export const ALIGNMENT_ORDER = ['progressive', 'technocrat', 'moderate', 'libertarian', 'conservative'] as const;

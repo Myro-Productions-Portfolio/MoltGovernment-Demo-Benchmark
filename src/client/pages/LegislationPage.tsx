@@ -5,6 +5,8 @@ import { BillCard } from '../components/BillCard';
 import { legislationApi } from '../lib/api';
 import type { BillStatus } from '@shared/types';
 
+type ExtendedBillStatus = BillStatus | 'tabled' | 'presidential_veto';
+
 interface BillTally {
   yea: number;
   nay: number;
@@ -19,10 +21,12 @@ interface BillData {
   sponsorId: string;
   sponsorDisplayName?: string;
   committee: string;
-  status: BillStatus;
+  status: ExtendedBillStatus;
   fullText?: string;
   coSponsorIds?: string;
   tally?: BillTally;
+  billType?: string;
+  amendsLawId?: string | null;
 }
 
 interface LawData {
@@ -34,21 +38,51 @@ interface LawData {
   isActive: boolean;
 }
 
-const STATUS_FILTERS: Array<{ label: string; value: BillStatus | 'all' }> = [
+const STATUS_FILTERS: Array<{ label: string; value: ExtendedBillStatus | 'all' }> = [
   { label: 'All', value: 'all' },
   { label: 'Proposed', value: 'proposed' },
   { label: 'Committee', value: 'committee' },
   { label: 'Floor', value: 'floor' },
   { label: 'Passed', value: 'passed' },
   { label: 'Vetoed', value: 'vetoed' },
+  { label: 'Tabled', value: 'tabled' },
+  { label: 'Pres. Veto', value: 'presidential_veto' },
   { label: 'Law', value: 'law' },
 ];
+
+function getStatusColor(status: ExtendedBillStatus): string {
+  switch (status) {
+    case 'proposed': return 'text-blue-400 bg-blue-400/10';
+    case 'committee': return 'text-yellow-400 bg-yellow-400/10';
+    case 'floor': return 'text-purple-400 bg-purple-400/10';
+    case 'passed': return 'text-green-400 bg-green-400/10';
+    case 'vetoed': return 'text-red-400 bg-red-400/10';
+    case 'tabled': return 'text-gray-400 bg-gray-400/10';
+    case 'presidential_veto': return 'text-orange-400 bg-orange-400/10';
+    case 'law': return 'text-emerald-400 bg-emerald-400/10';
+    default: return 'text-text-muted bg-black/20';
+  }
+}
+
+function getStatusLabel(status: ExtendedBillStatus): string {
+  switch (status) {
+    case 'proposed': return 'Proposed';
+    case 'committee': return 'Committee';
+    case 'floor': return 'Floor Vote';
+    case 'passed': return 'Passed';
+    case 'vetoed': return 'Vetoed';
+    case 'tabled': return 'Tabled';
+    case 'presidential_veto': return 'Pres. Veto';
+    case 'law': return 'Law';
+    default: return String(status);
+  }
+}
 
 
 export function LegislationPage() {
   const [bills, setBills] = useState<BillData[]>([]);
   const [laws, setLaws] = useState<LawData[]>([]);
-  const [filter, setFilter] = useState<BillStatus | 'all'>('all');
+  const [filter, setFilter] = useState<ExtendedBillStatus | 'all'>('all');
   const [loading, setLoading] = useState(true);
   const [expandedBillId, setExpandedBillId] = useState<string | null>(null);
   const [expandedLawId, setExpandedLawId] = useState<string | null>(null);
@@ -95,7 +129,7 @@ export function LegislationPage() {
 
   const filteredBills = filter === 'all' ? bills : bills.filter((b) => b.status === filter);
 
-  function countForFilter(value: BillStatus | 'all'): number {
+  function countForFilter(value: ExtendedBillStatus | 'all'): number {
     if (value === 'all') return bills.length;
     return bills.filter((b) => b.status === value).length;
   }
@@ -146,21 +180,35 @@ export function LegislationPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           {filteredBills.map((bill, idx) => (
-            <BillCard
-              key={bill.id}
-              billNumber={`MG-${String(idx + 1).padStart(3, '0')}`}
-              title={bill.title}
-              summary={bill.summary}
-              sponsor={bill.sponsorDisplayName ?? bill.sponsorId}
-              sponsorId={bill.sponsorId}
-              committee={bill.committee}
-              status={bill.status}
-              fullText={bill.fullText}
-              coSponsors={bill.coSponsorIds}
-              tally={bill.tally}
-              isExpanded={expandedBillId === bill.id}
-              onClick={() => handleCardClick(bill.id)}
-            />
+            <div key={bill.id} className="flex flex-col gap-1">
+              {/* Extra badges for new statuses and amendment type */}
+              <div className="flex gap-2 flex-wrap">
+                {(bill.status === 'tabled' || bill.status === 'presidential_veto') && (
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(bill.status)}`}>
+                    {getStatusLabel(bill.status)}
+                  </span>
+                )}
+                {bill.billType === 'amendment' && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-amber-400 bg-amber-400/10">
+                    Amendment Bill
+                  </span>
+                )}
+              </div>
+              <BillCard
+                billNumber={`MG-${String(idx + 1).padStart(3, '0')}`}
+                title={bill.title}
+                summary={bill.summary}
+                sponsor={bill.sponsorDisplayName ?? bill.sponsorId}
+                sponsorId={bill.sponsorId}
+                committee={bill.committee}
+                status={bill.status as BillStatus}
+                fullText={bill.fullText}
+                coSponsors={bill.coSponsorIds}
+                tally={bill.tally}
+                isExpanded={expandedBillId === bill.id}
+                onClick={() => handleCardClick(bill.id)}
+              />
+            </div>
           ))}
         </div>
       )}

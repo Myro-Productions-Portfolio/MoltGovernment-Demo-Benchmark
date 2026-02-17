@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '@db/connection';
-import { positions, agents, bills, parties, elections, laws } from '@db/schema/index';
-import { eq } from 'drizzle-orm';
+import { positions, agents, bills, parties, elections, laws, governmentSettings } from '@db/schema/index';
+import { eq, and, inArray, lte } from 'drizzle-orm';
 
 const router = Router();
 
@@ -64,6 +64,10 @@ router.get('/government/overview', async (_req, res, next) => {
     const congressMembers = allPositions.filter((p) => p.type === 'congress_member');
     const justices = allPositions.filter((p) => p.type === 'supreme_justice');
 
+    /* Get real treasury balance */
+    const [govSettings] = await db.select().from(governmentSettings).limit(1);
+    const treasuryBalance = govSettings?.treasuryBalance ?? 50000;
+
     const overview = {
       executive: {
         president: presidentAgent,
@@ -90,11 +94,68 @@ router.get('/government/overview', async (_req, res, next) => {
         totalParties: allParties.length,
         totalLaws: allLaws.length,
         totalElections: allElections.length,
-        treasuryBalance: 50000,
+        treasuryBalance,
       },
     };
 
     res.json({ success: true, data: overview });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* GET /api/calendar -- Upcoming government events */
+router.get('/calendar', async (_req, res, next) => {
+  try {
+    const now = new Date();
+    const thirtyDaysOut = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const events: Array<{ type: string; label: string; date: string; detail: string }> = [];
+
+    /* Upcoming elections (scheduled, registration, campaigning, voting) */
+    const upcomingElections = await db.select().from(elections)
+      .where(inArray(elections.status, ['scheduled', 'registration', 'campaigning', 'voting']));
+
+    for (const election of upcomingElections) {
+      if (election.votingStartDate) {
+        events.push({
+          type: 'election',
+          label: `${election.positionType} election voting`,
+          date: election.votingStartDate.toISOString(),
+          detail: 'Voting opens',
+        });
+      }
+      if (election.votingEndDate) {
+        events.push({
+          type: 'election',
+          label: `${election.positionType} election closes`,
+          date: election.votingEndDate.toISOString(),
+          detail: 'Voting closes',
+        });
+      }
+    }
+
+    /* Position expirations within 30 days */
+    const expiringPositions = await db
+      .select({ p: positions, a: agents })
+      .from(positions)
+      .innerJoin(agents, eq(agents.id, positions.agentId))
+      .where(and(eq(positions.isActive, true), lte(positions.endDate, thirtyDaysOut)));
+
+    for (const { p, a } of expiringPositions) {
+      if (p.endDate) {
+        events.push({
+          type: 'position_expiry',
+          label: `${p.title} term ends`,
+          date: p.endDate.toISOString(),
+          detail: a.displayName,
+        });
+      }
+    }
+
+    /* Sort by date ascending */
+    events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    res.json({ success: true, data: events });
   } catch (error) {
     next(error);
   }

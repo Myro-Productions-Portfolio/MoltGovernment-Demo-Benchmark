@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '@db/connection';
-import { bills, billVotes, agents, laws } from '@db/schema/index';
-import { billProposalSchema, legislativeVoteSchema, paginationSchema } from '@shared/validation';
+import { bills, billVotes, agents, laws, judicialReviews, judicialVotes } from '@db/schema/index';
+import { amendmentBillProposalSchema, legislativeVoteSchema, paginationSchema } from '@shared/validation';
 import { AppError } from '../middleware/errorHandler';
 import { eq, and, desc } from 'drizzle-orm';
 
@@ -106,10 +106,10 @@ router.get('/legislation/:id', async (req, res, next) => {
   }
 });
 
-/* POST /api/legislation/propose -- Propose a new bill */
+/* POST /api/legislation/propose -- Propose a new bill (original or amendment) */
 router.post('/legislation/propose', async (req, res, next) => {
   try {
-    const data = billProposalSchema.parse(req.body);
+    const data = amendmentBillProposalSchema.parse(req.body);
 
     /* Verify sponsor exists */
     const [sponsor] = await db
@@ -122,6 +122,21 @@ router.post('/legislation/propose', async (req, res, next) => {
       throw new AppError(404, 'Sponsor agent not found');
     }
 
+    /* Validate amendsLawId if amendment */
+    let amendsLawId: string | undefined;
+    if (data.billType === 'amendment' && data.amendsLawId) {
+      const [law] = await db
+        .select()
+        .from(laws)
+        .where(eq(laws.id, data.amendsLawId))
+        .limit(1);
+
+      if (!law) {
+        throw new AppError(404, 'Law to amend not found');
+      }
+      amendsLawId = law.id;
+    }
+
     const [bill] = await db
       .insert(bills)
       .values({
@@ -131,6 +146,8 @@ router.post('/legislation/propose', async (req, res, next) => {
         sponsorId: data.sponsorId,
         coSponsorIds: JSON.stringify(data.coSponsorIds || []),
         committee: data.committee,
+        billType: data.billType ?? 'original',
+        amendsLawId: amendsLawId ?? undefined,
       })
       .returning();
 
@@ -213,5 +230,52 @@ router.get('/laws', async (_req, res, next) => {
   }
 });
 
-export default router;
+/* GET /api/legislation/:id/judicial-reviews -- Get judicial review records for a law linked to a bill */
+router.get('/legislation/:id/judicial-reviews', async (req, res, next) => {
+  try {
+    const [bill] = await db
+      .select()
+      .from(bills)
+      .where(eq(bills.id, req.params.id))
+      .limit(1);
 
+    if (!bill) {
+      throw new AppError(404, 'Bill not found');
+    }
+
+    /* Find the law linked to this bill */
+    const [law] = await db
+      .select()
+      .from(laws)
+      .where(eq(laws.billId, bill.id))
+      .limit(1);
+
+    if (!law) {
+      return res.json({ success: true, data: [] });
+    }
+
+    /* Get all judicial reviews for this law */
+    const reviews = await db
+      .select()
+      .from(judicialReviews)
+      .where(eq(judicialReviews.lawId, law.id))
+      .orderBy(desc(judicialReviews.createdAt));
+
+    /* Enrich with votes */
+    const enrichedReviews = await Promise.all(
+      reviews.map(async (review) => {
+        const votes = await db
+          .select()
+          .from(judicialVotes)
+          .where(eq(judicialVotes.reviewId, review.id));
+        return { ...review, votes };
+      }),
+    );
+
+    res.json({ success: true, data: enrichedReviews });
+  } catch (error) {
+    next(error);
+  }
+});
+
+export default router;
