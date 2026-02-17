@@ -118,6 +118,9 @@ export function CapitolMapPage() {
     isDragging.current = false;
   }, []);
 
+  // ── Alignment debug mode ────────────────────────────────────────────────────
+  const [debugAlign, setDebugAlign] = useState(false);
+
   // ── Zoom controls (HUD buttons) ─────────────────────────────────────────────
   const zoomIn = () => {
     const viewport = viewportRef.current;
@@ -180,6 +183,43 @@ export function CapitolMapPage() {
               userSelect: 'none',
             }}
           />
+
+          {/* ── Alignment debug overlay — toggle with button in HUD ── */}
+          {debugAlign && (
+            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 50 }}>
+              {/* Percentage grid — every 10% */}
+              {[10,20,30,40,50,60,70,80,90].map((pct) => (
+                <div key={`h${pct}`}>
+                  <div style={{ position:'absolute', top:`${pct}%`, left:0, right:0, height:1, background:'rgba(255,100,100,0.35)' }} />
+                  <span style={{ position:'absolute', top:`${pct}%`, left:2, fontSize:'0.5rem', color:'rgba(255,100,100,0.9)', fontFamily:'monospace', lineHeight:1 }}>{pct}%</span>
+                </div>
+              ))}
+              {[10,20,30,40,50,60,70,80,90].map((pct) => (
+                <div key={`v${pct}`}>
+                  <div style={{ position:'absolute', left:`${pct}%`, top:0, bottom:0, width:1, background:'rgba(255,100,100,0.35)' }} />
+                  <span style={{ position:'absolute', left:`${pct}%`, top:2, fontSize:'0.5rem', color:'rgba(255,100,100,0.9)', fontFamily:'monospace', lineHeight:1, paddingLeft:2 }}>{pct}%</span>
+                </div>
+              ))}
+              {/* Building footprint highlights */}
+              {BUILDINGS.map((b) => (
+                <div
+                  key={b.id}
+                  style={{
+                    position:'absolute',
+                    left:`${b.x}%`, top:`${b.y}%`,
+                    width:`${b.width}%`, height:`${b.height}%`,
+                    border:'2px solid rgba(255,220,0,0.9)',
+                    background:'rgba(255,220,0,0.08)',
+                    boxSizing:'border-box',
+                  }}
+                >
+                  <span style={{ position:'absolute', top:2, left:3, fontSize:'0.48rem', color:'rgba(255,220,0,1)', fontFamily:'monospace', whiteSpace:'nowrap', textShadow:'0 1px 3px black' }}>
+                    {b.id} x:{b.x} y:{b.y} w:{b.width} h:{b.height}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* ── Buildings ── */}
           <LayoutGroup>
@@ -295,6 +335,21 @@ export function CapitolMapPage() {
           className="absolute bottom-16 left-4 flex flex-col gap-1 z-30 pointer-events-auto"
           onMouseDown={(e) => e.stopPropagation()}
         >
+          <button
+            onClick={() => setDebugAlign((v) => !v)}
+            className="w-7 h-7 rounded border flex items-center justify-center font-mono transition-colors"
+            style={{
+              fontSize: '0.45rem',
+              background: debugAlign ? 'rgba(255,220,0,0.15)' : 'rgba(43,45,49,0.9)',
+              borderColor: debugAlign ? 'rgba(255,220,0,0.6)' : 'rgba(255,255,255,0.12)',
+              color: debugAlign ? 'rgba(255,220,0,1)' : 'rgba(155,157,159,1)',
+            }}
+            aria-label="Toggle alignment grid"
+            title="Toggle alignment debug grid"
+            type="button"
+          >
+            ⊞
+          </button>
           <button
             onClick={zoomIn}
             disabled={zoom >= ZOOM_MAX}
