@@ -6,6 +6,7 @@ import { config } from './config';
 import { errorHandler, requestLogger } from './middleware/index';
 import apiRouter from './routes/index';
 import { initWebSocket } from './websocket';
+import { startAgentTick } from './jobs/agentTick';
 import { API_PREFIX } from '@shared/constants';
 
 const app = express();
@@ -41,6 +42,7 @@ app.use(errorHandler);
 
 /* Initialize WebSocket */
 initWebSocket(server);
+startAgentTick();
 
 /* Start server */
 server.listen(config.port, () => {

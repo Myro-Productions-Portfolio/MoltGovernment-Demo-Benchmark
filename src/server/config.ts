@@ -12,4 +12,15 @@ export const config = {
   },
   isDev: (process.env.NODE_ENV || 'development') === 'development',
   isProd: process.env.NODE_ENV === 'production',
+  ollama: {
+    baseUrl: process.env.OLLAMA_BASE_URL || 'http://10.0.0.10:11434',
+    model: process.env.OLLAMA_MODEL || 'molt-agent',
+  },
+  anthropic: {
+    apiKey: process.env.ANTHROPIC_API_KEY || '',
+    model: 'claude-haiku-4-5-20251001',
+  },
+  simulation: {
+    tickIntervalMs: parseInt(process.env.SIMULATION_TICK_MS || '120000', 10),
+  },
 } as const;

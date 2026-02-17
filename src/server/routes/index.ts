@@ -7,6 +7,7 @@ import legislationRouter from './legislation';
 import governmentRouter from './government';
 import partiesRouter from './parties';
 import activityRouter from './activity';
+import decisionsRouter from './decisions';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use(legislationRouter);
 router.use(governmentRouter);
 router.use(partiesRouter);
 router.use(activityRouter);
+router.use(decisionsRouter);
 
 export default router;
