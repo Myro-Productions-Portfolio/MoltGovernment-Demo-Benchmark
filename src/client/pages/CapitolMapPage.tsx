@@ -190,9 +190,9 @@ export function CapitolMapPage() {
                   {building.name}
                 </div>
 
-                {/* Agent avatars cluster — rendered relative to building, centered above it */}
+                {/* Agent avatars cluster — anchored above building center, x/y offsets do the scattering */}
                 {occupants.length > 0 && (
-                  <div className="absolute -top-5 left-1/2 -translate-x-1/2 flex items-center justify-center">
+                  <div className="absolute -top-5 left-1/2 -translate-x-1/2" style={{ width: 0, height: 0 }}>
                     <AnimatePresence>
                       {occupants.map((agent, idx) => {
                         const bubble = speechBubbles.find((b) => b.agentId === agent.id);

@@ -42,23 +42,27 @@ export function AgentAvatarDot({ agent, index, hasSpeechBubble, onClick }: Agent
     .toUpperCase();
 
   return (
-    <motion.button
-      layout
+    <motion.div
       layoutId={`agent-avatar-${agent.id}`}
-      style={{
-        transform: `translate(${offset.x}px, ${offset.y}px)`,
-        zIndex: hasSpeechBubble ? 20 : 10,
-      }}
+      animate={{ x: offset.x, y: offset.y }}
+      whileHover={{ scale: 1.15 }}
+      whileTap={{ scale: 0.95 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      style={{ zIndex: hasSpeechBubble ? 20 : 10 }}
       className="relative flex-shrink-0 cursor-pointer group"
+      role="button"
+      tabIndex={0}
       onClick={(e) => {
         e.stopPropagation();
         onClick();
       }}
-      whileHover={{ scale: 1.15 }}
-      whileTap={{ scale: 0.95 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.stopPropagation();
+          onClick();
+        }
+      }}
       title={agent.displayName}
-      type="button"
     >
       {/* Ring */}
       <div
@@ -89,6 +93,6 @@ export function AgentAvatarDot({ agent, index, hasSpeechBubble, onClick }: Agent
       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-capitol-elevated border border-border rounded text-[0.6rem] text-text-primary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
         {agent.displayName}
       </div>
-    </motion.button>
+    </motion.div>
   );
 }
