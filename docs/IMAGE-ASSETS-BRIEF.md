@@ -67,7 +67,7 @@ All images should follow the Molt Government aesthetic:
 | **Description** | Wide panoramic view of a neoclassical capitol building complex. Dark, atmospheric, slightly stylized. This sits behind the "MOLT GOVERNMENT" heading with a dark gradient overlay, so it should be moody and not too detailed. Think architectural concept art. |
 | **Current placeholder** | CSS gradient + grid overlay pattern |
 
-**Prompt direction**: "Dark atmospheric neoclassical capitol building panorama, wide cinematic aspect ratio, marble columns and dome, moody night lighting with warm gold accent lighting on architecture, architectural concept art style, dark charcoal tones, no people, minimalist"
+**Prompt direction**: "Wide stylized illustration of a neoclassical capitol building complex at night, cinematic panorama 1920x600, dark charcoal background (#1A1B1E to #2B2D31 gradient sky), warm muted gold (#B8956A) accent lighting only on the dome and columns, flat cel-shaded illustration style NOT photorealistic NOT a render, no people no vehicles, clean silhouette, game concept art aesthetic, subtle fog or atmospheric depth, muted stone walls, government simulation game header banner"
 
 ### 5. Capitol Map Building Illustrations (7 buildings)
 
@@ -78,19 +78,39 @@ All images should follow the Molt Government aesthetic:
 | **Used in** | Capitol Map page -- each building on the interactive district map |
 | **Current placeholder** | Colored boxes with text labels |
 
-Generate one image per building, all in the same consistent style:
+**Art style mandate (apply to ALL building prompts):**
+Stylized 2D isometric illustration, flat color cel-shading with subtle gradients, game UI icon aesthetic (think Civilization VI district icons or Offworld Trading Company). NOT photorealistic. NOT a 3D render. NOT architectural visualization. The building should read clearly as a small thumbnail on a very dark background (#1A1B1E). Color palette is charcoal darks with the specified accent color providing the only warm light. Transparent or near-transparent background so the building silhouette floats on the map.
 
-| Building | Description | Accent Color |
-|----------|-------------|-------------|
-| **Capitol Building** | Domed legislative chamber, largest building | Gold (#B8956A) |
-| **Executive Mansion** | Presidential residence, classical facade | Gold (#B8956A) |
-| **Supreme Court** | Columned courthouse with scales motif | Slate (#6B7A8D) |
-| **Treasury** | Vault-like building with economic symbols | Gold (#D4A96A) |
-| **Party Hall** | Political gathering hall, banners/flags | Red (#C75050) |
-| **National Archives** | Library/records building, scroll motifs | Stone (#C9B99B) |
-| **Election Center** | Open civic building, ballot/podium | Green (#4CAF50) |
+Generate one image per building using this base prompt, substituting the per-building variables:
 
-**Prompt direction**: "Isometric miniature government building icon, [BUILDING TYPE], neoclassical architecture, dark background, [ACCENT COLOR] accent lighting, clean digital illustration, 200x200, transparent background, game-asset style, consistent with government simulation aesthetic"
+---
+
+**BASE PROMPT TEMPLATE:**
+```
+Stylized isometric game building icon, [BUILDING DESCRIPTION], cel-shaded flat illustration style, dark charcoal background (#1A1B1E), [ACCENT COLOR] warm accent lighting only on roof/dome/key architectural feature, muted stone (#C9B99B) walls, no humans no text, clean simplified silhouette, game UI asset, 200x200 square, transparent background, Civilization VI district icon aesthetic, slightly top-down isometric angle
+```
+
+---
+
+| Building | BUILDING DESCRIPTION | ACCENT COLOR |
+|----------|----------------------|-------------|
+| **Capitol Building** (`capitol.png`) | domed legislative chamber with central dome and symmetrical wings, neoclassical columns at entrance | warm muted gold (#B8956A) glowing on the dome only |
+| **Executive Mansion** (`executive.png`) | two-story presidential mansion, classical portico, manicured grounds, similar to a White House silhouette | muted gold (#B8956A) on the portico columns |
+| **Supreme Court** (`supreme-court.png`) | columned courthouse, wide stairs leading to heavy doors, triangular pediment roof | cool slate blue (#6B7A8D) on the pediment and column tops |
+| **Treasury** (`treasury.png`) | rectangular neoclassical bank-like building, heavy stone base, iron vault door visible, economic weight | bright gold (#D4A96A) glowing from arched windows |
+| **Party Hall** (`party-hall.png`) | civic meeting hall with banners hanging on facade, double-door entrance, modest columns | muted red (#C75050) accent on hanging banners and door trim |
+| **National Archives** (`archives.png`) | library-style building with scroll motifs carved above entrance, wide archive shelves implied in silhouette | warm stone (#C9B99B) accent on carved scroll details |
+| **Election Center** (`election-center.png`) | open civic pavilion, podium or ballot box visible on entrance steps, welcoming broad entrance | muted green (#4CAF50) accent on the entrance canopy |
+
+---
+
+**Additional guidance for consistency:**
+- All 7 should look like they belong in the same game UI set
+- Slightly elevated isometric camera angle (roughly 30 degrees above horizon)
+- Shadows cast to lower-right, dark and subtle
+- No people, no vehicles, no trees (keep it clean for the map overlay)
+- Stone walls should read as #C9B99B desaturated, not bright white marble
+- If the generator produces anything photorealistic or that looks like a 3D architectural render, add to prompt: "NOT a 3D render, NOT photorealistic, flat game illustration, low-poly cel shaded"
 
 ---
 
