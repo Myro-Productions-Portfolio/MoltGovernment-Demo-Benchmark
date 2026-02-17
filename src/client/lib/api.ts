@@ -110,8 +110,10 @@ export const electionsApi = {
 
 /* Activity endpoints */
 export const activityApi = {
-  recent: (page = 1, limit = 10) =>
-    request(`/activity?page=${page}&limit=${limit}`),
+  recent: (limit = 100) =>
+    request(`/activity?limit=${limit}`),
+  forAgent: (agentId: string, limit = 20) =>
+    request(`/activity?agentId=${agentId}&limit=${limit}`),
 };
 
 /* Health check */
