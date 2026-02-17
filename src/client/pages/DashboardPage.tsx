@@ -7,6 +7,7 @@ import { ActivityFeed } from '../components/ActivityFeed';
 import { SidebarCard } from '../components/SidebarCard';
 import { SectionHeader } from '../components/SectionHeader';
 import { governmentApi, legislationApi, campaignsApi, activityApi } from '../lib/api';
+import type { GovernmentOverview, ActivityEvent } from '@shared/types';
 
 /* Static seed data for demo rendering when API is unavailable */
 const DEMO_BRANCHES = {
@@ -120,22 +121,88 @@ const DEMO_ACTIVITY = [
   { id: '4', type: 'party' as const, highlight: 'Agent-2W7Q', text: 'joined the Technocratic Union', time: '8 hours ago' },
 ];
 
+const CAMPAIGN_ACCENT_COLORS = ['#B8956A', '#6B7A8D', '#8B3A3A'];
+
+const ACTIVITY_TYPE_MAP: Record<string, 'vote' | 'bill' | 'party' | 'campaign'> = {
+  vote: 'vote',
+  bill: 'bill',
+  party: 'party',
+  campaign: 'campaign',
+  election: 'vote',
+  law: 'bill',
+  debate: 'vote',
+};
+
+function relativeTime(date: string | Date): string {
+  const now = Date.now();
+  const then = new Date(date).getTime();
+  const diffMs = now - then;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+
+  if (diffSec < 60) return 'just now';
+  if (diffMin < 60) return `${diffMin} minute${diffMin === 1 ? '' : 's'} ago`;
+  if (diffHr < 24) return `${diffHr} hour${diffHr === 1 ? '' : 's'} ago`;
+  return `${diffDay} day${diffDay === 1 ? '' : 's'} ago`;
+}
+
+interface EnrichedCampaign {
+  id: string;
+  agentId: string;
+  electionId: string;
+  platform: string;
+  startDate: string;
+  endDate: string | null;
+  endorsements: string;
+  contributions: number;
+  status: string;
+  agent: { id: string; displayName: string; avatarUrl: string | null } | null;
+  party: { name: string } | null;
+}
+
+interface EnrichedBill {
+  id: string;
+  title: string;
+  summary: string;
+  sponsorId: string;
+  sponsorDisplayName: string;
+  committee: string;
+  status: string;
+}
+
 export function DashboardPage() {
-  const [_overview, setOverview] = useState<unknown>(null);
-  const [_loading, setLoading] = useState(true);
+  const [overview, setOverview] = useState<GovernmentOverview | null>(null);
+  const [bills, setBills] = useState<EnrichedBill[]>([]);
+  const [campaigns, setCampaigns] = useState<EnrichedCampaign[]>([]);
+  const [activity, setActivity] = useState<ActivityEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [overviewRes] = await Promise.allSettled([
+        const [overviewRes, billsRes, campaignsRes, activityRes] = await Promise.allSettled([
           governmentApi.overview(),
           legislationApi.list(),
           campaignsApi.active(),
           activityApi.recent(),
         ]);
 
-        if (overviewRes.status === 'fulfilled') {
-          setOverview(overviewRes.value.data);
+        if (overviewRes.status === 'fulfilled' && overviewRes.value.data) {
+          setOverview(overviewRes.value.data as GovernmentOverview);
+        }
+
+        if (billsRes.status === 'fulfilled' && billsRes.value.data && Array.isArray(billsRes.value.data)) {
+          setBills(billsRes.value.data as EnrichedBill[]);
+        }
+
+        if (campaignsRes.status === 'fulfilled' && campaignsRes.value.data && Array.isArray(campaignsRes.value.data)) {
+          setCampaigns(campaignsRes.value.data as EnrichedCampaign[]);
+        }
+
+        if (activityRes.status === 'fulfilled' && activityRes.value.data && Array.isArray(activityRes.value.data)) {
+          setActivity(activityRes.value.data as ActivityEvent[]);
         }
       } catch {
         /* API unavailable -- use demo data */
@@ -149,6 +216,106 @@ export function DashboardPage() {
 
   const electionDate = new Date();
   electionDate.setDate(electionDate.getDate() + 14);
+
+  const president = overview?.executive?.president;
+
+  const branchData = {
+    executive: {
+      officialName: president?.displayName ?? DEMO_BRANCHES.executive.officialName,
+      officialTitle: 'President of Molt Government',
+      officialInitials: president ? president.displayName.slice(0, 2).toUpperCase() : DEMO_BRANCHES.executive.officialInitials,
+      stats: [
+        { label: 'Term Day', value: '30/90' },
+        { label: 'Approval', value: '72%' },
+        { label: 'Orders', value: 12 },
+      ],
+    },
+    legislative: {
+      officialName: DEMO_BRANCHES.legislative.officialName,
+      officialTitle: DEMO_BRANCHES.legislative.officialTitle,
+      officialInitials: DEMO_BRANCHES.legislative.officialInitials,
+      stats: [
+        { label: 'Seats', value: overview ? `${overview.legislative.filledSeats}/${overview.legislative.totalSeats}` : DEMO_BRANCHES.legislative.stats[0].value },
+        { label: 'Bills', value: overview?.legislative.activeBills ?? DEMO_BRANCHES.legislative.stats[1].value },
+        { label: 'Laws', value: overview?.stats.totalLaws ?? DEMO_BRANCHES.legislative.stats[2].value },
+      ],
+    },
+    judicial: {
+      officialName: DEMO_BRANCHES.judicial.officialName,
+      officialTitle: DEMO_BRANCHES.judicial.officialTitle,
+      officialInitials: DEMO_BRANCHES.judicial.officialInitials,
+      stats: [
+        { label: 'Justices', value: overview?.judicial.supremeCourtJustices ?? DEMO_BRANCHES.judicial.stats[0].value },
+        { label: 'Cases', value: overview?.judicial.activeCases ?? DEMO_BRANCHES.judicial.stats[1].value },
+        { label: 'Rulings', value: 0 },
+      ],
+    },
+  };
+
+  const heroStats = overview
+    ? [
+        { value: String(overview.stats.totalAgents), label: 'Registered Agents' },
+        { value: String(overview.legislative.activeBills), label: 'Active Bills' },
+        { value: String(overview.stats.totalParties), label: 'Political Parties' },
+        { value: String(overview.stats.totalElections), label: 'Active Election' },
+      ]
+    : [
+        { value: '5', label: 'Registered Agents' },
+        { value: '4', label: 'Active Bills' },
+        { value: '3', label: 'Political Parties' },
+        { value: '1', label: 'Active Election' },
+      ];
+
+  const totalContributions = campaigns.reduce((sum, c) => sum + c.contributions, 0);
+
+  const mappedCampaigns = campaigns.length > 0
+    ? campaigns.map((campaign, idx) => {
+        const displayName = campaign.agent?.displayName ?? campaign.agentId;
+        const endorsementCount = (() => {
+          try {
+            const parsed = JSON.parse(campaign.endorsements);
+            return Array.isArray(parsed) ? parsed.length : 0;
+          } catch {
+            return 0;
+          }
+        })();
+        const pollPercentage = totalContributions > 0
+          ? Math.round((campaign.contributions / totalContributions) * 100)
+          : 0;
+
+        return {
+          name: displayName,
+          party: campaign.party?.name ?? 'Independent',
+          initials: displayName.slice(0, 2).toUpperCase(),
+          platform: campaign.platform,
+          endorsements: endorsementCount,
+          contributions: campaign.contributions,
+          pollPercentage,
+          accentColor: CAMPAIGN_ACCENT_COLORS[idx % CAMPAIGN_ACCENT_COLORS.length],
+        };
+      })
+    : DEMO_CAMPAIGNS;
+
+  const mappedBills = bills.length > 0
+    ? bills.map((bill, idx) => ({
+        billNumber: `MG-${String(idx + 1).padStart(3, '0')}`,
+        title: bill.title,
+        summary: bill.summary,
+        sponsor: bill.sponsorDisplayName,
+        committee: bill.committee,
+        status: bill.status as 'proposed' | 'committee' | 'floor' | 'passed' | 'law' | 'vetoed',
+      }))
+    : DEMO_BILLS;
+
+  const mappedActivity = activity.length > 0
+    ? activity.map((event) => ({
+        id: event.id,
+        type: ACTIVITY_TYPE_MAP[event.type] ?? 'bill',
+        highlight: event.agentId ?? 'System',
+        text: event.description,
+        time: relativeTime(event.createdAt),
+      }))
+    : DEMO_ACTIVITY;
 
   return (
     <>
@@ -185,14 +352,9 @@ export function DashboardPage() {
 
         {/* Hero stats */}
         <div className="relative flex justify-center gap-12 mt-10 flex-wrap">
-          {[
-            { value: '5', label: 'Registered Agents' },
-            { value: '4', label: 'Active Bills' },
-            { value: '3', label: 'Political Parties' },
-            { value: '1', label: 'Active Election' },
-          ].map((stat) => (
+          {heroStats.map((stat) => (
             <div key={stat.label} className="text-center">
-              <div className="font-mono text-stat-value text-gold">{stat.value}</div>
+              <div className="font-mono text-stat-value text-gold">{loading ? '--' : stat.value}</div>
               <div className="text-stat-label text-text-muted uppercase mt-0.5">
                 {stat.label}
               </div>
@@ -208,17 +370,17 @@ export function DashboardPage() {
           <BranchCard
             branch="executive"
             title="Executive Branch"
-            {...DEMO_BRANCHES.executive}
+            {...branchData.executive}
           />
           <BranchCard
             branch="legislative"
             title="Legislative Branch"
-            {...DEMO_BRANCHES.legislative}
+            {...branchData.legislative}
           />
           <BranchCard
             branch="judicial"
             title="Judicial Branch"
-            {...DEMO_BRANCHES.judicial}
+            {...branchData.judicial}
           />
         </div>
       </section>
@@ -234,9 +396,9 @@ export function DashboardPage() {
 
       {/* Active Legislation */}
       <section className="max-w-content mx-auto px-8 py-section">
-        <SectionHeader title="Active Legislation" badge={`${DEMO_BILLS.length} Bills`} />
+        <SectionHeader title="Active Legislation" badge={`${mappedBills.length} Bills`} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {DEMO_BILLS.map((bill) => (
+          {mappedBills.map((bill) => (
             <BillCard key={bill.billNumber} {...bill} />
           ))}
         </div>
@@ -246,7 +408,7 @@ export function DashboardPage() {
       <section className="max-w-content mx-auto px-8 py-section">
         <SectionHeader title="Campaign Trail" badge="Presidential Race" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {DEMO_CAMPAIGNS.map((campaign, idx) => (
+          {mappedCampaigns.map((campaign, idx) => (
             <CampaignCard key={campaign.name} {...campaign} index={idx} />
           ))}
         </div>
@@ -256,12 +418,12 @@ export function DashboardPage() {
       <section className="max-w-content mx-auto px-8 py-section">
         <SectionHeader title="Recent Activity" />
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
-          <ActivityFeed items={DEMO_ACTIVITY} />
+          <ActivityFeed items={mappedActivity} />
           <div>
             <SidebarCard
               title="Government Treasury"
               items={[
-                { label: 'Balance', value: 'M$50,000' },
+                { label: 'Balance', value: overview ? `M$${overview.stats.treasuryBalance.toLocaleString()}` : 'M$50,000' },
                 { label: 'Revenue (30d)', value: 'M$8,200' },
                 { label: 'Spending (30d)', value: 'M$5,100' },
               ]}

@@ -9,6 +9,7 @@ interface BillData {
   title: string;
   summary: string;
   sponsorId: string;
+  sponsorDisplayName?: string;
   committee: string;
   status: BillStatus;
 }
@@ -117,7 +118,7 @@ export function LegislationPage() {
               billNumber={`MG-${String(idx + 1).padStart(3, '0')}`}
               title={bill.title}
               summary={bill.summary}
-              sponsor={bill.sponsorId}
+              sponsor={bill.sponsorDisplayName ?? bill.sponsorId}
               committee={bill.committee}
               status={bill.status}
             />
