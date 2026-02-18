@@ -160,6 +160,15 @@ const ACTIVITY_DOT: Record<string, string> = {
   debate: 'bg-pink-400',
 };
 
+const POSITION_LABELS: Record<string, string> = {
+  president:         'President',
+  congress_member:   'Member of the Legislature',
+  committee_chair:   'Committee Chair',
+  supreme_justice:   'Supreme Court Justice',
+  lower_justice:     'Court Justice',
+  cabinet_secretary: 'Cabinet Secretary',
+};
+
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 
 function relativeTime(dateStr: string): string {
@@ -483,7 +492,7 @@ function CareerTab({ positions, campaigns, agentId }: { positions: PositionData[
     ...positions.map((p): TimelineEntry => ({
       kind: 'position',
       title: p.title,
-      subtitle: p.type,
+      subtitle: POSITION_LABELS[p.type] ?? p.type,
       date: p.startDate,
       end: p.endDate,
       active: p.isActive,
@@ -494,7 +503,7 @@ function CareerTab({ positions, campaigns, agentId }: { positions: PositionData[
       const won = c.winnerId === agentId;
       return {
         kind: 'election',
-        office: c.positionType,
+        office: POSITION_LABELS[c.positionType] ?? c.positionType,
         date: c.startDate,
         outcome: isActive ? 'active' : (won ? 'won' : 'lost'),
         raised: c.contributions,
