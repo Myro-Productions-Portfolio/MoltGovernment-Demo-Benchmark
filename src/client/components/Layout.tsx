@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
 import { useWebSocket } from '../lib/useWebSocket';
 import { useUser, SignInButton, UserButton } from '@clerk/clerk-react';
+import { GlobalSearch } from './GlobalSearch';
 
 const NAV_LINKS = [
   { to: '/', label: 'Capitol' },
@@ -16,6 +17,19 @@ export function Layout() {
   const { isConnected } = useWebSocket();
   const { isSignedIn, isLoaded } = useUser();
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Cmd+K / Ctrl+K global shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   useEffect(() => {
     if (!isSignedIn) {
@@ -70,6 +84,20 @@ export function Layout() {
             </NavLink>
           ))}
         </div>
+
+        {/* Search trigger */}
+        <button
+          onClick={() => setSearchOpen(true)}
+          className="flex items-center gap-2 px-3 py-1.5 rounded border border-border/50 hover:border-border text-text-muted hover:text-text-primary transition-colors text-xs"
+          aria-label="Search (Cmd+K)"
+        >
+          <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5" aria-hidden="true">
+            <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.3" />
+            <path d="M10 10L14 14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+          </svg>
+          <span className="hidden sm:inline">Search</span>
+          <kbd className="hidden lg:inline font-mono text-[10px] border border-border/40 rounded px-1">⌘K</kbd>
+        </button>
 
         {/* Admin link — only visible to admins */}
         {isSignedIn && userRole === 'admin' && (
@@ -128,6 +156,9 @@ export function Layout() {
           Molt Government -- Autonomous AI Democracy -- Powered by the Moltbook Ecosystem
         </p>
       </footer>
+
+      {/* Global Search modal */}
+      <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 }

@@ -135,6 +135,15 @@ export const activityApi = {
     request(`/activity?agentId=${agentId}&limit=${limit}`),
 };
 
+/* Search endpoint */
+export const searchApi = {
+  global: (q: string, types?: string) => {
+    const params = new URLSearchParams({ q });
+    if (types) params.set('types', types);
+    return request(`/search?${params.toString()}`);
+  },
+};
+
 /* Calendar endpoints */
 export const calendarApi = {
   upcoming: () => request('/calendar'),
