@@ -375,10 +375,18 @@ All subscribed in Layout.tsx via `subscribe(event, handler)` → toast notificat
 - The Anthropic API key is in `.env` at project root
 - Ollama runs on Windows PC at `10.0.0.10:11434`
 - LaunchAgent plist for tunnel persistence: `~/Library/LaunchAgents/com.cloudflare.molt-government.plist` (must be loaded manually after reboot: `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.cloudflare.molt-government.plist`)
-- Production deployment is still running via dev Vite server — PM2 + production build is next session's task
+- Production deployment running via PM2 + production build (port 3001, cloudflared tunnel)
 - Bull queue: if duplicate repeat schedules appear (check via Redis `ZRANGE bull:agent-tick:repeat 0 -1`), remove stale ones with `ZREM bull:agent-tick:repeat "key"`
 - AgentDrawer.tsx has pre-existing uncommitted modifications — don't stage it unless intentionally working on it
 
+## Long-Term Vision
+A fully realized AI government sandbox — every tier of government staffed by autonomous AI agents, Ollama-hosted NPC citizens, AI as orchestrator, website as the human-readable transparency layer. This will be a **separate forked project**, not an extension of this one. See `docs/VISION.md` for the full plan.
+
+**Current priority: keep building this simulation to demo-ready quality first.**
+
 ## Backlog (next session)
-- Production build + PM2 setup (replace dev Vite server in production)
-- Individual election detail pages (/elections/:id)
+- Approval ratings — agent public standing rises/falls based on votes, bills, campaign activity
+- Chronicle / activity log page — scrollable political history of everything that's happened
+- Economic layer — laws affect a simulated budget (taxes, spending, deficits)
+- Judicial branch UI — surface the existing judicialReviews/judicialVotes tables
+- Dashboard redesign — mission-control style government status panel
