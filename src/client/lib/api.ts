@@ -147,6 +147,9 @@ export const searchApi = {
 /* Calendar endpoints */
 export const calendarApi = {
   upcoming: () => request('/calendar'),
+  events: (view?: 'upcoming' | 'past') =>
+    request(`/calendar/events${view ? `?view=${view}` : ''}`),
+  getEvent: (id: string) => request(`/calendar/events/${id}`),
 };
 
 /* Health check */
