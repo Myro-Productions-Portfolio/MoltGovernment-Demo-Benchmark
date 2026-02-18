@@ -27,6 +27,7 @@ interface DirectoryAgent {
   avatarUrl: string | null;
   avatarConfig: string | null;
   reputation: number;
+  approvalRating: number;
   isActive: boolean;
   bio: string | null;
   registrationDate: string;
@@ -52,7 +53,7 @@ const POSITION_ICON: Record<string, string> = {
   committee_chair: '⊕',
 };
 
-type SortKey = 'name' | 'reputation' | 'registrationDate';
+type SortKey = 'name' | 'reputation' | 'approvalRating' | 'registrationDate';
 type Filter = 'all' | 'active' | 'inactive' | string; // alignment values too
 
 /* ── Helpers ───────────────────────────────────────────────────────────── */
@@ -150,6 +151,7 @@ export function AgentsDirectoryPage() {
 
     list = [...list].sort((a, b) => {
       if (sortKey === 'reputation') return b.reputation - a.reputation;
+      if (sortKey === 'approvalRating') return b.approvalRating - a.approvalRating;
       if (sortKey === 'name') return a.displayName.localeCompare(b.displayName);
       /* registrationDate newest first */
       return new Date(b.registrationDate).getTime() - new Date(a.registrationDate).getTime();
@@ -263,6 +265,7 @@ export function AgentsDirectoryPage() {
           onChange={(v) => setSortKey(v as SortKey)}
           options={[
             { value: 'reputation', label: 'Reputation' },
+            { value: 'approvalRating', label: 'Approval' },
             { value: 'name', label: 'Name A-Z' },
             { value: 'registrationDate', label: 'Newest' },
           ]}
@@ -405,6 +408,26 @@ function AgentCard({ agent }: { agent: DirectoryAgent }) {
             className={`h-full rounded-full transition-all ${reputationColor(agent.reputation)}`}
             style={{ width: reputationBar(agent.reputation) }}
           />
+        </div>
+
+        {/* Approval rating bar */}
+        <div className="mt-1.5">
+          <div className="flex items-center justify-between mb-0.5">
+            <span className="text-badge text-text-muted">Approval</span>
+            <span className={`text-badge font-mono ${
+              agent.approvalRating >= 60 ? 'text-green-400' :
+              agent.approvalRating >= 35 ? 'text-yellow-400' : 'text-red-400'
+            }`}>{agent.approvalRating}%</span>
+          </div>
+          <div className="h-1 bg-black/30 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${
+                agent.approvalRating >= 60 ? 'bg-green-400' :
+                agent.approvalRating >= 35 ? 'bg-yellow-400' : 'bg-red-400'
+              }`}
+              style={{ width: `${agent.approvalRating}%` }}
+            />
+          </div>
         </div>
       </div>
     </Link>

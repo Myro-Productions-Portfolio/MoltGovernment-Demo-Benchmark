@@ -20,10 +20,36 @@ import {
   transactions,
   forumThreads,
   agentMessages,
+  approvalEvents,
 } from '@db/schema/index';
 import { generateAgentDecision } from '../services/ai.js';
 import { broadcast } from '../websocket.js';
 import { ALIGNMENT_ORDER } from '@shared/constants';
+
+/* ── Approval Rating Helper ─────────────────────────────────────────── */
+export async function updateApproval(
+  agentId: string,
+  delta: number,
+  eventType: string,
+  reason: string,
+): Promise<void> {
+  try {
+    const [agent] = await db
+      .select({ approvalRating: agents.approvalRating })
+      .from(agents)
+      .where(eq(agents.id, agentId))
+      .limit(1);
+    if (!agent) return;
+
+    const newRating = Math.min(100, Math.max(0, agent.approvalRating + delta));
+    await Promise.all([
+      db.update(agents).set({ approvalRating: newRating }).where(eq(agents.id, agentId)),
+      db.insert(approvalEvents).values({ agentId, eventType, delta, reason }),
+    ]);
+  } catch (err) {
+    console.warn('[APPROVAL] updateApproval error:', err);
+  }
+}
 
 const agentTickQueue = new Bull('agent-tick', config.redis.url);
 
@@ -150,6 +176,7 @@ agentTickQueue.process(async () => {
           .where(and(eq(billVotes.voterId, agent.id), inArray(billVotes.billId, floorBillIds)));
 
         const votedBillIds = new Set(existingVotes.map((v) => v.billId));
+        let votedThisTick = 0;
 
         for (const bill of floorBills) {
           if (votedBillIds.has(bill.id)) continue;
@@ -228,6 +255,42 @@ agentTickQueue.process(async () => {
 
           console.warn(
             `[SIMULATION] ${agent.displayName} voted ${choice.toUpperCase()} on "${bill.title}"`,
+          );
+
+          votedThisTick++;
+
+          /* Approval: vote participation */
+          // Note: choice is currently always 'yea' or 'nay'; 'abstain' branch is a placeholder for future abstain support
+          await updateApproval(
+            agent.id,
+            choice === 'abstain' ? -1 : 1,
+            choice === 'abstain' ? 'vote_abstain' : 'vote_cast',
+            choice === 'abstain'
+              ? `Abstained on "${bill.title}"`
+              : `Cast a ${choice.toUpperCase()} vote on "${bill.title}"`,
+          );
+
+          /* Approval: whip signal compliance */
+          if (whipSignal && choice !== 'abstain') {
+            const followedWhip = choice === whipSignal;
+            await updateApproval(
+              agent.id,
+              followedWhip ? 3 : -5,
+              followedWhip ? 'whip_followed' : 'whip_defected',
+              followedWhip
+                ? `Voted with party whip signal (${whipSignal.toUpperCase()}) on "${bill.title}"`
+                : `Voted against party whip signal on "${bill.title}" (whip said ${whipSignal.toUpperCase()}, voted ${choice.toUpperCase()})`,
+            );
+          }
+        }
+
+        /* Approval: absenteeism */
+        if (floorBills.length > 0 && votedThisTick === 0) {
+          await updateApproval(
+            agent.id,
+            -3,
+            'absenteeism',
+            `Missed floor vote${floorBills.length > 1 ? 's' : ''} on ${floorBills.length} bill${floorBills.length > 1 ? 's' : ''}`,
           );
         }
       }
@@ -344,6 +407,14 @@ agentTickQueue.process(async () => {
           });
 
           console.warn(`[SIMULATION] ${chair.displayName} tabled "${bill.title}" in committee`);
+
+          /* Approval: bill failed in committee */
+          await updateApproval(
+            bill.sponsorId,
+            -8,
+            'bill_failed_committee',
+            `Sponsored "${bill.title}" which was tabled in committee`,
+          );
         } else if (reviewDecision === 'amended' && amendedText.length > 50) {
           await db
             .update(bills)
@@ -554,6 +625,29 @@ agentTickQueue.process(async () => {
         });
 
         console.warn(`[SIMULATION] "${bill.title}" passed Congress (${yeaCount} yea, ${nayCount} nay)`);
+
+        /* Approval: sponsor gets credit for passing floor vote */
+        await updateApproval(
+          bill.sponsorId,
+          8,
+          'bill_passed_floor',
+          `Sponsored "${bill.title}" which passed the floor vote`,
+        );
+
+        /* Approval: +2 for yea voters (majority side) who are not the sponsor */
+        const yeaVoters = await db
+          .select({ voterId: billVotes.voterId })
+          .from(billVotes)
+          .where(and(eq(billVotes.billId, bill.id), eq(billVotes.choice, 'yea')));
+        for (const v of yeaVoters) {
+          if (v.voterId === bill.sponsorId) continue;
+          await updateApproval(
+            v.voterId,
+            2,
+            'vote_majority',
+            `Voted with the winning majority on "${bill.title}"`,
+          );
+        }
       } else {
         /* Congress voted it down */
         await db
@@ -578,6 +672,14 @@ agentTickQueue.process(async () => {
         });
 
         console.warn(`[SIMULATION] "${bill.title}" voted down by Congress (${yeaCount} yea, ${nayCount} nay)`);
+
+        /* Approval: sponsor penalized for failed floor vote */
+        await updateApproval(
+          bill.sponsorId,
+          -6,
+          'bill_failed_floor',
+          `Sponsored "${bill.title}" which failed the floor vote`,
+        );
       }
     }
   } catch (err) {
@@ -681,6 +783,14 @@ agentTickQueue.process(async () => {
               });
 
               console.warn(`[SIMULATION] ${president.displayName} vetoed "${bill.title}"`);
+
+              /* Approval: sponsor penalized for veto */
+              await updateApproval(
+                bill.sponsorId,
+                -10,
+                'bill_vetoed',
+                `Sponsored "${bill.title}" which was vetoed by the President`,
+              );
             }
           }
         }
@@ -867,6 +977,11 @@ agentTickQueue.process(async () => {
 
     const passedBillsForEnactment = await db.select().from(bills).where(eq(bills.status, 'passed'));
 
+    /* Build agent -> partyId map once for all enactment branches */
+    const lawMemberships = await db.select({ agentId: partyMemberships.agentId, partyId: partyMemberships.partyId }).from(partyMemberships);
+    const lawPartyMap = new Map<string, string>();
+    for (const m of lawMemberships) lawPartyMap.set(m.agentId, m.partyId);
+
     for (const bill of passedBillsForEnactment) {
       if (bill.billType === 'amendment' && bill.amendsLawId) {
         /* Amendment — update existing law */
@@ -922,6 +1037,44 @@ agentTickQueue.process(async () => {
           });
 
           console.warn(`[SIMULATION] Law "${existingLaw.title}" amended by "${bill.title}"`);
+
+          /* Approval: bill became law (amendment path) — sponsor + co-sponsors */
+          await updateApproval(
+            bill.sponsorId,
+            12,
+            'bill_became_law',
+            `Sponsored "${bill.title}" which was enacted into law`,
+          );
+
+          {
+            const coSponsorIds: string[] = JSON.parse(bill.coSponsorIds || '[]') as string[];
+
+            for (const coId of coSponsorIds) {
+              if (coId === bill.sponsorId) continue;
+              const sponsorParty = lawPartyMap.get(bill.sponsorId);
+              const cosponsorParty = lawPartyMap.get(coId);
+              const crossParty = !!sponsorParty && !!cosponsorParty && sponsorParty !== cosponsorParty;
+
+              await updateApproval(
+                coId,
+                crossParty ? 10 : 6,
+                crossParty ? 'cross_party_law' : 'bill_cosponsor_law',
+                crossParty
+                  ? `Cross-party co-sponsored "${bill.title}" which became law`
+                  : `Co-sponsored "${bill.title}" which became law`,
+              );
+            }
+
+            if (coSponsorIds.length >= 3) {
+              await updateApproval(
+                bill.sponsorId,
+                5,
+                'cosponsor_bonus',
+                `"${bill.title}" attracted ${coSponsorIds.length} co-sponsors`,
+              );
+            }
+          }
+
           continue;
         }
       }
@@ -956,6 +1109,43 @@ agentTickQueue.process(async () => {
       });
 
       console.warn(`[SIMULATION] "${bill.title}" enacted into law`);
+
+      /* Approval: bill became law — sponsor + co-sponsors */
+      await updateApproval(
+        bill.sponsorId,
+        12,
+        'bill_became_law',
+        `Sponsored "${bill.title}" which was enacted into law`,
+      );
+
+      {
+        const coSponsorIds: string[] = JSON.parse(bill.coSponsorIds || '[]') as string[];
+
+        for (const coId of coSponsorIds) {
+          if (coId === bill.sponsorId) continue;
+          const sponsorParty = lawPartyMap.get(bill.sponsorId);
+          const cosponsorParty = lawPartyMap.get(coId);
+          const crossParty = !!sponsorParty && !!cosponsorParty && sponsorParty !== cosponsorParty;
+
+          await updateApproval(
+            coId,
+            crossParty ? 10 : 6,
+            crossParty ? 'cross_party_law' : 'bill_cosponsor_law',
+            crossParty
+              ? `Cross-party co-sponsored "${bill.title}" which became law`
+              : `Co-sponsored "${bill.title}" which became law`,
+          );
+        }
+
+        if (coSponsorIds.length >= 3) {
+          await updateApproval(
+            bill.sponsorId,
+            5,
+            'cosponsor_bonus',
+            `"${bill.title}" attracted ${coSponsorIds.length} co-sponsors`,
+          );
+        }
+      }
     }
   } catch (err) {
     console.warn('[SIMULATION] Phase 9 error:', err);
@@ -1535,6 +1725,25 @@ agentTickQueue.process(async () => {
       console.warn(
         `[SIMULATION] ${winnerName} won the ${election.positionType} election`,
       );
+
+      /* Approval: election winner */
+      await updateApproval(
+        winner.agentId,
+        15,
+        'election_won',
+        `Won the ${election.positionType ?? 'government'} election`,
+      );
+
+      /* Approval: election losers */
+      for (const candidate of campaignTotals) {
+        if (candidate.agentId === winner.agentId) continue;
+        await updateApproval(
+          candidate.agentId,
+          -15,
+          'election_lost',
+          `Lost the ${election.positionType ?? 'government'} election`,
+        );
+      }
     }
   } catch (err) {
     console.warn('[SIMULATION] Phase 14 error:', err);
@@ -1626,6 +1835,10 @@ agentTickQueue.process(async () => {
         });
 
         speechCountThisTick.set(campaign.agentId, (speechCountThisTick.get(campaign.agentId) ?? 0) + 1);
+
+        /* Approval: campaign speech */
+        await updateApproval(campaignAgent.id, 2, 'campaign_speech', `${campaignAgent.displayName} gave a campaign speech`);
+
         console.warn(
           `[SIMULATION] ${campaignAgent.displayName} made campaign speech for ${election.positionType} (+${boost} contributions)`,
         );
@@ -1701,6 +1914,9 @@ agentTickQueue.process(async () => {
           title: thread.title,
         });
 
+        /* Approval: forum post */
+        await updateApproval(agent.id, 1, 'forum_post', `${agent.displayName} posted in the forum`);
+
         console.warn(`[SIMULATION] ${agent.displayName} posted to ${category} forum: "${title.slice(0, 60)}"`);
       } catch (agentErr) {
         console.warn(`[SIMULATION] Phase 16: Error for agent ${agent.displayName}:`, agentErr);
@@ -1708,6 +1924,24 @@ agentTickQueue.process(async () => {
     }
   } catch (err) {
     console.warn('[SIMULATION] Phase 16 error:', err);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Inactivity decay — gentle pull toward 50 for all agents            */
+  /* ------------------------------------------------------------------ */
+  try {
+    const allAgentsForDecay = await db
+      .select({ id: agents.id, approvalRating: agents.approvalRating })
+      .from(agents)
+      .where(eq(agents.isActive, true));
+    for (const a of allAgentsForDecay) {
+      if (a.approvalRating === 50) continue;
+      const decayDelta = Math.round((50 - a.approvalRating) * 0.05);
+      if (decayDelta === 0) continue;
+      await updateApproval(a.id, decayDelta, 'inactivity_decay', 'Natural approval drift toward baseline');
+    }
+  } catch (err) {
+    console.warn('[APPROVAL] Inactivity decay error:', err);
   }
 
   console.warn('[SIMULATION] Agent tick complete.');

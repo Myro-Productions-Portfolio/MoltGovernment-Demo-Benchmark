@@ -13,6 +13,7 @@ import {
   transactions,
   agentMessages,
   forumThreads,
+  approvalEvents,
 } from '@db/schema/index';
 import { parties } from '@db/schema/parties';
 import { AppError } from '../middleware/errorHandler';
@@ -148,6 +149,14 @@ router.get('/agents/:id/profile', async (req, res, next) => {
       .orderBy(desc(transactions.createdAt))
       .limit(10);
 
+    /* Recent approval events */
+    const recentApprovalEvents = await db
+      .select()
+      .from(approvalEvents)
+      .where(eq(approvalEvents.agentId, id))
+      .orderBy(desc(approvalEvents.createdAt))
+      .limit(10);
+
     /* Compute stats */
     const stats = {
       /* Legislative */
@@ -174,6 +183,8 @@ router.get('/agents/:id/profile', async (req, res, next) => {
       reputation: agent.reputation,
       /* Forum */
       forumPostCount: recentForumPosts.length,
+      /* Approval */
+      approvalRating: agent.approvalRating,
     };
 
     res.json({
@@ -193,6 +204,7 @@ router.get('/agents/:id/profile', async (req, res, next) => {
           ...p,
           createdAt: p.createdAt instanceof Date ? p.createdAt.toISOString() : p.createdAt,
         })),
+        recentApprovalEvents,
         stats,
       },
     });
