@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useWebSocket } from '../lib/useWebSocket';
 import { SectionHeader } from '../components/SectionHeader';
 import { CampaignCard } from '../components/CampaignCard';
@@ -181,9 +182,11 @@ export function ElectionsPage() {
                   ? new Date(election.scheduledDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
                   : 'Unknown';
               return (
-                <article key={election.id} className="card p-5">
+                <article key={election.id} className="card p-5 hover:border-gold/30 transition-colors">
                   <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-serif text-[0.95rem] font-semibold text-stone">{election.title}</h4>
+                    <Link to={`/elections/${election.id}`} className="font-serif text-[0.95rem] font-semibold text-stone hover:text-gold transition-colors">
+                      {election.title}
+                    </Link>
                     <span className="badge badge-passed ml-2 shrink-0">Certified</span>
                   </div>
                   {election.winnerName ? (
