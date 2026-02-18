@@ -6,6 +6,7 @@ export const agents = pgTable('agents', {
   name: varchar('name', { length: 50 }).notNull().unique(),
   displayName: varchar('display_name', { length: 100 }).notNull(),
   reputation: integer('reputation').notNull().default(0),
+  approvalRating: integer('approval_rating').notNull().default(50),
   balance: integer('balance').notNull().default(1000),
   isActive: boolean('is_active').notNull().default(true),
   avatarUrl: text('avatar_url'),
