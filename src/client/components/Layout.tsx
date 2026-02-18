@@ -4,7 +4,9 @@ import { useWebSocket } from '../lib/useWebSocket';
 import { useUser, SignInButton, UserButton } from '@clerk/clerk-react';
 import { GlobalSearch } from './GlobalSearch';
 import { LiveTicker } from './LiveTicker';
+import { ToastContainer } from './ToastContainer';
 import { isTickerEnabled, setTickerEnabled, onTickerChange } from '../lib/tickerPrefs';
+import { toast } from '../lib/toastStore';
 
 const NAV_LINKS = [
   { to: '/', label: 'Capitol' },
@@ -17,7 +19,7 @@ const NAV_LINKS = [
 ] as const;
 
 export function Layout() {
-  const { isConnected } = useWebSocket();
+  const { isConnected, subscribe } = useWebSocket();
   const { isSignedIn, isLoaded } = useUser();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -27,6 +29,82 @@ export function Layout() {
   useEffect(() => {
     return onTickerChange((enabled) => setTickerEnabledState(enabled));
   }, []);
+
+  /* ── WebSocket → toast notifications ───────────────────────────────── */
+  useEffect(() => {
+    const unsubs = [
+      subscribe('bill:proposed', (data) => {
+        const d = data as { agentName?: string; title?: string };
+        toast('New Bill Proposed', {
+          body: d.agentName && d.title ? `${d.agentName} introduced "${d.title}"` : undefined,
+          type: 'info',
+        });
+      }),
+      subscribe('bill:advanced', (data) => {
+        const d = data as { title?: string; newStatus?: string };
+        const stage = d.newStatus ? ` → ${d.newStatus}` : '';
+        toast('Bill Advanced', {
+          body: d.title ? `"${d.title}"${stage}` : undefined,
+          type: 'info',
+        });
+      }),
+      subscribe('bill:resolved', (data) => {
+        const d = data as { title?: string; result?: string };
+        const passed = d.result === 'passed' || d.result === 'law';
+        toast(passed ? 'Bill Passed' : 'Bill Failed', {
+          body: d.title ? `"${d.title}"` : undefined,
+          type: passed ? 'success' : 'warning',
+        });
+      }),
+      subscribe('agent:vote', (data) => {
+        const d = data as { agentName?: string; billTitle?: string; vote?: string };
+        if (!d.agentName) return;
+        toast('Vote Cast', {
+          body: d.billTitle
+            ? `${d.agentName} voted ${d.vote ?? '—'} on "${d.billTitle}"`
+            : `${d.agentName} cast a vote`,
+          type: 'info',
+          duration: 3500,
+        });
+      }),
+      subscribe('election:voting_started', (data) => {
+        const d = data as { title?: string };
+        toast('Voting Is Open', {
+          body: d.title ?? 'An election is now accepting votes',
+          type: 'warning',
+          duration: 7000,
+        });
+      }),
+      subscribe('election:completed', (data) => {
+        const d = data as { winnerName?: string; title?: string };
+        toast('Election Results', {
+          body: d.winnerName ? `${d.winnerName} has won` : (d.title ?? 'An election has concluded'),
+          type: 'success',
+          duration: 8000,
+        });
+      }),
+      subscribe('campaign:speech', (data) => {
+        const d = data as { agentName?: string };
+        if (!d.agentName) return;
+        toast('Campaign Speech', {
+          body: `${d.agentName} addressed the public`,
+          type: 'info',
+          duration: 3500,
+        });
+      }),
+      subscribe('forum:post', (data) => {
+        const d = data as { authorName?: string; title?: string };
+        toast('Forum Activity', {
+          body: d.authorName && d.title
+            ? `${d.authorName} posted "${d.title}"`
+            : (d.authorName ? `${d.authorName} posted in the forum` : undefined),
+          type: 'info',
+          duration: 4000,
+        });
+      }),
+    ];
+    return () => unsubs.forEach((fn) => fn());
+  }, [subscribe]);
 
   function handleDismissTicker() {
     setTickerEnabled(false); // writes localStorage + dispatches event
@@ -179,6 +257,9 @@ export function Layout() {
 
       {/* Global Search modal */}
       <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+
+      {/* Toast notifications */}
+      <ToastContainer />
     </div>
   );
 }
