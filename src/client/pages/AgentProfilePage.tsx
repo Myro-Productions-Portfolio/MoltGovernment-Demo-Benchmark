@@ -103,6 +103,15 @@ interface Stats {
   currentBalance: number;
   reputation: number;
   forumPostCount: number;
+  approvalRating: number;
+}
+
+interface ApprovalEvent {
+  id: string;
+  eventType: string;
+  delta: number;
+  reason: string;
+  createdAt: string;
 }
 
 interface ProfileData {
@@ -116,6 +125,7 @@ interface ProfileData {
   recentActivity: ActivityEventData[];
   latestStatement: { reasoning: string; phase: string; createdAt: string } | null;
   recentForumPosts: ForumPostData[];
+  recentApprovalEvents: ApprovalEvent[];
   stats: Stats;
 }
 
@@ -178,7 +188,7 @@ function BillBadge({ status }: { status: string }) {
 /* ── Tab: Overview ───────────────────────────────────────────────────────── */
 
 function OverviewTab({ profile }: { profile: ProfileData }) {
-  const { stats, latestStatement, recentActivity, positions } = profile;
+  const { stats, latestStatement, recentActivity, positions, recentApprovalEvents } = profile;
   const activePositions = positions.filter((p) => p.isActive);
 
   const statCards = [
@@ -200,6 +210,23 @@ function OverviewTab({ profile }: { profile: ProfileData }) {
           </div>
         ))}
       </div>
+
+      {/* Recent approval events */}
+      {recentApprovalEvents && recentApprovalEvents.length > 0 && (
+        <div className="rounded-lg border border-border bg-surface p-4 space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-text-muted">Rating Activity</h3>
+          <div className="space-y-1.5">
+            {recentApprovalEvents.map((ev) => (
+              <div key={ev.id} className="flex items-start justify-between gap-3 py-1 border-b border-border/30 last:border-0">
+                <span className="text-xs text-text-secondary flex-1">{ev.reason}</span>
+                <span className={`text-xs font-mono font-bold shrink-0 ${ev.delta > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {ev.delta > 0 ? '+' : ''}{ev.delta}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         {/* Left: Latest Statement + Activity */}
@@ -754,15 +781,33 @@ export function AgentProfilePage() {
             </div>
           </div>
 
-          {/* Right: reputation */}
-          <div className="text-right shrink-0 hidden sm:block">
-            <div className="text-xs text-text-muted uppercase tracking-wide mb-1">Reputation</div>
-            <div className="font-mono text-2xl text-gold font-bold">{stats.reputation}</div>
-            <div className="w-32 h-1.5 bg-black/30 rounded-full overflow-hidden mt-1.5 ml-auto">
-              <div
-                className="h-full bg-gold rounded-full"
-                style={{ width: `${Math.min(100, (stats.reputation / 1000) * 100)}%` }}
-              />
+          {/* Right: reputation + approval */}
+          <div className="flex gap-6 shrink-0 hidden sm:flex">
+            <div className="text-right">
+              <div className="text-xs text-text-muted uppercase tracking-wide mb-1">Reputation</div>
+              <div className="font-mono text-2xl text-gold font-bold">{stats.reputation}</div>
+              <div className="w-32 h-1.5 bg-black/30 rounded-full overflow-hidden mt-1.5 ml-auto">
+                <div
+                  className="h-full bg-gold rounded-full"
+                  style={{ width: `${Math.min(100, (stats.reputation / 1000) * 100)}%` }}
+                />
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-text-muted uppercase tracking-wide mb-1">Approval</div>
+              <div className={`font-mono text-2xl font-bold ${
+                stats.approvalRating >= 60 ? 'text-green-400' :
+                stats.approvalRating >= 35 ? 'text-yellow-400' : 'text-red-400'
+              }`}>{stats.approvalRating}%</div>
+              <div className="w-32 h-1.5 bg-black/30 rounded-full overflow-hidden mt-1.5 ml-auto">
+                <div
+                  className={`h-full rounded-full ${
+                    stats.approvalRating >= 60 ? 'bg-green-400' :
+                    stats.approvalRating >= 35 ? 'bg-yellow-400' : 'bg-red-400'
+                  }`}
+                  style={{ width: `${stats.approvalRating}%` }}
+                />
+              </div>
             </div>
           </div>
         </div>
