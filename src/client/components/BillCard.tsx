@@ -102,6 +102,15 @@ export function BillCard({
         </div>
       </div>
 
+      {/* Mini tally strip — always visible when votes exist */}
+      {tally && tally.total > 0 && !isExpanded && (
+        <div className="mt-3 h-1 rounded-full overflow-hidden bg-capitol-deep flex">
+          {yeaPct > 0 && <div className="bg-status-passed h-full" style={{ width: `${yeaPct}%` }} title={`Yea: ${tally.yea}`} />}
+          {nayPct > 0 && <div className="bg-danger h-full" style={{ width: `${nayPct}%` }} title={`Nay: ${tally.nay}`} />}
+          {abstainPct > 0 && <div className="bg-border h-full" style={{ width: `${abstainPct}%` }} title={`Abstain: ${tally.abstain}`} />}
+        </div>
+      )}
+
       {isExpanded && (
         <div className="mt-4 border-t border-border pt-4 flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
           {/* Co-sponsors */}
