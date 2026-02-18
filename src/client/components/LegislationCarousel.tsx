@@ -46,7 +46,7 @@ export function LegislationCarousel({ bills }: LegislationCarouselProps) {
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
         {visibleBills.map((bill) => (
           <BillCard key={bill.billNumber} {...bill} />
         ))}
