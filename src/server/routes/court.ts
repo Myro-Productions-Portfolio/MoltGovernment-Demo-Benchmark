@@ -6,10 +6,16 @@ import { eq, desc } from 'drizzle-orm';
 
 const router = Router();
 
+const VALID_STATUSES = ['pending', 'deliberating', 'upheld', 'struck_down'] as const;
+
 /* GET /api/court/cases -- All judicial reviews, enriched */
 router.get('/court/cases', async (req, res, next) => {
   try {
     const { status } = req.query as { status?: string };
+
+    if (status && !(VALID_STATUSES as readonly string[]).includes(status)) {
+      throw new AppError(400, `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`);
+    }
 
     const allReviews = status
       ? await db.select().from(judicialReviews).where(eq(judicialReviews.status, status)).orderBy(desc(judicialReviews.createdAt))
