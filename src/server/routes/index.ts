@@ -14,6 +14,7 @@ import adminRouter from './admin';
 import providersRouter from './providers';
 import profileRouter from './profile';
 import searchRouter from './search';
+import calendarRouter from './calendar';
 
 const router = Router();
 
@@ -32,5 +33,6 @@ router.use(adminRouter);
 router.use(providersRouter);
 router.use(profileRouter);
 router.use(searchRouter);
+router.use(calendarRouter);
 
 export default router;
