@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { legislationApi } from '../lib/api';
 import { PixelAvatar } from '../components/PixelAvatar';
@@ -15,6 +15,8 @@ interface LawItem {
   sponsorDisplayName: string | null;
   sponsorAvatarConfig: string | null;
   sponsorAlignment: string | null;
+  reviewStatus: string | null;
+  reviewId: string | null;
 }
 
 const ALIGNMENT_COLORS: Record<string, string> = {
@@ -25,13 +27,50 @@ const ALIGNMENT_COLORS: Record<string, string> = {
   libertarian:  'text-red-400 bg-red-900/20 border-red-700/30',
 };
 
+const REVIEW_BADGES: Record<string, { label: string; color: string }> = {
+  pending:      { label: 'Under Review', color: 'text-yellow-400 bg-yellow-900/20 border-yellow-700/30' },
+  deliberating: { label: 'Under Review', color: 'text-yellow-400 bg-yellow-900/20 border-yellow-700/30' },
+  upheld:       { label: 'Upheld',       color: 'text-green-400 bg-green-900/20 border-green-700/30' },
+  struck_down:  { label: 'Struck Down',  color: 'text-red-400 bg-red-900/20 border-red-700/30' },
+};
+
+type StatusFilter = '' | 'active' | 'repealed';
+type CourtFilter  = '' | 'under_review' | 'upheld' | 'struck_down';
+type SortKey      = 'newest' | 'oldest' | 'az';
+
 function fmtDate(s: string): string {
   return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function FilterBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`text-badge px-3 py-1.5 rounded border transition-colors uppercase tracking-widest ${
+        active
+          ? 'border-gold/40 text-gold bg-gold/5'
+          : 'border-border/40 text-text-muted hover:text-text-primary hover:border-border'
+      }`}
+    >
+      {children}
+    </button>
+  );
 }
 
 export function LawsPage() {
   const [lawItems, setLawItems] = useState<LawItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('');
+  const [courtFilter, setCourtFilter] = useState<CourtFilter>('');
+  const [sort, setSort] = useState<SortKey>('newest');
 
   useEffect(() => {
     legislationApi.laws()
@@ -44,41 +83,105 @@ export function LawsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const activeCount = lawItems.filter((l) => l.isActive).length;
+  const stats = useMemo(() => ({
+    total:       lawItems.length,
+    active:      lawItems.filter((l) => l.isActive).length,
+    repealed:    lawItems.filter((l) => !l.isActive).length,
+    underReview: lawItems.filter((l) =>
+      l.reviewStatus === 'pending' || l.reviewStatus === 'deliberating'
+    ).length,
+  }), [lawItems]);
+
+  const displayed = useMemo(() => {
+    let list = [...lawItems];
+
+    if (statusFilter === 'active')   list = list.filter((l) => l.isActive);
+    if (statusFilter === 'repealed') list = list.filter((l) => !l.isActive);
+
+    if (courtFilter === 'under_review') {
+      list = list.filter((l) => l.reviewStatus === 'pending' || l.reviewStatus === 'deliberating');
+    }
+    if (courtFilter === 'upheld')      list = list.filter((l) => l.reviewStatus === 'upheld');
+    if (courtFilter === 'struck_down') list = list.filter((l) => l.reviewStatus === 'struck_down');
+
+    if (sort === 'newest') list.sort((a, b) => new Date(b.enactedDate).getTime() - new Date(a.enactedDate).getTime());
+    if (sort === 'oldest') list.sort((a, b) => new Date(a.enactedDate).getTime() - new Date(b.enactedDate).getTime());
+    if (sort === 'az')     list.sort((a, b) => a.title.localeCompare(b.title));
+
+    return list;
+  }, [lawItems, statusFilter, courtFilter, sort]);
 
   return (
     <div className="max-w-screen-2xl mx-auto px-6 py-8 space-y-6">
-      {/* Header */}
       <div className="space-y-1">
         <h1 className="font-serif text-3xl font-semibold text-stone">Laws of the Land</h1>
-        {!loading && (
-          <p className="text-text-muted text-sm">
-            {lawItems.length} law{lawItems.length !== 1 ? 's' : ''} enacted
-            {activeCount !== lawItems.length && `, ${activeCount} active`}
-          </p>
-        )}
+        <p className="text-text-muted text-sm">Enacted legislation currently in force.</p>
       </div>
 
-      {/* Grid */}
+      {!loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: 'Total Enacted', value: stats.total },
+            { label: 'Active',        value: stats.active,      color: 'text-green-400' },
+            { label: 'Repealed',      value: stats.repealed,    color: 'text-red-400' },
+            { label: 'Under Review',  value: stats.underReview, color: 'text-yellow-400' },
+          ].map((s) => (
+            <div key={s.label} className="rounded-lg border border-border bg-surface p-4">
+              <div className="text-badge text-text-muted uppercase tracking-widest mb-1">{s.label}</div>
+              <div className={`font-mono text-2xl font-bold ${s.color ?? 'text-stone'}`}>{s.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && lawItems.length > 0 && (
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex gap-1">
+            <FilterBtn active={statusFilter === ''} onClick={() => setStatusFilter('')}>All</FilterBtn>
+            <FilterBtn active={statusFilter === 'active'} onClick={() => setStatusFilter('active')}>Active</FilterBtn>
+            <FilterBtn active={statusFilter === 'repealed'} onClick={() => setStatusFilter('repealed')}>Repealed</FilterBtn>
+          </div>
+
+          <div className="w-px h-5 bg-border/40 hidden sm:block" />
+
+          <div className="flex gap-1">
+            <FilterBtn active={courtFilter === ''} onClick={() => setCourtFilter('')}>All Court</FilterBtn>
+            <FilterBtn active={courtFilter === 'under_review'} onClick={() => setCourtFilter('under_review')}>Under Review</FilterBtn>
+            <FilterBtn active={courtFilter === 'upheld'} onClick={() => setCourtFilter('upheld')}>Upheld</FilterBtn>
+            <FilterBtn active={courtFilter === 'struck_down'} onClick={() => setCourtFilter('struck_down')}>Struck Down</FilterBtn>
+          </div>
+
+          <div className="w-px h-5 bg-border/40 hidden sm:block" />
+
+          <div className="flex gap-1">
+            <FilterBtn active={sort === 'newest'} onClick={() => setSort('newest')}>Newest</FilterBtn>
+            <FilterBtn active={sort === 'oldest'} onClick={() => setSort('oldest')}>Oldest</FilterBtn>
+            <FilterBtn active={sort === 'az'} onClick={() => setSort('az')}>A→Z</FilterBtn>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <p className="text-text-muted py-16 text-center">Loading...</p>
-      ) : lawItems.length === 0 ? (
-        <p className="text-text-muted py-16 text-center">No laws have been enacted yet.</p>
+      ) : displayed.length === 0 ? (
+        <p className="text-text-muted py-16 text-center">
+          {lawItems.length === 0 ? 'No laws have been enacted yet.' : 'No laws match the current filters.'}
+        </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-          {lawItems.map((law) => {
+          {displayed.map((law) => {
             const avatarConfig = law.sponsorAvatarConfig
               ? (JSON.parse(law.sponsorAvatarConfig) as AvatarConfig)
               : undefined;
             const alignKey = law.sponsorAlignment?.toLowerCase() ?? '';
             const alignColor = ALIGNMENT_COLORS[alignKey] ?? 'text-text-muted bg-border/10 border-border/30';
+            const reviewBadge = law.reviewStatus ? REVIEW_BADGES[law.reviewStatus] ?? null : null;
 
             return (
               <article
                 key={law.id}
                 className="rounded-lg border border-border bg-surface p-4 space-y-3 flex flex-col hover:border-gold/30 transition-colors"
               >
-                {/* Title */}
                 <Link
                   to={`/laws/${law.id}`}
                   className="font-serif text-sm font-semibold text-stone hover:text-gold transition-colors leading-snug line-clamp-3"
@@ -86,7 +189,6 @@ export function LawsPage() {
                   {law.title}
                 </Link>
 
-                {/* Badges row */}
                 <div className="flex flex-wrap gap-1.5">
                   <span
                     className={`badge border text-badge uppercase tracking-widest ${
@@ -102,12 +204,18 @@ export function LawsPage() {
                       {law.committee}
                     </span>
                   )}
+                  {reviewBadge && law.reviewId && (
+                    <Link
+                      to={`/court/cases/${law.reviewId}`}
+                      className={`badge border text-badge uppercase tracking-widest ${reviewBadge.color} hover:opacity-80 transition-opacity`}
+                    >
+                      {reviewBadge.label}
+                    </Link>
+                  )}
                 </div>
 
-                {/* Enacted date */}
                 <p className="text-text-muted text-xs">{fmtDate(law.enactedDate)}</p>
 
-                {/* Sponsor */}
                 {law.sponsorDisplayName && law.sponsorId && (
                   <div className="flex items-center gap-2 pt-1 border-t border-border/40">
                     <PixelAvatar config={avatarConfig} seed={law.sponsorDisplayName} size="xs" />
@@ -127,7 +235,6 @@ export function LawsPage() {
                   </div>
                 )}
 
-                {/* Source bill link */}
                 {law.sourceBillId && (
                   <Link
                     to={`/legislation/${law.sourceBillId}`}
