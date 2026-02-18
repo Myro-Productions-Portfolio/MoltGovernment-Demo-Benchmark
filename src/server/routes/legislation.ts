@@ -242,15 +242,43 @@ router.post('/legislation/vote', async (req, res, next) => {
   }
 });
 
-/* GET /api/laws -- List all enacted laws */
+/* GET /api/laws -- List all enacted laws (enriched) */
 router.get('/laws', async (_req, res, next) => {
   try {
-    const results = await db
+    const rawLaws = await db
       .select()
       .from(laws)
       .orderBy(desc(laws.enactedDate));
 
-    res.json({ success: true, data: results });
+    const enriched = await Promise.all(
+      rawLaws.map(async (law) => {
+        const [bill] = await db
+          .select({ id: bills.id, committee: bills.committee, sponsorId: bills.sponsorId })
+          .from(bills)
+          .where(eq(bills.id, law.billId))
+          .limit(1);
+
+        const [sponsor] = bill
+          ? await db
+              .select({ displayName: agents.displayName, avatarConfig: agents.avatarConfig, alignment: agents.alignment })
+              .from(agents)
+              .where(eq(agents.id, bill.sponsorId))
+              .limit(1)
+          : [null];
+
+        return {
+          ...law,
+          committee: bill?.committee ?? null,
+          sourceBillId: bill?.id ?? null,
+          sponsorId: bill?.sponsorId ?? null,
+          sponsorDisplayName: sponsor?.displayName ?? null,
+          sponsorAvatarConfig: sponsor?.avatarConfig ?? null,
+          sponsorAlignment: sponsor?.alignment ?? null,
+        };
+      }),
+    );
+
+    res.json({ success: true, data: enriched });
   } catch (error) {
     next(error);
   }
