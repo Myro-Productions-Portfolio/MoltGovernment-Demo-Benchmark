@@ -1,7 +1,9 @@
 import { config } from '../config.js';
 import { db } from '@db/connection';
-import { agentDecisions, apiProviders, userApiKeys } from '@db/schema/index';
-import { eq, and, desc } from 'drizzle-orm';
+import { agentDecisions, apiProviders, userApiKeys, agents } from '@db/schema/index';
+import { forumThreads } from '@db/schema/forumThreads';
+import { agentMessages } from '@db/schema/agentMessages';
+import { eq, and, desc, gt } from 'drizzle-orm';
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { HfInference } from '@huggingface/inference';
@@ -66,7 +68,70 @@ async function buildMemoryBlock(agentId: string): Promise<string> {
   return block;
 }
 
-function buildSystemPrompt(agent: AgentRecord, memory?: string): string {
+// Forum context cache: shared across all agents, 5-minute TTL
+let forumContextCache: { block: string; ts: number } | null = null;
+const FORUM_CONTEXT_TTL_MS = 5 * 60_000;
+const FORUM_THREAD_DEPTH = 5; // most recently active threads
+const FORUM_POST_DEPTH = 2;   // most recent posts per thread
+
+async function buildForumContextBlock(): Promise<string> {
+  if (forumContextCache && Date.now() - forumContextCache.ts < FORUM_CONTEXT_TTL_MS) {
+    return forumContextCache.block;
+  }
+
+  const now = new Date();
+
+  /* Most recently active threads that haven't expired */
+  const threads = await db
+    .select({
+      id: forumThreads.id,
+      title: forumThreads.title,
+      category: forumThreads.category,
+      replyCount: forumThreads.replyCount,
+    })
+    .from(forumThreads)
+    .where(gt(forumThreads.expiresAt, now))
+    .orderBy(desc(forumThreads.lastActivityAt))
+    .limit(FORUM_THREAD_DEPTH);
+
+  if (threads.length === 0) {
+    forumContextCache = { block: '', ts: Date.now() };
+    return '';
+  }
+
+  /* For each thread, fetch the most recent posts with author names */
+  const threadBlocks: string[] = [];
+
+  for (const thread of threads) {
+    const posts = await db
+      .select({
+        body: agentMessages.body,
+        authorName: agents.displayName,
+        createdAt: agentMessages.createdAt,
+      })
+      .from(agentMessages)
+      .innerJoin(agents, eq(agentMessages.fromAgentId, agents.id))
+      .where(and(eq(agentMessages.threadId, thread.id), eq(agentMessages.isPublic, true)))
+      .orderBy(desc(agentMessages.createdAt))
+      .limit(FORUM_POST_DEPTH);
+
+    const postLines = posts
+      .reverse()
+      .map((p) => {
+        const snippet = (p.body ?? '').replace(/\s+/g, ' ').trim().slice(0, 150);
+        return `  ${p.authorName}: "${snippet}"`;
+      });
+
+    const header = `[${thread.category.toUpperCase()}] "${thread.title}" (${thread.replyCount} replies)`;
+    threadBlocks.push(postLines.length > 0 ? `${header}\n${postLines.join('\n')}` : header);
+  }
+
+  const block = threadBlocks.join('\n\n');
+  forumContextCache = { block, ts: Date.now() };
+  return block;
+}
+
+function buildSystemPrompt(agent: AgentRecord, memory?: string, forumContext?: string): string {
   const alignment = agent.alignment ?? 'centrist';
   const personality = agent.personality ?? 'A thoughtful political agent.';
   return (
@@ -79,6 +144,9 @@ function buildSystemPrompt(agent: AgentRecord, memory?: string): string {
     `Respond ONLY with a valid JSON object — no markdown, no explanation outside the JSON.` +
     (memory
       ? `\n\n## Your Recent History\nThe following are your last ${MEMORY_DEPTH} recorded decisions (oldest → newest). Use this context to maintain consistency and build on your prior positions:\n${memory}`
+      : '') +
+    (forumContext
+      ? `\n\n## Public Forum — Current Discourse\nThese are the most recently active public forum threads your fellow citizens are discussing. Use this to inform your positions and stay aware of current sentiment:\n${forumContext}`
       : '')
   );
 }
@@ -196,8 +264,11 @@ export async function generateAgentDecision(
 ): Promise<AgentDecision> {
   const rc = getRuntimeConfig();
   const provider = agent.modelProvider ?? 'ollama';
-  const memory = await buildMemoryBlock(agent.id).catch(() => '');
-  const systemPrompt = buildSystemPrompt(agent, memory || undefined);
+  const [memory, forumContext] = await Promise.all([
+    buildMemoryBlock(agent.id).catch(() => ''),
+    buildForumContextBlock().catch(() => ''),
+  ]);
+  const systemPrompt = buildSystemPrompt(agent, memory || undefined, forumContext || undefined);
   const start = Date.now();
 
   // Truncate prompt to guard rail limit
