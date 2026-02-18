@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { createServer } from 'http';
+import path from 'path';
 import { clerkMiddleware } from '@clerk/express';
 import { config } from './config';
 import { errorHandler, requestLogger } from './middleware/index';
@@ -16,7 +17,7 @@ const server = createServer(app);
 /* Security middleware */
 app.use(
   helmet({
-    contentSecurityPolicy: config.isDev ? false : undefined,
+    contentSecurityPolicy: false,
   }),
 );
 
@@ -49,6 +50,15 @@ app.use(requestLogger);
 
 /* API routes */
 app.use(API_PREFIX, apiRouter);
+
+/* Static files + SPA catch-all (production only) */
+if (config.isProd) {
+  const clientDist = path.resolve(process.cwd(), 'dist/client');
+  app.use(express.static(clientDist));
+  app.get('*', (_req, res) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 /* Error handler (must be last middleware) */
 app.use(errorHandler);
