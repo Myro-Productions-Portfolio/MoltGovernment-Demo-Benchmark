@@ -7,19 +7,58 @@ import type { Agent } from '@shared/types';
 
 // Maps activity types (from DB) to building IDs
 const ACTIVITY_TYPE_TO_BUILDING: Record<string, string> = {
+  // Capitol
   vote: 'capitol',
   bill_proposed: 'capitol',
   bill_resolved: 'capitol',
   bill_advanced: 'capitol',
   bill: 'capitol',
   debate: 'capitol',
+  committee_review: 'capitol',
+  committee_amendment: 'capitol',
+  bill_tabled: 'capitol',
+  presidential_veto: 'capitol',
+  veto_override_attempt: 'capitol',
+  veto_override_success: 'capitol',
+  veto_sustained: 'capitol',
+  // Party Hall
   campaign_speech: 'party-hall',
+  party: 'party-hall',
+  // Election Center
   election_voting_started: 'election-center',
   election_completed: 'election-center',
   election: 'election-center',
+  // Archives
   law: 'archives',
-  party: 'party-hall',
+  law_amended: 'archives',
+  law_enacted: 'archives',
+  // Supreme Court
+  law_struck_down: 'supreme-court',
+  judicial_review_initiated: 'supreme-court',
+  judicial_vote: 'supreme-court',
+  // Treasury
+  salary_payment: 'treasury',
+  tax_collected: 'treasury',
 };
+
+// Fallback building distribution — agents spread across all buildings on initial load
+// TODO: replace with position-holder sorting once agent position data is available
+const FALLBACK_BUILDINGS = [
+  'party-hall',
+  'capitol',
+  'treasury',
+  'supreme-court',
+  'archives',
+  'election-center',
+  'party-hall',
+  'capitol',
+];
+
+function getFallbackBuilding(agentId: string): string {
+  // Simple hash: sum char codes mod array length
+  const hash = agentId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return FALLBACK_BUILDINGS[hash % FALLBACK_BUILDINGS.length];
+}
 
 export type SpeechBubble = {
   id: string;
@@ -55,8 +94,6 @@ export interface AgentMapState {
   isLoading: boolean;
 }
 
-const DEFAULT_BUILDING = 'party-hall';
-
 export function useAgentMap(): AgentMapState {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [agentLocations, setAgentLocations] = useState<Record<string, string>>({});
@@ -88,15 +125,15 @@ export function useAgentMap(): AgentMapState {
         // Process activities newest-first; only set location for agent if not already set
         for (const event of activityList) {
           if (event.agentId && !locations[event.agentId]) {
-            const building = ACTIVITY_TYPE_TO_BUILDING[event.type] ?? DEFAULT_BUILDING;
+            const building = ACTIVITY_TYPE_TO_BUILDING[event.type] ?? getFallbackBuilding(event.agentId);
             locations[event.agentId] = building;
           }
         }
 
-        // Any agent without a location gets the default
+        // Any agent without a location gets a hash-based fallback building
         for (const agent of agentList) {
           if (!locations[agent.id]) {
-            locations[agent.id] = DEFAULT_BUILDING;
+            locations[agent.id] = getFallbackBuilding(agent.id);
           }
         }
 
@@ -211,6 +248,59 @@ export function useAgentMap(): AgentMapState {
       }
       triggerPulse('election-center', '#4CAF50');
       addTickerEvent(String(d?.winnerName ?? 'Agent'), `won the ${String(d?.positionType ?? '')} election`, 'election');
+    }));
+
+    // bill:tabled — committee chair tabled a bill (stays at capitol)
+    unsubs.push(subscribe('bill:tabled', (data: unknown) => {
+      const d = data as Record<string, unknown>;
+      if (d?.chairId) moveAgent(d.chairId as string, 'capitol');
+      triggerPulse('capitol', '#B8956A');
+      addTickerEvent(`"${String(d?.title ?? '')}"`, `tabled in committee`, 'bill');
+    }));
+
+    // bill:committee_amended
+    unsubs.push(subscribe('bill:committee_amended', (data: unknown) => {
+      const d = data as Record<string, unknown>;
+      if (d?.chairId) moveAgent(d.chairId as string, 'capitol');
+      triggerPulse('capitol', '#B8956A');
+      addTickerEvent(`"${String(d?.title ?? '')}"`, `amended by committee`, 'bill');
+    }));
+
+    // bill:presidential_veto
+    unsubs.push(subscribe('bill:presidential_veto', (data: unknown) => {
+      const d = data as Record<string, unknown>;
+      if (d?.presidentId) moveAgent(d.presidentId as string, 'capitol');
+      triggerPulse('capitol', '#8B3A3A');
+      addTickerEvent(String(d?.presidentName ?? 'President'), `vetoed "${String(d?.title ?? '')}"`, 'veto');
+    }));
+
+    // bill:veto_overridden
+    unsubs.push(subscribe('bill:veto_overridden', (data: unknown) => {
+      const d = data as Record<string, unknown>;
+      triggerPulse('capitol', '#4CAF50');
+      triggerPulse('archives', '#4CAF50');
+      addTickerEvent(`"${String(d?.title ?? '')}"`, `veto overridden — enacted into law`, 'bill');
+    }));
+
+    // bill:veto_sustained
+    unsubs.push(subscribe('bill:veto_sustained', (data: unknown) => {
+      const d = data as Record<string, unknown>;
+      triggerPulse('capitol', '#F44336');
+      addTickerEvent(`"${String(d?.title ?? '')}"`, `veto sustained — bill defeated`, 'bill');
+    }));
+
+    // law:struck_down — Supreme Court
+    unsubs.push(subscribe('law:struck_down', (data: unknown) => {
+      const d = data as Record<string, unknown>;
+      triggerPulse('supreme-court', '#8B3A3A');
+      addTickerEvent(`"${String(d?.title ?? '')}"`, `struck down by Supreme Court`, 'judicial');
+    }));
+
+    // law:amended — Archives
+    unsubs.push(subscribe('law:amended', (data: unknown) => {
+      const d = data as Record<string, unknown>;
+      triggerPulse('archives', '#B8956A');
+      addTickerEvent(`"${String(d?.title ?? '')}"`, `amended`, 'law');
     }));
 
     return () => unsubs.forEach((fn) => fn());

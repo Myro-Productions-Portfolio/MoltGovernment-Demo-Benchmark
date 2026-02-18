@@ -4,19 +4,27 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, LayoutGroup } from 'framer-motion';
+import { LayoutGroup } from 'framer-motion';
 import { useAgentMap } from '../hooks/useAgentMap';
-import { AgentAvatarDot } from '../components/map/AgentAvatarDot';
 import { BuildingPulseRing } from '../components/map/BuildingPulseRing';
 import { AgentDrawer } from '../components/map/AgentDrawer';
 import { MapEventTicker } from '../components/map/MapEventTicker';
 import { BUILDINGS } from '../lib/buildings';
 import type { Agent } from '@shared/types';
 
-const ZOOM_MIN = 0.6;
+const ZOOM_MIN = 1.0;
 const ZOOM_MAX = 2.5;
 const ZOOM_DEFAULT = 1.0;
 const ZOOM_STEP = 0.1;
+
+function getAlignmentColor(alignment: string | null | undefined): string {
+  if (!alignment) return '#B8956A';
+  const a = alignment.toLowerCase();
+  if (a.includes('progress') || a.includes('liberal') || a.includes('tech') || a.includes('digital')) return '#6B7A8D';
+  if (a.includes('conserv') || a.includes('right') || a.includes('nation') || a.includes('auth')) return '#8B3A3A';
+  if (a.includes('labor') || a.includes('union') || a.includes('social') || a.includes('green')) return '#3A6B3A';
+  return '#B8956A';
+}
 
 export function CapitolMapPage() {
   const navigate = useNavigate();
@@ -24,6 +32,7 @@ export function CapitolMapPage() {
 
   // Map zoom/pan state
   const [zoom, setZoom] = useState(ZOOM_DEFAULT);
+  const zoomRef = useRef(ZOOM_DEFAULT);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const viewportRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
@@ -47,6 +56,19 @@ export function CapitolMapPage() {
     return acc;
   }, {});
 
+  // ── Pan clamping helper ─────────────────────────────────────────────────────
+  const clampPan = useCallback((p: { x: number; y: number }, z: number) => {
+    const viewport = viewportRef.current;
+    if (!viewport) return p;
+    const { width, height } = viewport.getBoundingClientRect();
+    const maxX = (width * (z - 1)) / 2;
+    const maxY = (height * (z - 1)) / 2;
+    return {
+      x: Math.min(maxX, Math.max(-maxX, p.x)),
+      y: Math.min(maxY, Math.max(-maxY, p.y)),
+    };
+  }, []);
+
   // ── Zoom toward cursor ──────────────────────────────────────────────────────
   const applyZoom = useCallback((newZoom: number, originX: number, originY: number) => {
     const viewport = viewportRef.current;
@@ -60,13 +82,14 @@ export function CapitolMapPage() {
 
     setZoom((prev) => {
       const scale = clamped / prev;
-      setPan((p) => ({
+      setPan((p) => clampPan({
         x: cx - (cx - p.x) * scale,
         y: cy - (cy - p.y) * scale,
-      }));
+      }, clamped));
+      zoomRef.current = clamped;
       return clamped;
     });
-  }, []);
+  }, [clampPan]);
 
   const handleWheel = useCallback(
     (e: WheelEvent) => {
@@ -75,19 +98,23 @@ export function CapitolMapPage() {
       setZoom((prev) => {
         const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, prev * delta));
         const viewport = viewportRef.current;
-        if (!viewport) return newZoom;
+        if (!viewport) {
+          zoomRef.current = newZoom;
+          return newZoom;
+        }
         const rect = viewport.getBoundingClientRect();
         const cx = e.clientX - rect.left - rect.width / 2;
         const cy = e.clientY - rect.top - rect.height / 2;
         const scale = newZoom / prev;
-        setPan((p) => ({
+        setPan((p) => clampPan({
           x: cx - (cx - p.x) * scale,
           y: cy - (cy - p.y) * scale,
-        }));
+        }, newZoom));
+        zoomRef.current = newZoom;
         return newZoom;
       });
     },
-    [],
+    [clampPan],
   );
 
   useEffect(() => {
@@ -111,8 +138,8 @@ export function CapitolMapPage() {
     const dy = e.clientY - lastMouse.current.y;
     if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragMoved.current = true;
     lastMouse.current = { x: e.clientX, y: e.clientY };
-    setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
-  }, []);
+    setPan((p) => clampPan({ x: p.x + dx, y: p.y + dy }, zoomRef.current));
+  }, [clampPan]);
 
   const handleMouseUp = useCallback(() => {
     isDragging.current = false;
@@ -135,6 +162,7 @@ export function CapitolMapPage() {
     applyZoom(zoom - ZOOM_STEP * 2, rect.left + rect.width / 2, rect.top + rect.height / 2);
   };
   const zoomReset = () => {
+    zoomRef.current = ZOOM_DEFAULT;
     setZoom(ZOOM_DEFAULT);
     setPan({ x: 0, y: 0 });
   };
@@ -229,92 +257,135 @@ export function CapitolMapPage() {
               const isHovered = hoveredId === building.id;
 
               return (
-                <button
+                <div
                   key={building.id}
-                  className="absolute rounded flex flex-col items-center justify-center text-center"
+                  className="absolute"
                   style={{
                     left: `${building.x}%`,
                     top: `${building.y}%`,
                     width: `${building.width}%`,
                     height: `${building.height}%`,
-                    background: `linear-gradient(160deg, ${building.color}1E 0%, ${building.color}09 100%)`,
-                    border: `1px solid ${building.color}${isHovered ? '72' : '3E'}`,
-                    boxShadow: isHovered
-                      ? `0 6px 28px rgba(0,0,0,0.8), 0 0 20px ${building.color}20, inset 0 1px 0 ${building.color}28`
-                      : `0 3px 14px rgba(0,0,0,0.6), inset 0 1px 0 ${building.color}16`,
-                    transform: isHovered ? 'scale(1.04)' : 'scale(1)',
-                    transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
                     zIndex: isHovered ? 10 : 1,
-                    cursor: 'pointer',
                   }}
-                  onClick={() => {
-                    if (!dragMoved.current) navigate(`/capitol-map/${building.id}`);
-                  }}
-                  onMouseEnter={() => setHoveredId(building.id)}
-                  onMouseLeave={() => setHoveredId(null)}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  aria-label={`Enter ${building.name}`}
-                  type="button"
                 >
-                  <BuildingPulseRing pulse={pulse} />
-
-                  <img
-                    src={building.image}
-                    alt=""
-                    className="w-3/4 h-3/4 object-contain mb-0.5"
-                    style={{
-                      opacity: isHovered ? 0.95 : 0.78,
-                      transition: 'opacity 0.18s ease',
-                      pointerEvents: 'none',
-                    }}
-                    aria-hidden="true"
-                    draggable={false}
-                  />
-
-                  <div
-                    className="font-medium leading-tight"
-                    style={{
-                      fontSize: '0.6rem',
-                      letterSpacing: '0.04em',
-                      color: building.color,
-                      textShadow: '0 1px 5px rgba(0,0,0,0.95)',
-                    }}
-                  >
-                    {building.name}
-                  </div>
-
-                  <div
-                    className="font-mono uppercase"
-                    style={{
-                      fontSize: '0.38rem',
-                      letterSpacing: '0.2em',
-                      color: `${building.color}66`,
-                      marginTop: '1px',
-                    }}
-                  >
-                    {building.type}
-                  </div>
-
+                  {/* Occupant roster — floats above the building */}
                   {occupants.length > 0 && (
                     <div
-                      className="absolute -top-5 left-1/2 -translate-x-1/2"
-                      style={{ width: 0, height: 0 }}
+                      className="absolute left-1/2 -translate-x-1/2 flex flex-wrap justify-center gap-[2px] pointer-events-auto z-20"
+                      style={{ bottom: '100%', marginBottom: 3, maxWidth: 140 }}
                     >
-                      <AnimatePresence>
-                        {occupants.map((agent, idx) => (
-                          <div key={agent.id} className="relative">
-                            <AgentAvatarDot
-                              agent={agent}
-                              index={idx}
-                              hasSpeechBubble={false}
-                              onClick={() => setSelectedAgent(agent)}
-                            />
-                          </div>
-                        ))}
-                      </AnimatePresence>
+                      {occupants.slice(0, 8).map((agent) => {
+                        const initials = agent.displayName
+                          .split(' ')
+                          .map((w: string) => w[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase();
+                        const color = getAlignmentColor(agent.alignment ?? undefined);
+                        return (
+                          <button
+                            key={agent.id}
+                            type="button"
+                            title={agent.displayName}
+                            onClick={(e) => { e.stopPropagation(); setSelectedAgent(agent); }}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            className="group relative flex-shrink-0 rounded-full flex items-center justify-center font-bold cursor-pointer transition-transform hover:scale-110"
+                            style={{
+                              width: 20,
+                              height: 20,
+                              fontSize: '0.42rem',
+                              background: `${color}33`,
+                              border: `1px solid ${color}99`,
+                              color,
+                            }}
+                          >
+                            {initials}
+                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-1.5 py-0.5 bg-capitol-elevated border border-border rounded text-[0.55rem] text-text-primary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
+                              {agent.displayName}
+                            </span>
+                          </button>
+                        );
+                      })}
+                      {occupants.length > 8 && (
+                        <div
+                          className="flex-shrink-0 rounded-full flex items-center justify-center font-mono"
+                          style={{
+                            width: 20,
+                            height: 20,
+                            fontSize: '0.38rem',
+                            background: 'rgba(201,185,155,0.12)',
+                            border: '1px solid rgba(201,185,155,0.3)',
+                            color: '#9B9D9F',
+                          }}
+                        >
+                          +{occupants.length - 8}
+                        </div>
+                      )}
                     </div>
                   )}
-                </button>
+
+                  {/* The actual building button */}
+                  <button
+                    className="absolute inset-0 rounded flex flex-col items-center justify-center text-center"
+                    style={{
+                      background: `linear-gradient(160deg, ${building.color}1E 0%, ${building.color}09 100%)`,
+                      border: `1px solid ${building.color}${isHovered ? '72' : '3E'}`,
+                      boxShadow: isHovered
+                        ? `0 6px 28px rgba(0,0,0,0.8), 0 0 20px ${building.color}20, inset 0 1px 0 ${building.color}28`
+                        : `0 3px 14px rgba(0,0,0,0.6), inset 0 1px 0 ${building.color}16`,
+                      transform: isHovered ? 'scale(1.04)' : 'scale(1)',
+                      transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => {
+                      if (!dragMoved.current) navigate(`/capitol-map/${building.id}`);
+                    }}
+                    onMouseEnter={() => setHoveredId(building.id)}
+                    onMouseLeave={() => setHoveredId(null)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    aria-label={`Enter ${building.name}`}
+                    type="button"
+                  >
+                    <BuildingPulseRing pulse={pulse} />
+
+                    <img
+                      src={building.image}
+                      alt=""
+                      className="w-3/4 h-3/4 object-contain mb-0.5"
+                      style={{
+                        opacity: isHovered ? 0.95 : 0.78,
+                        transition: 'opacity 0.18s ease',
+                        pointerEvents: 'none',
+                      }}
+                      aria-hidden="true"
+                      draggable={false}
+                    />
+
+                    <div
+                      className="font-medium leading-tight"
+                      style={{
+                        fontSize: '0.6rem',
+                        letterSpacing: '0.04em',
+                        color: building.color,
+                        textShadow: '0 1px 5px rgba(0,0,0,0.95)',
+                      }}
+                    >
+                      {building.name}
+                    </div>
+
+                    <div
+                      className="font-mono uppercase"
+                      style={{
+                        fontSize: '0.38rem',
+                        letterSpacing: '0.2em',
+                        color: `${building.color}66`,
+                        marginTop: '1px',
+                      }}
+                    >
+                      {building.type}
+                    </div>
+                  </button>
+                </div>
               );
             })}
           </LayoutGroup>
