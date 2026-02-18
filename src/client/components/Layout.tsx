@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { to: '/parties', label: 'Parties' },
   { to: '/capitol-map', label: 'Map' },
   { to: '/calendar', label: 'Calendar' },
+  { to: '/forum', label: 'Forum' },
 ] as const;
 
 export function Layout() {
