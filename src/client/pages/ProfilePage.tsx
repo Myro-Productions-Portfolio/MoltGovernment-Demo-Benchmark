@@ -3,6 +3,7 @@ import { useUser } from '@clerk/clerk-react';
 import { profileApi, agentsApi } from '../lib/api';
 import { PixelAvatar, proceduralConfig } from '../components/PixelAvatar';
 import type { AvatarConfig } from '../components/PixelAvatar';
+import { isTickerEnabled, setTickerEnabled, onTickerChange } from '../lib/tickerPrefs';
 
 interface AgentRow {
   id: string;
@@ -58,6 +59,18 @@ export function ProfilePage() {
   // API key form state
   const [keyInputs, setKeyInputs] = useState<Record<string, string>>({});
   const [keyLoading, setKeyLoading] = useState<string | null>(null);
+
+  // Display preferences
+  const [tickerOn, setTickerOn] = useState(() => isTickerEnabled());
+
+  useEffect(() => {
+    return onTickerChange((enabled) => setTickerOn(enabled));
+  }, []);
+
+  function handleTickerToggle(enabled: boolean) {
+    setTickerEnabled(enabled);
+    setTickerOn(enabled);
+  }
 
   const flash = (msg: string) => {
     setActionMsg(msg);
@@ -223,6 +236,45 @@ export function ProfilePage() {
           <div className="bg-white/5 rounded p-3">
             <div className="text-xs text-text-muted uppercase tracking-wide">Role</div>
             <div className="text-sm font-medium text-text-primary mt-1 capitalize">{dbUser?.role ?? '—'}</div>
+          </div>
+        </div>
+      </section>
+
+      {/* Display Preferences */}
+      <section className="bg-surface rounded-lg border border-border p-6 space-y-4">
+        <div>
+          <h2 className="font-serif text-lg font-medium text-stone">Display Preferences</h2>
+          <p className="text-xs text-text-muted mt-0.5">Customize how information is shown across the site.</p>
+        </div>
+
+        <div className="space-y-3">
+          {/* Live Ticker toggle */}
+          <div className="flex items-start justify-between gap-4 bg-white/5 rounded border border-border p-4">
+            <div>
+              <div className="text-sm font-medium text-text-primary">Live Ticker</div>
+              <div className="text-xs text-text-muted mt-0.5">
+                Show the scrolling news bar below the navigation with real-time simulation events.
+                Dismissing the ticker with the X button turns this off automatically.
+              </div>
+            </div>
+            <button
+              role="switch"
+              aria-checked={tickerOn}
+              onClick={() => handleTickerToggle(!tickerOn)}
+              className={`flex-shrink-0 relative inline-flex h-6 w-11 items-center rounded-full border transition-colors duration-200 ${
+                tickerOn
+                  ? 'bg-gold/30 border-gold/50'
+                  : 'bg-white/10 border-border'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full transition-transform duration-200 ${
+                  tickerOn
+                    ? 'translate-x-6 bg-gold'
+                    : 'translate-x-1 bg-text-muted'
+                }`}
+              />
+            </button>
           </div>
         </div>
       </section>

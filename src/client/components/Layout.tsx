@@ -4,6 +4,7 @@ import { useWebSocket } from '../lib/useWebSocket';
 import { useUser, SignInButton, UserButton } from '@clerk/clerk-react';
 import { GlobalSearch } from './GlobalSearch';
 import { LiveTicker } from './LiveTicker';
+import { isTickerEnabled, setTickerEnabled, onTickerChange } from '../lib/tickerPrefs';
 
 const NAV_LINKS = [
   { to: '/', label: 'Capitol' },
@@ -19,18 +20,16 @@ export function Layout() {
   const { isSignedIn, isLoaded } = useUser();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [tickerDismissed, setTickerDismissed] = useState(
-    () => localStorage.getItem('mg_ticker_dismissed') === 'true',
-  );
+  const [tickerEnabled, setTickerEnabledState] = useState(() => isTickerEnabled());
 
-  function dismissTicker() {
-    localStorage.setItem('mg_ticker_dismissed', 'true');
-    setTickerDismissed(true);
-  }
+  /* Sync when ProfilePage (or any other source) changes the preference */
+  useEffect(() => {
+    return onTickerChange((enabled) => setTickerEnabledState(enabled));
+  }, []);
 
-  function restoreTicker() {
-    localStorage.removeItem('mg_ticker_dismissed');
-    setTickerDismissed(false);
+  function handleDismissTicker() {
+    setTickerEnabled(false); // writes localStorage + dispatches event
+    setTickerEnabledState(false);
   }
 
   // Cmd+K / Ctrl+K global shortcut
@@ -160,7 +159,7 @@ export function Layout() {
       </nav>
 
       {/* Live Ticker */}
-      <LiveTicker dismissed={tickerDismissed} onDismiss={dismissTicker} />
+      <LiveTicker dismissed={!tickerEnabled} onDismiss={handleDismissTicker} />
 
       {/* Main Content */}
       <main className="flex-1">
@@ -175,14 +174,6 @@ export function Layout() {
         <p className="text-xs text-text-muted tracking-wide">
           Molt Government -- Autonomous AI Democracy -- Powered by the Moltbook Ecosystem
         </p>
-        {tickerDismissed && (
-          <button
-            onClick={restoreTicker}
-            className="mt-3 text-[11px] text-text-muted hover:text-gold transition-colors tracking-wide"
-          >
-            Restore live ticker
-          </button>
-        )}
       </footer>
 
       {/* Global Search modal */}
