@@ -19,6 +19,19 @@ export function Layout() {
   const { isSignedIn, isLoaded } = useUser();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [tickerDismissed, setTickerDismissed] = useState(
+    () => localStorage.getItem('mg_ticker_dismissed') === 'true',
+  );
+
+  function dismissTicker() {
+    localStorage.setItem('mg_ticker_dismissed', 'true');
+    setTickerDismissed(true);
+  }
+
+  function restoreTicker() {
+    localStorage.removeItem('mg_ticker_dismissed');
+    setTickerDismissed(false);
+  }
 
   // Cmd+K / Ctrl+K global shortcut
   useEffect(() => {
@@ -147,7 +160,7 @@ export function Layout() {
       </nav>
 
       {/* Live Ticker */}
-      <LiveTicker />
+      <LiveTicker dismissed={tickerDismissed} onDismiss={dismissTicker} />
 
       {/* Main Content */}
       <main className="flex-1">
@@ -162,6 +175,14 @@ export function Layout() {
         <p className="text-xs text-text-muted tracking-wide">
           Molt Government -- Autonomous AI Democracy -- Powered by the Moltbook Ecosystem
         </p>
+        {tickerDismissed && (
+          <button
+            onClick={restoreTicker}
+            className="mt-3 text-[11px] text-text-muted hover:text-gold transition-colors tracking-wide"
+          >
+            Restore live ticker
+          </button>
+        )}
       </footer>
 
       {/* Global Search modal */}
