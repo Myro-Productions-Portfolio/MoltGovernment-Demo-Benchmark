@@ -17,6 +17,7 @@ import { ForumPage } from './pages/ForumPage';
 import { ThreadPage } from './pages/ThreadPage';
 import { BillDetailPage } from './pages/BillDetailPage';
 import { PartyDetailPage } from './pages/PartyDetailPage';
+import { ElectionDetailPage } from './pages/ElectionDetailPage';
 import { setTokenProvider } from './lib/api';
 
 export function App() {
@@ -34,6 +35,7 @@ export function App() {
         <Route path="/legislation" element={<LegislationPage />} />
         <Route path="/legislation/:id" element={<BillDetailPage />} />
         <Route path="/elections" element={<ElectionsPage />} />
+        <Route path="/elections/:id" element={<ElectionDetailPage />} />
         <Route path="/parties" element={<PartiesPage />} />
         <Route path="/parties/:id" element={<PartyDetailPage />} />
         <Route path="/agents" element={<AgentsDirectoryPage />} />

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '@db/connection';
-import { elections, agents, votes } from '@db/schema/index';
+import { elections, agents, votes, campaigns, parties, partyMemberships } from '@db/schema/index';
 import { AppError } from '../middleware/errorHandler';
 import { eq, inArray } from 'drizzle-orm';
 
@@ -86,7 +86,7 @@ router.get('/elections/past', async (_req, res, next) => {
   }
 });
 
-/* GET /api/elections/:id -- Single election detail */
+/* GET /api/elections/:id -- Single election detail (enriched) */
 router.get('/elections/:id', async (req, res, next) => {
   try {
     const [election] = await db
@@ -95,26 +95,102 @@ router.get('/elections/:id', async (req, res, next) => {
       .where(eq(elections.id, req.params.id))
       .limit(1);
 
-    if (!election) {
-      throw new AppError(404, 'Election not found');
+    if (!election) throw new AppError(404, 'Election not found');
+
+    const title = `${election.positionType.charAt(0).toUpperCase() + election.positionType.slice(1).replace(/_/g, ' ')} Election`;
+
+    const [electionCampaigns, electionVotes] = await Promise.all([
+      db
+        .select({
+          agentId: campaigns.agentId,
+          platform: campaigns.platform,
+          status: campaigns.status,
+          contributions: campaigns.contributions,
+          displayName: agents.displayName,
+          avatarConfig: agents.avatarConfig,
+          alignment: agents.alignment,
+        })
+        .from(campaigns)
+        .innerJoin(agents, eq(campaigns.agentId, agents.id))
+        .where(eq(campaigns.electionId, req.params.id)),
+      db
+        .select({
+          voterId: votes.voterId,
+          candidateId: votes.candidateId,
+          castAt: votes.castAt,
+          voterName: agents.displayName,
+        })
+        .from(votes)
+        .innerJoin(agents, eq(votes.voterId, agents.id))
+        .where(eq(votes.electionId, req.params.id)),
+    ]);
+
+    const candidateAgentIds = electionCampaigns.map((c) => c.agentId);
+    const memberships =
+      candidateAgentIds.length > 0
+        ? await db
+            .select({
+              agentId: partyMemberships.agentId,
+              partyName: parties.name,
+              partyAbbreviation: parties.abbreviation,
+            })
+            .from(partyMemberships)
+            .innerJoin(parties, eq(partyMemberships.partyId, parties.id))
+            .where(inArray(partyMemberships.agentId, candidateAgentIds))
+        : [];
+
+    const partyByAgent: Record<string, { name: string; abbreviation: string }> = {};
+    for (const m of memberships) {
+      partyByAgent[m.agentId] = { name: m.partyName, abbreviation: m.partyAbbreviation };
     }
 
-    let winnerName: string | null = null;
-    if (election.winnerId) {
-      const [winner] = await db
-        .select({ displayName: agents.displayName })
-        .from(agents)
-        .where(eq(agents.id, election.winnerId))
-        .limit(1);
-      winnerName = winner?.displayName ?? null;
+    const voteCounts: Record<string, number> = {};
+    for (const v of electionVotes) {
+      if (v.candidateId) voteCounts[v.candidateId] = (voteCounts[v.candidateId] ?? 0) + 1;
     }
+
+    const candidates = electionCampaigns
+      .map((c) => ({
+        agentId: c.agentId,
+        displayName: c.displayName,
+        avatarConfig: c.avatarConfig,
+        alignment: c.alignment,
+        platform: c.platform,
+        contributions: c.contributions,
+        voteCount: voteCounts[c.agentId] ?? 0,
+        votePercentage:
+          election.totalVotes > 0
+            ? Math.round(((voteCounts[c.agentId] ?? 0) / election.totalVotes) * 100)
+            : 0,
+        party: partyByAgent[c.agentId] ?? null,
+        isWinner: c.agentId === election.winnerId,
+      }))
+      .sort((a, b) => b.voteCount - a.voteCount);
+
+    const rollCall = electionVotes.map((v) => ({
+      voterId: v.voterId,
+      voterName: v.voterName,
+      candidateId: v.candidateId,
+      candidateName: candidates.find((c) => c.agentId === v.candidateId)?.displayName ?? null,
+      castAt: v.castAt,
+    }));
 
     res.json({
       success: true,
       data: {
-        ...election,
-        title: `${election.positionType.charAt(0).toUpperCase() + election.positionType.slice(1).replace('_', ' ')} Election`,
-        winnerName,
+        id: election.id,
+        title,
+        type: election.positionType,
+        status: election.status,
+        scheduledDate: election.scheduledDate,
+        registrationDeadline: election.registrationDeadline,
+        votingStartDate: election.votingStartDate,
+        votingEndDate: election.votingEndDate,
+        certifiedDate: election.certifiedDate,
+        totalVotes: election.totalVotes,
+        winnerId: election.winnerId,
+        candidates,
+        rollCall,
       },
     });
   } catch (error) {
