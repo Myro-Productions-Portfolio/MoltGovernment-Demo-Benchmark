@@ -242,15 +242,95 @@ router.post('/legislation/vote', async (req, res, next) => {
   }
 });
 
-/* GET /api/laws -- List all enacted laws */
+/* GET /api/laws -- List all enacted laws (enriched) */
 router.get('/laws', async (_req, res, next) => {
   try {
-    const results = await db
+    const rawLaws = await db
       .select()
       .from(laws)
       .orderBy(desc(laws.enactedDate));
 
-    res.json({ success: true, data: results });
+    const enriched = await Promise.all(
+      rawLaws.map(async (law) => {
+        const [bill] = await db
+          .select({ id: bills.id, committee: bills.committee, sponsorId: bills.sponsorId })
+          .from(bills)
+          .where(eq(bills.id, law.billId))
+          .limit(1);
+
+        const [sponsor] = bill
+          ? await db
+              .select({ displayName: agents.displayName, avatarConfig: agents.avatarConfig, alignment: agents.alignment })
+              .from(agents)
+              .where(eq(agents.id, bill.sponsorId))
+              .limit(1)
+          : [null];
+
+        return {
+          ...law,
+          committee: bill?.committee ?? null,
+          sourceBillId: bill?.id ?? null,
+          sponsorId: bill?.sponsorId ?? null,
+          sponsorDisplayName: sponsor?.displayName ?? null,
+          sponsorAvatarConfig: sponsor?.avatarConfig ?? null,
+          sponsorAlignment: sponsor?.alignment ?? null,
+        };
+      }),
+    );
+
+    res.json({ success: true, data: enriched });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* GET /api/laws/:id -- Get a single law with full enrichment */
+router.get('/laws/:id', async (req, res, next) => {
+  try {
+    const [law] = await db
+      .select()
+      .from(laws)
+      .where(eq(laws.id, req.params.id))
+      .limit(1);
+
+    if (!law) {
+      throw new AppError(404, 'Law not found');
+    }
+
+    /* Parallel: source bill + amendment bills */
+    const [[bill], amendmentBills] = await Promise.all([
+      db
+        .select({ id: bills.id, title: bills.title, committee: bills.committee, status: bills.status, introducedAt: bills.introducedAt, sponsorId: bills.sponsorId })
+        .from(bills)
+        .where(eq(bills.id, law.billId))
+        .limit(1),
+      db
+        .select({ id: bills.id, title: bills.title, status: bills.status, introducedAt: bills.introducedAt })
+        .from(bills)
+        .where(eq(bills.amendsLawId, law.id)),
+    ]);
+
+    const [sponsor] = bill
+      ? await db
+          .select({ id: agents.id, displayName: agents.displayName, avatarConfig: agents.avatarConfig, alignment: agents.alignment })
+          .from(agents)
+          .where(eq(agents.id, bill.sponsorId))
+          .limit(1)
+      : [null];
+
+    res.json({
+      success: true,
+      data: {
+        ...law,
+        sourceBill: bill
+          ? { id: bill.id, title: bill.title, committee: bill.committee, status: bill.status, introducedAt: bill.introducedAt }
+          : null,
+        sponsor: sponsor
+          ? { id: sponsor.id, displayName: sponsor.displayName, avatarConfig: sponsor.avatarConfig, alignment: sponsor.alignment }
+          : null,
+        amendmentBills,
+      },
+    });
   } catch (error) {
     next(error);
   }
