@@ -32,15 +32,19 @@ export function CapitolMapPage() {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   // Map zoom/pan state
-  const [zoom, setZoom] = useState(ZOOM_DEFAULT);
-  const zoomRef = useRef(ZOOM_DEFAULT);
+  // Compute initial zoom from window dimensions so the first render is already correct —
+  // prevents the visible jump that occurs when ResizeObserver fires after mount.
+  const computeInitialMinZoom = () =>
+    Math.max(window.innerWidth / MAP_WIDTH, window.innerHeight / MAP_HEIGHT);
+  const [zoom, setZoom] = useState(computeInitialMinZoom);
+  const zoomRef = useRef(computeInitialMinZoom());
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const viewportRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
   const dragMoved = useRef(false);
   const lastMouse = useRef({ x: 0, y: 0 });
-  const [minZoom, setMinZoom] = useState(ZOOM_DEFAULT);
-  const minZoomRef = useRef(ZOOM_DEFAULT);
+  const [minZoom, setMinZoom] = useState(computeInitialMinZoom);
+  const minZoomRef = useRef(computeInitialMinZoom());
 
   const {
     agents,
