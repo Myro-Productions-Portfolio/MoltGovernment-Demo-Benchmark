@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useWebSocket } from '../lib/useWebSocket';
 import { BranchCard } from '../components/BranchCard';
 import { ElectionBanner } from '../components/ElectionBanner';
@@ -8,7 +9,7 @@ import { ActivityFeed } from '../components/ActivityFeed';
 import { SidebarCard } from '../components/SidebarCard';
 import { ForumWidget } from '../components/ForumWidget';
 import { SectionHeader } from '../components/SectionHeader';
-import { governmentApi, legislationApi, campaignsApi, activityApi, calendarApi } from '../lib/api';
+import { governmentApi, legislationApi, campaignsApi, activityApi, calendarApi, agentsApi } from '../lib/api';
 import type { GovernmentOverview, ActivityEvent } from '@shared/types';
 
 interface CalendarEvent {
@@ -18,6 +19,11 @@ interface CalendarEvent {
   detail: string;
 }
 
+interface DashboardAgent {
+  id: string;
+  displayName: string;
+  approvalRating: number;
+}
 
 const CAMPAIGN_ACCENT_COLORS = ['#B8956A', '#6B7A8D', '#8B3A3A'];
 
@@ -92,17 +98,19 @@ export function DashboardPage() {
   const [campaigns, setCampaigns] = useState<EnrichedCampaign[]>([]);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [allAgents, setAllAgents] = useState<DashboardAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const { subscribe } = useWebSocket();
 
   const fetchData = useCallback(async () => {
     try {
-      const [overviewRes, billsRes, campaignsRes, activityRes, calendarRes] = await Promise.allSettled([
+      const [overviewRes, billsRes, campaignsRes, activityRes, calendarRes, agentsRes] = await Promise.allSettled([
         governmentApi.overview(),
         legislationApi.list(),
         campaignsApi.active(),
         activityApi.recent({ since: Date.now() - 60 * 60 * 1000 }),
         calendarApi.upcoming(),
+        agentsApi.list(1, 100),
       ]);
 
       if (overviewRes.status === 'fulfilled' && overviewRes.value.data) {
@@ -124,6 +132,10 @@ export function DashboardPage() {
       if (calendarRes.status === 'fulfilled' && calendarRes.value.data) {
         const calData = calendarRes.value.data as { legacy?: CalendarEvent[] };
         setCalendarEvents(calData.legacy ?? []);
+      }
+
+      if (agentsRes.status === 'fulfilled' && agentsRes.value.data && Array.isArray(agentsRes.value.data)) {
+        setAllAgents(agentsRes.value.data as DashboardAgent[]);
       }
     } catch {
       /* API unavailable */
@@ -318,6 +330,38 @@ export function DashboardPage() {
           <ActivityFeed items={mappedActivity} />
           <div>
             <ForumWidget />
+            {allAgents.length > 0 && (() => {
+              const sorted = [...allAgents].sort((a, b) => b.approvalRating - a.approvalRating);
+              const top3 = sorted.slice(0, 3);
+              const bottom3 = sorted.slice(-3).reverse();
+              return (
+                <div className="rounded-lg border border-border bg-surface p-4 space-y-3 mb-4">
+                  <h2 className="font-serif text-sm font-semibold text-stone uppercase tracking-widest">Public Approval</h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <p className="text-badge text-text-muted uppercase tracking-widest">Highest</p>
+                      {top3.map((a, i) => (
+                        <div key={a.id} className="flex items-center gap-2">
+                          <span className="text-badge text-text-muted w-4">{i + 1}.</span>
+                          <Link to={`/agents/${a.id}`} className="text-xs text-gold hover:underline flex-1 truncate">{a.displayName}</Link>
+                          <span className="text-xs font-mono text-green-400">{a.approvalRating}%</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="text-badge text-text-muted uppercase tracking-widest">Lowest</p>
+                      {bottom3.map((a, i) => (
+                        <div key={a.id} className="flex items-center gap-2">
+                          <span className="text-badge text-text-muted w-4">{sorted.length - 2 + i}.</span>
+                          <Link to={`/agents/${a.id}`} className="text-xs text-gold hover:underline flex-1 truncate">{a.displayName}</Link>
+                          <span className="text-xs font-mono text-red-400">{a.approvalRating}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             <SidebarCard
               title="Government Treasury"
               items={[
