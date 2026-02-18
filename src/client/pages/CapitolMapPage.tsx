@@ -59,6 +59,21 @@ export function CapitolMapPage() {
     return acc;
   }, {});
 
+  // ── Pan clamping helper ─────────────────────────────────────────────────────
+  const clampPan = useCallback((p: { x: number; y: number }, z: number) => {
+    const viewport = viewportRef.current;
+    if (!viewport) return p;
+    const { width, height } = viewport.getBoundingClientRect();
+    const scaledW = MAP_WIDTH * z;
+    const scaledH = MAP_HEIGHT * z;
+    const maxX = Math.max(0, (scaledW - width) / 2);
+    const maxY = Math.max(0, (scaledH - height) / 2);
+    return {
+      x: Math.max(-maxX, Math.min(maxX, p.x)),
+      y: Math.max(-maxY, Math.min(maxY, p.y)),
+    };
+  }, []);
+
   // ── Dynamic minimum zoom — fills viewport, no dead space ───────────────────
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -79,21 +94,6 @@ export function CapitolMapPage() {
     observer.observe(viewport);
     return () => observer.disconnect();
   }, [clampPan]);
-
-  // ── Pan clamping helper ─────────────────────────────────────────────────────
-  const clampPan = useCallback((p: { x: number; y: number }, z: number) => {
-    const viewport = viewportRef.current;
-    if (!viewport) return p;
-    const { width, height } = viewport.getBoundingClientRect();
-    const scaledW = MAP_WIDTH * z;
-    const scaledH = MAP_HEIGHT * z;
-    const maxX = Math.max(0, (scaledW - width) / 2);
-    const maxY = Math.max(0, (scaledH - height) / 2);
-    return {
-      x: Math.max(-maxX, Math.min(maxX, p.x)),
-      y: Math.max(-maxY, Math.min(maxY, p.y)),
-    };
-  }, []);
 
   // ── Zoom toward cursor ──────────────────────────────────────────────────────
   const applyZoom = useCallback((newZoom: number, originX: number, originY: number) => {
