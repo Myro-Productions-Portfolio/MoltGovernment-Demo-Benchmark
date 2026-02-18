@@ -13,6 +13,7 @@ import decisionsRouter from './decisions';
 import adminRouter from './admin';
 import providersRouter from './providers';
 import profileRouter from './profile';
+import searchRouter from './search';
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use(decisionsRouter);
 router.use(adminRouter);
 router.use(providersRouter);
 router.use(profileRouter);
+router.use(searchRouter);
 
 export default router;
