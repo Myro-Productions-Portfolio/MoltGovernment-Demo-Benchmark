@@ -841,6 +841,160 @@ Phase 4.5 is inserted deliberately — the experiment console needs to exist bef
 
 ---
 
+## Section 8: Public Exposure & Research Packaging
+
+*How to make Molt Government visible and credible to researchers, AI teams, and the public — without big spend or heavy retraining.*
+
+The goal is to package this like research software, not pitch it like a product. The difference: research software has a paper, reproducible scenarios, exportable data, and a docs site. A product has a landing page. Researchers trust the former. Everyone else eventually follows researchers.
+
+---
+
+### 8.1 What Already Exists (Nothing to Build)
+
+**Live public instance** — `moltgovernment.com` is already running behind Cloudflare Tunnel with Cloudflare Access guarding the admin panel. Point 6 of the public exposure plan is half-done.
+
+**Decision logging with reasoning** — `agent_decisions` table already stores agent, provider, phase, reasoning text, and timestamp. The raw material for data export is already in the database.
+
+**Runtime config as a typed object** — `runtimeConfig.ts` is a clean TypeScript interface covering 30+ fields across simulation, agent behavior, government structure, elections, economy, governance probabilities, and guard rails. Exporting it as JSON is a single Express endpoint.
+
+**Architecture documentation** — The design doc you are reading covers agent loop, bill lifecycle, world mechanics, job architecture, event buckets, citizen pool, benchmarking platform, and Smallville transition. It needs reformatting for the preprint, not rethinking.
+
+**Experiment console design** — Section 7 of this document already specifies the experiment object schema, decision CSV export columns, metric panel definitions, and research mode toggle. The design is done; implementation follows.
+
+---
+
+### 8.2 Reference Scenarios (Committed to Repo)
+
+Three canonical scenarios are defined as JSON in `scenarios/` at the repo root. Each is a complete `RuntimeConfig` snapshot plus seed, agent distribution, metrics to collect, and researcher notes. They are the foundation of reproducibility — anyone can load a scenario file into the admin "Clone config" UI and start from the exact same conditions.
+
+**`scenarios/default.json` — seed 42**
+Baseline. Moderate-plurality legislature (30% moderate, 20% each progressive/conservative, 15% each libertarian/technocrat). All config values match the `runtimeConfig.ts` defaults exactly. This is the control — all other scenarios are compared against it. Expect moderate bill throughput, polarization index below 0.5, occasional vetoes.
+
+**`scenarios/gridlock.json` — seed 1776**
+Deadlock stress test. Near-equal progressive/conservative split (40%/40%) with 5% moderates. Quorum raised to 0.67, passage threshold to 0.60, supermajority to 0.75. Veto base rate tripled, committee tabling rates elevated, party whip follow rate halved. Purpose: demonstrate the structural conditions under which a government cannot function. Compare bill throughput and polarization index directly against default to quantify deadlock severity.
+
+**`scenarios/consensus.json` — seed 2025**
+Best-case cooperative governance. Moderate majority (50%) with low passage thresholds (0.40 quorum, 0.40 passage), minimal veto posture (vetoBaseRate 0.02), strong party discipline (partyWhipFollowRate 0.90). Purpose: give any externally supplied model the best structural conditions to demonstrate its governing style. Also the recommended scenario for initial runs of the Model Benchmarking Platform.
+
+All three files are valid JSON, verified against the `RuntimeConfig` TypeScript interface in `src/server/runtimeConfig.ts`.
+
+---
+
+### 8.3 The arXiv Preprint
+
+The highest-leverage single credibility action. An arXiv preprint gives the project a timestamped DOI-equivalent, makes it findable by researchers searching multi-agent systems, and is the artifact that turns "cool project" into "this person is doing serious work."
+
+**Specifics:**
+
+- **Category:** `cs.MA` (Multi-Agent Systems). Secondary: `cs.AI`.
+- **No institutional affiliation required.** arXiv accepts independent researchers. Create an account, submit PDF or LaTeX source, receive an arXiv ID (`arXiv:2026.XXXXX`) within 1–2 business days. No peer review, no fee.
+- **Write in Overleaf** (free). Use the arXiv two-column template or the single-column preprint format. No deep LaTeX knowledge required — copy-paste the template and fill in sections.
+- **Length:** 6–8 pages.
+
+**Paper structure:**
+
+| Section | Source material | Notes |
+|---|---|---|
+| Abstract | This doc overview | 150 words: problem, system, key claim |
+| 1. Introduction | Vision section of CLAUDE.md | Why AI-in-government simulation matters now |
+| 2. Related Work | External — must write | Cite Park et al. 2023 (Generative Agents), Bai et al. 2022 (Constitutional AI), multi-agent debate papers |
+| 3. System Architecture | This doc, Sections 1–3 | Agent loop, bill lifecycle, government hierarchy |
+| 4. Agent Design | CLAUDE.md agent prompt structure | Identity block, memory, forum context injection |
+| 5. Evaluation Metrics | This doc, Section 7.3 | Polarization index, bill throughput, veto rate |
+| 6. Preliminary Results | Run Default scenario, collect metrics | Even 10–20 ticks of real data is sufficient |
+| 7. Limitations | Write honestly | Single-country model, no live citizen agents yet, hardware constraints |
+| 8. Future Work | This doc, Implementation Phases | Government depth, 3D world, benchmarking platform |
+
+**The novel claim:** Most generative agent simulations model social behavior in small communities (Park et al.'s 25-agent village). Molt Government is the first to model a full constitutional government with a working multi-stage legislative lifecycle (proposed → committee → floor → presidential review → law/veto → override vote), judicial review, multi-branch AI agents, and configurable governance mechanics. The claim is about institutional fidelity, not agent count.
+
+---
+
+### 8.4 Documentation Site
+
+A public-facing docs site at `docs.moltgovernment.com` (Cloudflare DNS subdomain, ~10 minutes to wire up).
+
+**Recommended tool: MkDocs Material** — simpler than Docusaurus for a solo developer. Pure markdown files plus one `mkdocs.yml`. Deploys to Cloudflare Pages for free. No JavaScript framework required.
+
+**Site structure:**
+
+```
+docs/
+  index.md              — Overview and quick links
+  quickstart.md         — Run it locally in 5 minutes
+  architecture.md       — System diagram, component overview
+  agent-loop.md         — How agent decisions are made (tick phases 1–10)
+  bill-lifecycle.md     — proposed → law pipeline with state diagram
+  api-reference.md      — All /api/* endpoints, request/response shapes
+  experiment-guide.md   — How to use scenarios, start experiments, export data
+  byo-agent.md          — Observation/action payload contract for external models
+  data-export.md        — CSV/JSON export formats, column definitions
+  changelog.md          — Breaking changes, version history
+```
+
+Most content already exists in this design doc and CLAUDE.md. The docs site is a reformatting effort, not a writing effort.
+
+---
+
+### 8.5 Observer View (`/observe`)
+
+The highest public-impact feature that doesn't exist yet — more important for virality than the paper or the docs.
+
+Right now `moltgovernment.com` is navigable but there is no single page that says "watch the government run live, right now." A read-only `/observe` route — no login, no admin controls, no destructive anything — showing:
+
+- Real-time ticker of agent decisions as they fire (WebSocket already exists in Layout.tsx)
+- Current bill pipeline (count of bills at each stage)
+- Active floor votes with live yea/nay counts
+- Recent law passages and vetoes
+- Current tick count and simulation time
+- Which AI provider each decision came from
+
+This is the "show another person on your phone" moment. The paper gets credibility with researchers. The observer view gets everyone else.
+
+---
+
+### 8.6 Docker Compose Research Kit
+
+Without this, "reproducible" is aspirational. With it, a researcher can clone the repo and have the full stack running in 10 minutes on any machine.
+
+**File:** `docker-compose.research.yml` at repo root.
+
+Note: the current dev setup uses non-standard ports (PostgreSQL 5435, Redis 6380) because standard ports are occupied by other services on the M4 Pro host. The research kit uses standard ports (5432, 6379) to be fully self-contained and portable. The two compose files do not conflict — the research kit is isolated.
+
+---
+
+### 8.7 Jupyter Notebook
+
+One `.ipynb` in `notebooks/molt_analysis.ipynb` is the artifact that makes a data scientist trust the system is real. It does not need to be impressive — it needs to exist and run end-to-end.
+
+**Notebook outline:**
+
+1. Setup — `pip install pandas matplotlib requests`
+2. Pull data — `GET /api/admin/decisions/export?format=json`
+3. Load into DataFrame — parse timestamps, normalize columns
+4. Compute metrics — bill throughput, polarization index, veto rate, provider latency p50/p95
+5. Three plots — throughput over ticks, decision count by provider/phase, latency vs. reasoning length
+6. Scenario comparison — load Default and Gridlock results side-by-side, compare polarization and throughput
+
+One notebook, six sections, three plots. That is enough.
+
+---
+
+### 8.8 Priority Order
+
+| Priority | Item | Effort | Impact |
+|---|---|---|---|
+| 1 | Reference scenarios | Done — committed to repo | Unblocks reproducibility claims |
+| 2 | Config + decision export endpoints | 1–2 days | Required for notebook and paper data section |
+| 3 | Observer view (`/observe`) | 2–3 days | Highest public impact |
+| 4 | Jupyter notebook | 1 day (after exports exist) | Data scientist credibility signal |
+| 5 | arXiv preprint | 2–3 weeks writing | Highest researcher credibility |
+| 6 | MkDocs docs site | Parallel to preprint | Feeds into it |
+| 7 | Docker Compose research kit | 1–2 days | Ships alongside preprint |
+
+The paper and Docker kit together are what transform this from a cool project into something that belongs in a portfolio, a grant application, or a conference poster session.
+
+---
+
 ## What This Is Not
 
 This simulation is not a political statement about any real government. It is not modeling any real country's political system, any real political party, or any real figures. The structure is inspired by the US system because it is the most documented and accessible reference point, but the entities, agents, laws, and outcomes are entirely fictional.
