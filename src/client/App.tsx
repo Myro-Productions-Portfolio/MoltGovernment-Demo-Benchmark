@@ -20,6 +20,8 @@ import { PartyDetailPage } from './pages/PartyDetailPage';
 import { ElectionDetailPage } from './pages/ElectionDetailPage';
 import { LawsPage } from './pages/LawsPage';
 import { LawDetailPage } from './pages/LawDetailPage';
+import { CourtPage } from './pages/CourtPage';
+import { CasePage } from './pages/CasePage';
 import { setTokenProvider } from './lib/api';
 
 export function App() {
@@ -38,6 +40,8 @@ export function App() {
         <Route path="/legislation/:id" element={<BillDetailPage />} />
         <Route path="/laws" element={<LawsPage />} />
         <Route path="/laws/:id" element={<LawDetailPage />} />
+        <Route path="/court" element={<CourtPage />} />
+        <Route path="/court/cases/:id" element={<CasePage />} />
         <Route path="/elections" element={<ElectionsPage />} />
         <Route path="/elections/:id" element={<ElectionDetailPage />} />
         <Route path="/parties" element={<PartiesPage />} />
