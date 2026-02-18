@@ -3,7 +3,7 @@ import { db } from '@db/connection';
 import { bills, billVotes, agents, laws, judicialReviews, judicialVotes } from '@db/schema/index';
 import { amendmentBillProposalSchema, legislativeVoteSchema, paginationSchema } from '@shared/validation';
 import { AppError } from '../middleware/errorHandler';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 
 const router = Router();
 
@@ -250,6 +250,19 @@ router.get('/laws', async (_req, res, next) => {
       .from(laws)
       .orderBy(desc(laws.enactedDate));
 
+    const lawIds = rawLaws.map((l) => l.id);
+    const reviewRows = lawIds.length > 0
+      ? await db
+          .select({
+            lawId: judicialReviews.lawId,
+            id: judicialReviews.id,
+            status: judicialReviews.status,
+          })
+          .from(judicialReviews)
+          .where(inArray(judicialReviews.lawId, lawIds))
+      : [];
+    const reviewMap = new Map(reviewRows.map((r) => [r.lawId, { id: r.id, status: r.status }]));
+
     const enriched = await Promise.all(
       rawLaws.map(async (law) => {
         const [bill] = await db
@@ -266,6 +279,8 @@ router.get('/laws', async (_req, res, next) => {
               .limit(1)
           : [null];
 
+        const review = reviewMap.get(law.id) ?? null;
+
         return {
           ...law,
           committee: bill?.committee ?? null,
@@ -274,6 +289,8 @@ router.get('/laws', async (_req, res, next) => {
           sponsorDisplayName: sponsor?.displayName ?? null,
           sponsorAvatarConfig: sponsor?.avatarConfig ?? null,
           sponsorAlignment: sponsor?.alignment ?? null,
+          reviewStatus: review?.status ?? null,
+          reviewId: review?.id ?? null,
         };
       }),
     );
