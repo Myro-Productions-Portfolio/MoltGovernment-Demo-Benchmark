@@ -89,7 +89,39 @@ export const BUILDINGS: BuildingDef[] = [
       // Counsel table 2
       { x: 65.5, y: 68 }, { x: 72.4, y: 68 },
       // Viewing seats row 1
-      { x: 15, y: 85 }, { x: 25, y: 85 }, { x: 35, y: 85 }, { x: 45, y: 85 }, { x: 55, y: 85 }, { x: 65, y: 85 }, { x: 75, y: 85 }, { x: 85, y: 85 },
+      { x: 5, y: 85 }, // First Person row 1 bench 1
+      { x: 9.86, y: 85 }, 
+      { x: 14.71, y: 85 }, 
+      { x: 19.57, y: 85 }, 
+      { x: 24.43, y: 85 }, 
+      { x: 29.29, y: 85 }, 
+      { x: 34.14, y: 85 }, 
+      { x: 39, y: 85 }, // Last Person row 1 bench 2
+      { x: 61.5, y: 85 }, // First Person row 1 bench 2
+      { x: 66.34, y: 85 }, 
+      { x: 71.17, y: 85 }, 
+      { x: 76.01, y: 85 }, 
+      { x: 80.84, y: 85 }, 
+      { x: 85.68, y: 85 }, 
+      { x: 90.51, y: 85 }, 
+      { x: 95.3, y: 85 }, // Last Person row 1 bench 2
+      // Viewing seats row 2
+      { x: 5, y: 94 }, // First Person row 2 bench 3
+      { x: 9.86, y: 94 }, 
+      { x: 14.71, y: 94 }, 
+      { x: 19.57, y: 94 }, 
+      { x: 24.43, y: 94 }, 
+      { x: 29.29, y: 94 }, 
+      { x: 34.14, y: 94 }, 
+      { x: 39, y: 94 }, // Last Person row 2 bench 3
+      { x: 61.5, y: 94 }, // First Person row 2 bench 4
+      { x: 66.34, y: 94 }, 
+      { x: 71.17, y: 94 }, 
+      { x: 76.01, y: 94 }, 
+      { x: 80.84, y: 94 }, 
+      { x: 85.68, y: 94 }, 
+      { x: 90.51, y: 94 }, 
+      { x: 95.3, y: 94 }, // Last Person row 2 bench 4
     ],
   },
   {
@@ -101,10 +133,10 @@ export const BUILDINGS: BuildingDef[] = [
     color: '#B8956A',
     image: '/images/buildings/treasury.webp',
     seats: [
-      { x: 50, y: 22 }, // Secretary at main terminal
-      { x: 25, y: 42 }, { x: 50, y: 40 }, { x: 75, y: 42 },
-      { x: 25, y: 62 }, { x: 50, y: 60 }, { x: 75, y: 62 },
-      { x: 38, y: 78 }, { x: 62, y: 78 },
+{ x: 50, y: 19.4 }, // Secretary at main terminal
+{ x: 21.95, y: 38.7 }, { x: 78.05, y: 38.7 },
+{ x: 22, y: 69 }, { x: 36.65, y: 69 }, { x: 63.4, y: 69 }, { x: 78, y: 69 }, // Row 2 - four terminals
+      { x: 36.65, y: 83.7 }, { x: 63.4, y: 83.7 }, // Row 3 - two terminals
     ],
   },
   {
@@ -117,13 +149,13 @@ export const BUILDINGS: BuildingDef[] = [
     image: '/images/buildings/party-hall.webp',
     seats: [
       { x: 50, y: 15.6 }, // Party leader at podium
-      { x: 37.5, y: 50 }, { x: 50, y: 50 }, { x: 62.45, y: 50 },
-      { x: 31.3, y: 71 }, { x: 43.8, y: 71 }, { x: 56.2, y: 71 }, { x: 68.7, y: 71 },
-      { x: 37.5, y: 90 }, { x: 62.3, y: 90 },
+      { x: 37.5, y: 50 }, { x: 50, y: 50 }, { x: 62.45, y: 50 }, // Chairs row 1
+      { x: 31.3, y: 68 }, { x: 43.8, y: 68 }, { x: 56.2, y: 68 }, { x: 68.7, y: 68 }, // Chairs row 2
+      { x: 37.5, y: 85 }, { x: 62.3, y: 85 }, // Chairs row 3
       // Gallery Seats (pod 1)
-      { x: 5.1, y: 65.3}, { x: 8.4, y: 72.3 }, { x: 11.7, y: 78.6 }, { x: 15, y: 85.1 }, { x: 18.35, y: 91.8 },
+      { x: 5.1, y: 91.8}, { x: 8.4, y: 91.8 }, { x: 11.7, y: 91.8 }, { x: 15, y: 91.8 }, { x: 18.3, y: 91.8 }, { x: 21.6, y: 91.8 }, { x: 24.9, y: 91.8 }, { x: 28.2, y: 91.8 }, { x: 31.5, y: 91.8 },
       // Gallery Seats (pod 2)
-      { x: 94.9, y: 65.3}, { x: 91.6, y: 72.3 }, { x: 88.3, y: 78.6 }, { x: 85, y: 85.1 }, { x: 81.65, y: 91.8 },
+{ x: 94.4, y: 91.8}, { x: 91.1, y: 91.8 }, { x: 87.8, y: 91.8 }, { x: 84.5, y: 91.8 }, { x: 81.2, y: 91.8 }, { x: 77.9, y: 91.8 }, { x: 74.6, y: 91.8 }, { x: 71.3, y: 91.8 }, { x: 68.0, y: 91.8 },
     ],
   },
   {
@@ -135,9 +167,23 @@ export const BUILDINGS: BuildingDef[] = [
     color: '#72767D',
     image: '/images/buildings/archives.webp',
     seats: [
-      { x: 50, y: 25 }, // Head Archivist
-      { x: 23, y: 48 }, { x: 50, y: 45 }, { x: 77, y: 48 },
-      { x: 32, y: 68 }, { x: 60, y: 66 },
+      { x: 50, y: 16 }, // Head Archivist
+      { x: 21.4, y: 42 }, { x: 27.8, y: 42 }, { x: 72.2, y: 57.2 }, { x: 78.6, y: 57.2 },
+      { x: 21.4, y: 57.2 }, { x: 27.8, y: 57.2 }, { x: 72.2, y: 42 }, { x: 78.6, y: 42 },
+      { x: 30.7, y: 79.3 }, { x: 36.3, y: 79.3 },
+      { x: 63.7, y: 79.3 }, { x: 69.2, y: 79.3 },
+      // Left wall bookshelf (top to bottom, avoiding top desk area)
+      { x: 15, y: 17 }, { x: 15, y: 31.5 }, { x: 15, y: 46 }, { x: 15, y: 60.5 }, { x: 15, y: 75 },
+      // Bottom left wall (left to center, avoiding door area)
+      { x: 25, y: 82 }, { x: 34, y: 83 },
+      // Bottom right wall (center to right, avoiding door area)
+      { x: 66.5, y: 83 }, { x: 75, y: 82 },
+      // Right wall bookshelf (bottom to top, avoiding top desk area)
+      { x: 85, y: 17 }, { x: 85, y: 31.5 }, { x: 85, y: 46 }, { x: 85, y: 60.5 }, { x: 85, y: 75 },
+      // Top right wall (right to center, avoiding desk area)
+      { x: 80, y: 17 }, { x: 70, y: 17 },
+      // Top left wall (center to left, avoiding desk area)
+      { x: 30, y: 17 }, { x: 20, y: 17 },      
     ],
   },
   {
@@ -149,9 +195,10 @@ export const BUILDINGS: BuildingDef[] = [
     color: '#3A6B3A',
     image: '/images/buildings/election-center.webp',
     seats: [
-      { x: 50, y: 20 }, // Election Director
-      { x: 24, y: 43 }, { x: 41, y: 40 }, { x: 59, y: 40 }, { x: 76, y: 43 },
-      { x: 28, y: 65 }, { x: 50, y: 62 }, { x: 72, y: 65 },
+      { x: 50, y: 19.5 }, // Election Director
+      { x: 22, y: 38.55 }, { x: 77.5, y: 38.55 },
+      { x: 22, y: 68.95 }, { x: 78, y: 68.95 },
+      { x: 28.9, y: 82 }, { x: 50, y: 82 }, { x: 71.15, y: 82 },
     ],
   },
 ];

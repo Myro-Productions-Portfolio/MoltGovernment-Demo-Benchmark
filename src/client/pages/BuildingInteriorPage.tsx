@@ -282,7 +282,9 @@ export function BuildingInteriorPage() {
   const location = useLocation();
   const building = getBuildingById(buildingId ?? '');
 
-  const isDebug = new URLSearchParams(location.search).get('debug') === '1';
+  const [isDebug, setIsDebug] = useState(
+    new URLSearchParams(location.search).get('debug') === '1',
+  );
 
   const {
     agents,
@@ -339,14 +341,19 @@ export function BuildingInteriorPage() {
         <span className="badge-committee">{building.type}</span>
 
         <div className="ml-auto flex items-center gap-3">
-          {isDebug && (
-            <span
-              className="text-[0.6rem] font-mono px-1.5 py-0.5 rounded"
-              style={{ background: 'rgba(139,58,58,0.4)', color: '#E8E6E3' }}
-            >
-              DEBUG
-            </span>
-          )}
+          <button
+            type="button"
+            title="Toggle seat debug overlay"
+            onClick={() => setIsDebug((d) => !d)}
+            className="w-7 h-7 rounded flex items-center justify-center text-sm transition-colors"
+            style={{
+              background: isDebug ? 'rgba(139,58,58,0.5)' : 'rgba(201,185,155,0.08)',
+              border: `1px solid ${isDebug ? 'rgba(139,58,58,0.7)' : 'rgba(201,185,155,0.2)'}`,
+              color: isDebug ? '#E8E6E3' : '#9B9D9F',
+            }}
+          >
+            ⊞
+          </button>
           {occupants.length > 0 && (
             <span className="text-[0.65rem] font-mono text-text-muted">
               {occupants.length} agent{occupants.length !== 1 ? 's' : ''} present
@@ -360,99 +367,112 @@ export function BuildingInteriorPage() {
         </div>
       </div>
 
-      {/* Room */}
-      <div className="relative flex-1 overflow-hidden">
-        {/* Background: room image or placeholder */}
-        {!imgError ? (
-          <img
-            src={`/images/interiors/${building.id}.webp`}
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 w-full h-full object-cover"
-            onError={() => setImgError(true)}
-            draggable={false}
-          />
-        ) : (
-          <div
-            className="absolute inset-0"
-            style={{
-              background: `radial-gradient(ellipse at 50% 30%, ${building.color}14 0%, transparent 65%),
-                           linear-gradient(180deg, #1A1B1E 0%, #1C1F23 100%)`,
-            }}
-          >
-            {/* Floor grid placeholder */}
+      {/* Room — outer: flex centering + container-type for cq units */}
+      <div
+        className="flex-1 flex items-center justify-center bg-capitol-deep overflow-hidden"
+        style={{ containerType: 'size' } as React.CSSProperties}
+      >
+        {/* Inner: locked 16:9 room — uses container query units so it never exceeds
+            the available space in either dimension, letterboxed as needed */}
+        <div
+          className="relative overflow-hidden"
+          style={{
+            width: 'min(100cqw, calc(100cqh * 16 / 9))',
+            height: 'min(100cqh, calc(100cqw * 9 / 16))',
+          }}
+        >
+          {/* Background: room image or placeholder */}
+          {!imgError ? (
+            <img
+              src={`/images/interiors/${building.id}.webp`}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 w-full h-full"
+              style={{ objectFit: 'fill' }}
+              onError={() => setImgError(true)}
+              draggable={false}
+            />
+          ) : (
             <div
-              className="absolute inset-0 opacity-[0.12]"
+              className="absolute inset-0"
               style={{
-                backgroundImage:
-                  'linear-gradient(rgba(201,185,155,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(201,185,155,0.4) 1px, transparent 1px)',
-                backgroundSize: '80px 80px',
+                background: `radial-gradient(ellipse at 50% 30%, ${building.color}14 0%, transparent 65%),
+                             linear-gradient(180deg, #1A1B1E 0%, #1C1F23 100%)`,
+              }}
+            >
+              {/* Floor grid placeholder */}
+              <div
+                className="absolute inset-0 opacity-[0.12]"
+                style={{
+                  backgroundImage:
+                    'linear-gradient(rgba(201,185,155,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(201,185,155,0.4) 1px, transparent 1px)',
+                  backgroundSize: '80px 80px',
+                }}
+                aria-hidden="true"
+              />
+              {/* Placeholder hint */}
+              <div className="absolute bottom-16 inset-x-0 flex flex-col items-center gap-1 pointer-events-none">
+                <p className="text-[0.65rem] text-text-muted font-mono opacity-40 uppercase tracking-widest">
+                  {building.name} — interior image pending
+                </p>
+                <p className="text-[0.5rem] text-text-muted font-mono opacity-25">
+                  place /images/interiors/{building.id}.webp to activate
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Vignette */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                'radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0,0,0,0.5) 100%)',
+            }}
+            aria-hidden="true"
+          />
+
+          {/* Faint seat markers — show all designated positions */}
+          {!isDebug && building.seats.map((seat, i) => (
+            <div
+              key={i}
+              className="absolute w-10 h-10 rounded-full pointer-events-none"
+              style={{
+                left: `${seat.x}%`,
+                top: `${seat.y}%`,
+                transform: 'translate(-50%, -50%)',
+                border: `1px dashed rgba(201,185,155,0.3)`,
               }}
               aria-hidden="true"
             />
-            {/* Placeholder hint */}
-            <div className="absolute bottom-16 inset-x-0 flex flex-col items-center gap-1 pointer-events-none">
-              <p className="text-[0.65rem] text-text-muted font-mono opacity-40 uppercase tracking-widest">
-                {building.name} — interior image pending
-              </p>
-              <p className="text-[0.5rem] text-text-muted font-mono opacity-25">
-                place /images/interiors/{building.id}.webp to activate
-              </p>
-            </div>
-          </div>
-        )}
+          ))}
 
-        {/* Vignette */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              'radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0,0,0,0.5) 100%)',
-          }}
-          aria-hidden="true"
-        />
+          {/* Seated agents */}
+          <AnimatePresence>
+            {occupants.map((agent, idx) => {
+              const seat = building.seats[idx % building.seats.length];
+              const bubble = speechBubbles.find((b) => b.agentId === agent.id);
+              return (
+                <AgentSeat
+                  key={agent.id}
+                  agent={agent}
+                  seat={seat}
+                  bubble={bubble}
+                  onClick={() => setSelectedAgent(agent)}
+                />
+              );
+            })}
+          </AnimatePresence>
 
-        {/* Faint seat markers — show all designated positions */}
-        {!isDebug && building.seats.map((seat, i) => (
-          <div
-            key={i}
-            className="absolute w-10 h-10 rounded-full pointer-events-none"
-            style={{
-              left: `${seat.x}%`,
-              top: `${seat.y}%`,
-              transform: 'translate(-50%, -50%)',
-              border: `1px dashed ${building.color}22`,
-            }}
-            aria-hidden="true"
-          />
-        ))}
+          {/* Debug coordinate overlay */}
+          {isDebug && (
+            <DebugOverlay seats={building.seats} buildingColor={building.color} />
+          )}
 
-        {/* Seated agents */}
-        <AnimatePresence>
-          {occupants.map((agent, idx) => {
-            const seat = building.seats[idx % building.seats.length];
-            const bubble = speechBubbles.find((b) => b.agentId === agent.id);
-            return (
-              <AgentSeat
-                key={agent.id}
-                agent={agent}
-                seat={seat}
-                bubble={bubble}
-                onClick={() => setSelectedAgent(agent)}
-              />
-            );
-          })}
-        </AnimatePresence>
-
-        {/* Debug coordinate overlay — ?debug=1 */}
-        {isDebug && (
-          <DebugOverlay seats={building.seats} buildingColor={building.color} />
-        )}
-
-        {/* Ticker */}
-        <MapEventTicker events={tickerEvents} />
-
-        {/* Agent detail drawer */}
+          {/* Ticker */}
+          <MapEventTicker events={tickerEvents} />
+        </div>
+        {/* Agent detail drawer — outside fixed-ratio box so it can cover full area */}
         <AgentDrawer agent={selectedAgent} onClose={() => setSelectedAgent(null)} />
       </div>
     </div>
