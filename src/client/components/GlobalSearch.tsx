@@ -61,7 +61,7 @@ function flattenResults(data: SearchResults): FlatResult[] {
   }
   for (const b of data.bills) {
     results.push({
-      href: '/legislation',
+      href: `/legislation/${b.id}`,
       title: b.title,
       subtitle: `Bill · ${b.status} · ${b.committee}`,
       category: 'Legislation',
@@ -69,7 +69,7 @@ function flattenResults(data: SearchResults): FlatResult[] {
   }
   for (const p of data.parties) {
     results.push({
-      href: '/parties',
+      href: `/parties/${p.id}`,
       title: `${p.name} (${p.abbreviation})`,
       subtitle: `Party · ${p.alignment}`,
       category: 'Parties',
