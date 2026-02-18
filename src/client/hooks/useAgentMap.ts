@@ -112,7 +112,7 @@ export function useAgentMap(): AgentMapState {
       try {
         const [agentRes, activityRes] = await Promise.all([
           agentsApi.list(1, 50),
-          activityApi.recent(100),
+          activityApi.recent({ limit: 100 }),
         ]);
 
         const agentList = (agentRes.data as Agent[]) ?? [];

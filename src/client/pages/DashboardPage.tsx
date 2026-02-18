@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useWebSocket } from '../lib/useWebSocket';
 import { BranchCard } from '../components/BranchCard';
 import { ElectionBanner } from '../components/ElectionBanner';
-import { BillCard } from '../components/BillCard';
+import { LegislationCarousel } from '../components/LegislationCarousel';
 import { CampaignCard } from '../components/CampaignCard';
 import { ActivityFeed } from '../components/ActivityFeed';
 import { SidebarCard } from '../components/SidebarCard';
@@ -100,7 +100,7 @@ export function DashboardPage() {
         governmentApi.overview(),
         legislationApi.list(),
         campaignsApi.active(),
-        activityApi.recent(),
+        activityApi.recent({ since: Date.now() - 60 * 60 * 1000 }),
         calendarApi.upcoming(),
       ]);
 
@@ -279,7 +279,7 @@ export function DashboardPage() {
       </section>
 
       {/* Three Branches of Government */}
-      <section className="max-w-content mx-auto px-8 py-section">
+      <section className="px-8 xl:px-16 py-section">
         <SectionHeader title="Three Branches of Government" badge="Live" />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <BranchCard
@@ -301,7 +301,7 @@ export function DashboardPage() {
       </section>
 
       {/* Election Banner — only renders when there is an active election */}
-      <section className="max-w-content mx-auto px-8">
+      <section className="px-8 xl:px-16">
         <ElectionBanner
           title="Election Approaching"
           description={`${campaigns.length} candidate${campaigns.length !== 1 ? 's' : ''} declared.`}
@@ -309,41 +309,9 @@ export function DashboardPage() {
         />
       </section>
 
-      {/* Active Legislation */}
-      <section className="max-w-content mx-auto px-8 py-section">
-        <SectionHeader title="Active Legislation" badge={`${mappedBills.length} Bills`} />
-        {mappedBills.length === 0 ? (
-          <div className="text-center py-12 text-text-muted">
-            <p>No legislation has been introduced yet.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {mappedBills.map((bill) => (
-              <BillCard key={bill.billNumber} {...bill} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Campaign Trail */}
-      <section className="max-w-content mx-auto px-8 py-section">
-        <SectionHeader title="Campaign Trail" badge="Active Races" />
-        {mappedCampaigns.length === 0 ? (
-          <div className="text-center py-12 text-text-muted">
-            <p>No active campaigns at this time.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {mappedCampaigns.map((campaign, idx) => (
-              <CampaignCard key={campaign.name} {...campaign} index={idx} />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Activity Feed + Sidebar */}
-      <section className="max-w-content mx-auto px-8 py-section">
-        <SectionHeader title="Recent Activity" />
+      {/* Recent Activity + Sidebar */}
+      <section className="px-8 xl:px-16 py-section">
+        <SectionHeader title="Recent Activity" badge="Last Hour" />
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
           <ActivityFeed items={mappedActivity} />
           <div>
@@ -376,6 +344,28 @@ export function DashboardPage() {
             />
           </div>
         </div>
+      </section>
+
+      {/* Active Legislation carousel */}
+      <section className="px-8 xl:px-16 py-section">
+        <SectionHeader title="Active Legislation" badge={`${mappedBills.length} Bills`} />
+        <LegislationCarousel bills={mappedBills} />
+      </section>
+
+      {/* Campaign Trail */}
+      <section className="px-8 xl:px-16 py-section">
+        <SectionHeader title="Campaign Trail" badge="Active Races" />
+        {mappedCampaigns.length === 0 ? (
+          <div className="text-center py-12 text-text-muted">
+            <p>No active campaigns at this time.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-5">
+            {mappedCampaigns.map((campaign, idx) => (
+              <CampaignCard key={campaign.name} {...campaign} index={idx} />
+            ))}
+          </div>
+        )}
       </section>
     </>
   );

@@ -125,10 +125,23 @@ export const electionsApi = {
 
 /* Activity endpoints */
 export const activityApi = {
-  recent: (limit = 100) =>
-    request(`/activity?limit=${limit}`),
+  recent: (opts?: { since?: number; limit?: number }) => {
+    const params = new URLSearchParams();
+    params.set('limit', String(opts?.limit ?? 100));
+    if (opts?.since) params.set('since', String(opts.since));
+    return request(`/activity?${params.toString()}`);
+  },
   forAgent: (agentId: string, limit = 20) =>
     request(`/activity?agentId=${agentId}&limit=${limit}`),
+};
+
+/* Search endpoint */
+export const searchApi = {
+  global: (q: string, types?: string) => {
+    const params = new URLSearchParams({ q });
+    if (types) params.set('types', types);
+    return request(`/search?${params.toString()}`);
+  },
 };
 
 /* Calendar endpoints */
