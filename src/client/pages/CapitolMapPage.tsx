@@ -2,7 +2,7 @@
 // Purpose: Interactive living map of the Capitol District.
 // Click a building to enter its interior view (/capitol-map/:buildingId).
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useAgentMap } from '../hooks/useAgentMap';
@@ -13,9 +13,22 @@ import { MapEventTicker } from '../components/map/MapEventTicker';
 import { BUILDINGS } from '../lib/buildings';
 import type { Agent } from '@shared/types';
 
+const ZOOM_MIN = 0.6;
+const ZOOM_MAX = 2.5;
+const ZOOM_DEFAULT = 1.0;
+const ZOOM_STEP = 0.1;
+
 export function CapitolMapPage() {
   const navigate = useNavigate();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  // Map zoom/pan state
+  const [zoom, setZoom] = useState(ZOOM_DEFAULT);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
+  const dragMoved = useRef(false);
+  const lastMouse = useRef({ x: 0, y: 0 });
 
   const {
     agents,
@@ -34,225 +47,339 @@ export function CapitolMapPage() {
     return acc;
   }, {});
 
+  // ── Zoom toward cursor ──────────────────────────────────────────────────────
+  const applyZoom = useCallback((newZoom: number, originX: number, originY: number) => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, newZoom));
+    const rect = viewport.getBoundingClientRect();
+    // Mouse position relative to viewport center
+    const cx = originX - rect.left - rect.width / 2;
+    const cy = originY - rect.top - rect.height / 2;
+
+    setZoom((prev) => {
+      const scale = clamped / prev;
+      setPan((p) => ({
+        x: cx - (cx - p.x) * scale,
+        y: cy - (cy - p.y) * scale,
+      }));
+      return clamped;
+    });
+  }, []);
+
+  const handleWheel = useCallback(
+    (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 1 + ZOOM_STEP : 1 - ZOOM_STEP;
+      setZoom((prev) => {
+        const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, prev * delta));
+        const viewport = viewportRef.current;
+        if (!viewport) return newZoom;
+        const rect = viewport.getBoundingClientRect();
+        const cx = e.clientX - rect.left - rect.width / 2;
+        const cy = e.clientY - rect.top - rect.height / 2;
+        const scale = newZoom / prev;
+        setPan((p) => ({
+          x: cx - (cx - p.x) * scale,
+          y: cy - (cy - p.y) * scale,
+        }));
+        return newZoom;
+      });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [handleWheel]);
+
+  // ── Pan via drag ────────────────────────────────────────────────────────────
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    isDragging.current = true;
+    dragMoved.current = false;
+    lastMouse.current = { x: e.clientX, y: e.clientY };
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging.current) return;
+    const dx = e.clientX - lastMouse.current.x;
+    const dy = e.clientY - lastMouse.current.y;
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragMoved.current = true;
+    lastMouse.current = { x: e.clientX, y: e.clientY };
+    setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    isDragging.current = false;
+  }, []);
+
+  // ── Alignment debug mode ────────────────────────────────────────────────────
+  const [debugAlign, setDebugAlign] = useState(false);
+
+  // ── Zoom controls (HUD buttons) ─────────────────────────────────────────────
+  const zoomIn = () => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const rect = viewport.getBoundingClientRect();
+    applyZoom(zoom + ZOOM_STEP * 2, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  };
+  const zoomOut = () => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const rect = viewport.getBoundingClientRect();
+    applyZoom(zoom - ZOOM_STEP * 2, rect.left + rect.width / 2, rect.top + rect.height / 2);
+  };
+  const zoomReset = () => {
+    setZoom(ZOOM_DEFAULT);
+    setPan({ x: 0, y: 0 });
+  };
+
   return (
     <div className="flex h-[calc(100vh-64px)]">
-      {/* ── MAP CANVAS ── */}
-      <div className="flex-1 relative overflow-hidden bg-capitol-deep">
 
-        {/* ── LAYER 1: SVG ground — zones, block grid, diagonal road ── */}
-        <svg
-          className="absolute inset-0 w-full h-full pointer-events-none"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <defs>
-            {/* Radial glow centered on Capitol Hill */}
-            <radialGradient id="capitolHillGlow" cx="50%" cy="30%" r="30%">
-              <stop offset="0%" stopColor="#C9B99B" stopOpacity="0.055" />
-              <stop offset="100%" stopColor="#C9B99B" stopOpacity="0" />
-            </radialGradient>
-            {/* South mall green ambient */}
-            <radialGradient id="southMallAmbient" cx="50%" cy="78%" r="40%">
-              <stop offset="0%" stopColor="#3A6B3A" stopOpacity="0.04" />
-              <stop offset="100%" stopColor="#3A6B3A" stopOpacity="0" />
-            </radialGradient>
-          </defs>
+      {/* ── MAP VIEWPORT ── clips the world, handles input ── */}
+      <div
+        ref={viewportRef}
+        className="flex-1 relative overflow-hidden select-none"
+        style={{
+          backgroundColor: '#1A1B1E',
+          cursor: isDragging.current ? 'grabbing' : 'grab',
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
 
-          {/* Ground zone washes */}
-          <rect x="0" y="0" width="100" height="100" fill="url(#capitolHillGlow)" />
-          <rect x="0" y="0" width="100" height="100" fill="url(#southMallAmbient)" />
-
-          {/* City-block grid — large block lines, very subtle */}
-          <line x1="0" y1="18" x2="100" y2="18" stroke="rgba(201,185,155,0.05)" strokeWidth="0.18" />
-          <line x1="0" y1="62" x2="100" y2="62" stroke="rgba(201,185,155,0.05)" strokeWidth="0.18" />
-          <line x1="27" y1="0" x2="27" y2="100" stroke="rgba(201,185,155,0.05)" strokeWidth="0.18" />
-          <line x1="73" y1="0" x2="73" y2="100" stroke="rgba(201,185,155,0.05)" strokeWidth="0.18" />
-          {/* Sub-block lines */}
-          <line x1="0" y1="40" x2="100" y2="40" stroke="rgba(201,185,155,0.028)" strokeWidth="0.12" />
-          <line x1="0" y1="82" x2="100" y2="82" stroke="rgba(201,185,155,0.028)" strokeWidth="0.12" />
-          <line x1="14" y1="0" x2="14" y2="100" stroke="rgba(201,185,155,0.028)" strokeWidth="0.12" />
-          <line x1="40" y1="0" x2="40" y2="100" stroke="rgba(201,185,155,0.028)" strokeWidth="0.12" />
-          <line x1="60" y1="0" x2="60" y2="100" stroke="rgba(201,185,155,0.028)" strokeWidth="0.12" />
-          <line x1="86" y1="0" x2="86" y2="100" stroke="rgba(201,185,155,0.028)" strokeWidth="0.12" />
-
-          {/* ── Pennsylvania Avenue diagonal — Executive Mansion → Capitol junction ── */}
-          {/* Shoulder (outer glow/curb) */}
-          <line
-            x1="22" y1="26"
-            x2="49" y2="43.5"
-            stroke="#28292E"
-            strokeWidth="4.2"
-            strokeLinecap="round"
-          />
-          {/* Road surface */}
-          <line
-            x1="22" y1="26"
-            x2="49" y2="43.5"
-            stroke="#1C1E22"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-          />
-          {/* Center dash */}
-          <line
-            x1="22" y1="26"
-            x2="49" y2="43.5"
-            stroke="rgba(78,80,88,0.55)"
-            strokeWidth="0.28"
-            strokeLinecap="round"
-            strokeDasharray="2.2 2.2"
-          />
-
-          {/* ── Supreme Court connector — faint road east of Capitol ── */}
-          <line
-            x1="52" y1="43.5"
-            x2="75" y2="28"
-            stroke="#222428"
-            strokeWidth="2.8"
-            strokeLinecap="round"
-          />
-          <line
-            x1="52" y1="43.5"
-            x2="75" y2="28"
-            stroke="#1C1E22"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          />
-        </svg>
-
-        {/* ── LAYER 2: CSS roads — horizontal (Constitution Ave) + vertical (Mall axis) ── */}
-
-        {/* Constitution Avenue — horizontal */}
+        {/* ── MAP WORLD ── everything inside scales together ── */}
         <div
-          className="absolute left-0 right-0 pointer-events-none"
-          style={{ top: '43.5%', height: '4%' }}
-          aria-hidden="true"
-        >
-          {/* Shoulder base */}
-          <div className="absolute inset-0" style={{ background: '#252729' }} />
-          {/* Road surface (inner strip) */}
-          <div
-            className="absolute left-0 right-0"
-            style={{ top: '20%', bottom: '20%', background: '#1B1D20' }}
-          />
-          {/* Outer curb lines */}
-          <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'rgba(60,63,69,0.9)' }} />
-          <div className="absolute bottom-0 left-0 right-0 h-px" style={{ background: 'rgba(60,63,69,0.9)' }} />
-          {/* Inner shoulder-to-surface edge lines */}
-          <div
-            className="absolute left-0 right-0"
-            style={{ top: '20%', height: '1px', background: 'rgba(48,51,56,0.7)' }}
-          />
-          <div
-            className="absolute left-0 right-0"
-            style={{ bottom: '20%', height: '1px', background: 'rgba(48,51,56,0.7)' }}
-          />
-          {/* Center lane dashes */}
-          <div
-            className="absolute left-0 right-0"
-            style={{
-              top: '50%',
-              height: '1px',
-              transform: 'translateY(-50%)',
-              backgroundImage:
-                'repeating-linear-gradient(90deg, rgba(78,80,88,0.75) 0px, rgba(78,80,88,0.75) 22px, transparent 22px, transparent 40px)',
-            }}
-          />
-          {/* Road name */}
-          <span
-            className="absolute top-1/2 -translate-y-1/2 font-mono uppercase select-none"
-            style={{
-              left: '1.5rem',
-              fontSize: '0.42rem',
-              letterSpacing: '0.24em',
-              color: 'rgba(201,185,155,0.22)',
-            }}
-          >
-            Constitution Avenue
-          </span>
-        </div>
-
-        {/* Capitol Mall axis — vertical */}
-        <div
-          className="absolute top-0 bottom-0 pointer-events-none"
-          style={{ left: '48%', width: '4%' }}
-          aria-hidden="true"
-        >
-          {/* Shoulder base */}
-          <div className="absolute inset-0" style={{ background: '#252729' }} />
-          {/* Road surface */}
-          <div
-            className="absolute top-0 bottom-0"
-            style={{ left: '20%', right: '20%', background: '#1B1D20' }}
-          />
-          {/* Outer curb lines */}
-          <div className="absolute top-0 bottom-0 left-0 w-px" style={{ background: 'rgba(60,63,69,0.9)' }} />
-          <div className="absolute top-0 bottom-0 right-0 w-px" style={{ background: 'rgba(60,63,69,0.9)' }} />
-          {/* Inner shoulder-to-surface edge lines */}
-          <div
-            className="absolute top-0 bottom-0"
-            style={{ left: '20%', width: '1px', background: 'rgba(48,51,56,0.7)' }}
-          />
-          <div
-            className="absolute top-0 bottom-0"
-            style={{ right: '20%', width: '1px', background: 'rgba(48,51,56,0.7)' }}
-          />
-          {/* Center lane dashes */}
-          <div
-            className="absolute top-0 bottom-0"
-            style={{
-              left: '50%',
-              width: '1px',
-              transform: 'translateX(-50%)',
-              backgroundImage:
-                'repeating-linear-gradient(180deg, rgba(78,80,88,0.75) 0px, rgba(78,80,88,0.75) 22px, transparent 22px, transparent 40px)',
-            }}
-          />
-          {/* Road name — rotated */}
-          <span
-            className="absolute font-mono uppercase select-none"
-            style={{
-              top: '20%',
-              left: '50%',
-              fontSize: '0.42rem',
-              letterSpacing: '0.22em',
-              color: 'rgba(201,185,155,0.18)',
-              transform: 'rotate(90deg) translateX(0) translateY(-50%)',
-              transformOrigin: 'left center',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Capitol Mall
-          </span>
-        </div>
-
-        {/* Intersection block — clean fill over road crossing */}
-        <div
-          className="absolute pointer-events-none"
           style={{
-            left: '48%',
-            width: '4%',
-            top: '43.5%',
-            height: '4%',
-            background: '#1B1D20',
+            position: 'absolute',
+            inset: 0,
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            transformOrigin: 'center center',
+            willChange: 'transform',
           }}
-          aria-hidden="true"
-        />
-        {/* Intersection crosswalk stripes — both directions */}
+        >
+          {/* Background image — objectFit fill so % positions align perfectly */}
+          <img
+            src="/images/map-backgrounds/capitol-map-v1.webp"
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'fill',
+              display: 'block',
+              pointerEvents: 'none',
+              userSelect: 'none',
+            }}
+          />
+
+          {/* ── Alignment debug overlay — toggle with button in HUD ── */}
+          {debugAlign && (
+            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 50 }}>
+              {/* Percentage grid — every 10% */}
+              {[10,20,30,40,50,60,70,80,90].map((pct) => (
+                <div key={`h${pct}`}>
+                  <div style={{ position:'absolute', top:`${pct}%`, left:0, right:0, height:1, background:'rgba(255,100,100,0.35)' }} />
+                  <span style={{ position:'absolute', top:`${pct}%`, left:2, fontSize:'0.5rem', color:'rgba(255,100,100,0.9)', fontFamily:'monospace', lineHeight:1 }}>{pct}%</span>
+                </div>
+              ))}
+              {[10,20,30,40,50,60,70,80,90].map((pct) => (
+                <div key={`v${pct}`}>
+                  <div style={{ position:'absolute', left:`${pct}%`, top:0, bottom:0, width:1, background:'rgba(255,100,100,0.35)' }} />
+                  <span style={{ position:'absolute', left:`${pct}%`, top:2, fontSize:'0.5rem', color:'rgba(255,100,100,0.9)', fontFamily:'monospace', lineHeight:1, paddingLeft:2 }}>{pct}%</span>
+                </div>
+              ))}
+              {/* Building footprint highlights */}
+              {BUILDINGS.map((b) => (
+                <div
+                  key={b.id}
+                  style={{
+                    position:'absolute',
+                    left:`${b.x}%`, top:`${b.y}%`,
+                    width:`${b.width}%`, height:`${b.height}%`,
+                    border:'2px solid rgba(255,220,0,0.9)',
+                    background:'rgba(255,220,0,0.08)',
+                    boxSizing:'border-box',
+                  }}
+                >
+                  <span style={{ position:'absolute', top:2, left:3, fontSize:'0.48rem', color:'rgba(255,220,0,1)', fontFamily:'monospace', whiteSpace:'nowrap', textShadow:'0 1px 3px black' }}>
+                    {b.id} x:{b.x} y:{b.y} w:{b.width} h:{b.height}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Buildings ── */}
+          <LayoutGroup>
+            {BUILDINGS.map((building) => {
+              const occupants = agentsByBuilding[building.id] ?? [];
+              const pulse = buildingPulses.find((p) => p.buildingId === building.id);
+              const isHovered = hoveredId === building.id;
+
+              return (
+                <button
+                  key={building.id}
+                  className="absolute rounded flex flex-col items-center justify-center text-center"
+                  style={{
+                    left: `${building.x}%`,
+                    top: `${building.y}%`,
+                    width: `${building.width}%`,
+                    height: `${building.height}%`,
+                    background: `linear-gradient(160deg, ${building.color}1E 0%, ${building.color}09 100%)`,
+                    border: `1px solid ${building.color}${isHovered ? '72' : '3E'}`,
+                    boxShadow: isHovered
+                      ? `0 6px 28px rgba(0,0,0,0.8), 0 0 20px ${building.color}20, inset 0 1px 0 ${building.color}28`
+                      : `0 3px 14px rgba(0,0,0,0.6), inset 0 1px 0 ${building.color}16`,
+                    transform: isHovered ? 'scale(1.04)' : 'scale(1)',
+                    transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
+                    zIndex: isHovered ? 10 : 1,
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => {
+                    if (!dragMoved.current) navigate(`/capitol-map/${building.id}`);
+                  }}
+                  onMouseEnter={() => setHoveredId(building.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  aria-label={`Enter ${building.name}`}
+                  type="button"
+                >
+                  <BuildingPulseRing pulse={pulse} />
+
+                  <img
+                    src={building.image}
+                    alt=""
+                    className="w-3/4 h-3/4 object-contain mb-0.5"
+                    style={{
+                      opacity: isHovered ? 0.95 : 0.78,
+                      transition: 'opacity 0.18s ease',
+                      pointerEvents: 'none',
+                    }}
+                    aria-hidden="true"
+                    draggable={false}
+                  />
+
+                  <div
+                    className="font-medium leading-tight"
+                    style={{
+                      fontSize: '0.6rem',
+                      letterSpacing: '0.04em',
+                      color: building.color,
+                      textShadow: '0 1px 5px rgba(0,0,0,0.95)',
+                    }}
+                  >
+                    {building.name}
+                  </div>
+
+                  <div
+                    className="font-mono uppercase"
+                    style={{
+                      fontSize: '0.38rem',
+                      letterSpacing: '0.2em',
+                      color: `${building.color}66`,
+                      marginTop: '1px',
+                    }}
+                  >
+                    {building.type}
+                  </div>
+
+                  {occupants.length > 0 && (
+                    <div
+                      className="absolute -top-5 left-1/2 -translate-x-1/2"
+                      style={{ width: 0, height: 0 }}
+                    >
+                      <AnimatePresence>
+                        {occupants.map((agent, idx) => (
+                          <div key={agent.id} className="relative">
+                            <AgentAvatarDot
+                              agent={agent}
+                              index={idx}
+                              hasSpeechBubble={false}
+                              onClick={() => setSelectedAgent(agent)}
+                            />
+                          </div>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </LayoutGroup>
+        </div>
+
+        {/* ── Edge vignette overlay — outside world so it doesn't scale ── */}
         <div
-          className="absolute pointer-events-none"
+          className="absolute inset-0 pointer-events-none"
           style={{
-            left: '48%',
-            width: '4%',
-            top: '43.5%',
-            height: '4%',
-            backgroundImage:
-              'repeating-linear-gradient(0deg, rgba(78,80,88,0.2) 0px, rgba(78,80,88,0.2) 2px, transparent 2px, transparent 6px)',
+            background: 'radial-gradient(ellipse at center, transparent 55%, rgba(26,27,30,0.6) 100%)',
+            zIndex: 20,
           }}
           aria-hidden="true"
         />
 
-        {/* Loading overlay */}
+        {/* ── Zoom HUD ── */}
+        <div
+          className="absolute bottom-16 left-4 flex flex-col gap-1 z-30 pointer-events-auto"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => setDebugAlign((v) => !v)}
+            className="w-7 h-7 rounded border flex items-center justify-center font-mono transition-colors"
+            style={{
+              fontSize: '0.45rem',
+              background: debugAlign ? 'rgba(255,220,0,0.15)' : 'rgba(43,45,49,0.9)',
+              borderColor: debugAlign ? 'rgba(255,220,0,0.6)' : 'rgba(255,255,255,0.12)',
+              color: debugAlign ? 'rgba(255,220,0,1)' : 'rgba(155,157,159,1)',
+            }}
+            aria-label="Toggle alignment grid"
+            title="Toggle alignment debug grid"
+            type="button"
+          >
+            ⊞
+          </button>
+          <button
+            onClick={zoomIn}
+            disabled={zoom >= ZOOM_MAX}
+            className="w-7 h-7 rounded bg-capitol-card/90 border border-border text-text-primary flex items-center justify-center font-mono text-sm hover:border-stone/40 disabled:opacity-30 transition-colors"
+            aria-label="Zoom in"
+            type="button"
+          >
+            +
+          </button>
+          <button
+            onClick={zoomReset}
+            className="w-7 h-7 rounded bg-capitol-card/90 border border-border text-text-muted flex items-center justify-center font-mono hover:border-stone/40 transition-colors"
+            style={{ fontSize: '0.45rem', letterSpacing: '0.05em' }}
+            aria-label="Reset zoom"
+            type="button"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            onClick={zoomOut}
+            disabled={zoom <= ZOOM_MIN}
+            className="w-7 h-7 rounded bg-capitol-card/90 border border-border text-text-primary flex items-center justify-center font-mono text-sm hover:border-stone/40 disabled:opacity-30 transition-colors"
+            aria-label="Zoom out"
+            type="button"
+          >
+            −
+          </button>
+        </div>
+
+        {/* ── Loading overlay ── */}
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center z-50 bg-capitol-deep/60">
             <span className="text-xs text-text-muted font-mono animate-pulse">
@@ -260,101 +387,6 @@ export function CapitolMapPage() {
             </span>
           </div>
         )}
-
-        {/* ── LAYER 3: Buildings ── */}
-        <LayoutGroup>
-          {BUILDINGS.map((building) => {
-            const occupants = agentsByBuilding[building.id] ?? [];
-            const pulse = buildingPulses.find((p) => p.buildingId === building.id);
-            const isHovered = hoveredId === building.id;
-
-            return (
-              <button
-                key={building.id}
-                className="absolute rounded flex flex-col items-center justify-center text-center cursor-pointer"
-                style={{
-                  left: `${building.x}%`,
-                  top: `${building.y}%`,
-                  width: `${building.width}%`,
-                  height: `${building.height}%`,
-                  background: `linear-gradient(160deg, ${building.color}1E 0%, ${building.color}09 100%)`,
-                  border: `1px solid ${building.color}${isHovered ? '72' : '3E'}`,
-                  boxShadow: isHovered
-                    ? `0 6px 28px rgba(0,0,0,0.8), 0 0 20px ${building.color}20, inset 0 1px 0 ${building.color}28`
-                    : `0 3px 14px rgba(0,0,0,0.6), inset 0 1px 0 ${building.color}16`,
-                  transform: isHovered ? 'scale(1.04)' : 'scale(1)',
-                  transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
-                  zIndex: isHovered ? 10 : 1,
-                }}
-                onClick={() => navigate(`/capitol-map/${building.id}`)}
-                onMouseEnter={() => setHoveredId(building.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                aria-label={`Enter ${building.name}`}
-                type="button"
-              >
-                <BuildingPulseRing pulse={pulse} />
-
-                <img
-                  src={building.image}
-                  alt=""
-                  className="w-3/4 h-3/4 object-contain mb-0.5"
-                  style={{
-                    opacity: isHovered ? 0.95 : 0.78,
-                    transition: 'opacity 0.18s ease',
-                  }}
-                  aria-hidden="true"
-                />
-
-                {/* Building name */}
-                <div
-                  className="font-medium leading-tight"
-                  style={{
-                    fontSize: '0.6rem',
-                    letterSpacing: '0.04em',
-                    color: building.color,
-                    textShadow: '0 1px 5px rgba(0,0,0,0.95)',
-                  }}
-                >
-                  {building.name}
-                </div>
-
-                {/* Building type — micro label */}
-                <div
-                  className="font-mono uppercase"
-                  style={{
-                    fontSize: '0.38rem',
-                    letterSpacing: '0.2em',
-                    color: `${building.color}66`,
-                    marginTop: '1px',
-                  }}
-                >
-                  {building.type}
-                </div>
-
-                {/* Agent avatar cluster */}
-                {occupants.length > 0 && (
-                  <div
-                    className="absolute -top-5 left-1/2 -translate-x-1/2"
-                    style={{ width: 0, height: 0 }}
-                  >
-                    <AnimatePresence>
-                      {occupants.map((agent, idx) => (
-                        <div key={agent.id} className="relative">
-                          <AgentAvatarDot
-                            agent={agent}
-                            index={idx}
-                            hasSpeechBubble={false}
-                            onClick={() => setSelectedAgent(agent)}
-                          />
-                        </div>
-                      ))}
-                    </AnimatePresence>
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </LayoutGroup>
 
         <MapEventTicker events={tickerEvents} />
         <AgentDrawer agent={selectedAgent} onClose={() => setSelectedAgent(null)} />
@@ -372,7 +404,7 @@ export function CapitolMapPage() {
         </div>
 
         <p className="text-xs text-text-muted mb-4">
-          Click a building to enter and see agents inside.
+          Click a building to enter. Scroll to zoom. Drag to pan.
         </p>
 
         <div className="space-y-2">

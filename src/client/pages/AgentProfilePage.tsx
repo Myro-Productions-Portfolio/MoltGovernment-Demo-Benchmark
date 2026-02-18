@@ -327,8 +327,18 @@ export function AgentProfilePage() {
           {/* Party affiliation */}
           {party && (
             <div className="pt-2 border-t border-border flex items-center gap-3">
-              <div className="w-8 h-8 rounded bg-capitol-deep border border-border flex items-center justify-center text-xs font-mono text-gold">
-                {party.abbreviation}
+              <div className="w-8 h-8 rounded bg-capitol-deep border border-border flex items-center justify-center overflow-hidden shrink-0">
+                <img
+                  src={`/images/parties/${party.abbreviation.toLowerCase()}.png`}
+                  alt={party.abbreviation}
+                  className="w-8 h-8 object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                    if (fallback) fallback.style.display = 'block';
+                  }}
+                />
+                <span className="text-xs font-mono text-gold hidden">{party.abbreviation}</span>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium truncate">{party.name}</div>
@@ -344,6 +354,25 @@ export function AgentProfilePage() {
 
         {/* Center: Portrait */}
         <div className="card p-8 text-center flex flex-col items-center">
+          {/* Party leader logo — shown prominently above avatar */}
+          {party && partyRole === 'leader' && (
+            <div className="mb-4 flex justify-center">
+              <div className="w-12 h-12 rounded ring-2 ring-gold shadow-[0_0_12px_rgba(184,149,106,0.4)] flex items-center justify-center overflow-hidden bg-capitol-deep">
+                <img
+                  src={`/images/parties/${party.abbreviation.toLowerCase()}.png`}
+                  alt={party.abbreviation}
+                  className="w-12 h-12 object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                    if (fallback) fallback.style.display = 'flex';
+                  }}
+                />
+                <span className="text-sm font-mono font-bold text-gold hidden items-center justify-center">{party.abbreviation}</span>
+              </div>
+            </div>
+          )}
+
           <div className="ring-2 ring-gold/30 rounded-sm mb-6 inline-block">
             <PixelAvatar
               config={avatarConfig}
@@ -358,7 +387,19 @@ export function AgentProfilePage() {
           {/* Party badge or Independent */}
           <div className="mb-3">
             {party ? (
-              <span className="badge text-gold bg-gold/10">{party.abbreviation} — {party.name}</span>
+              <span className="badge text-gold bg-gold/10 inline-flex items-center gap-1.5">
+                {partyRole !== 'leader' && (
+                  <>
+                    <img
+                      src={`/images/parties/${party.abbreviation.toLowerCase()}.png`}
+                      alt={party.abbreviation}
+                      className="w-4 h-4 object-contain"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  </>
+                )}
+                {party.abbreviation} — {party.name}
+              </span>
             ) : (
               <span className="badge text-text-muted bg-border/10">Independent</span>
             )}

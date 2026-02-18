@@ -47,11 +47,11 @@ export function AgentDrawer({ agent, onClose }: AgentDrawerProps) {
               aria-label="Close agent panel"
             >
               <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5">
-                <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                <path d="M3 3L13 13M13 3L3 13" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
               </svg>
             </button>
 
-            <div className="p-5 pt-10">
+            <div className="p-5 pt-20">
               {/* Avatar + name */}
               <div className="text-center mb-5">
                 <div

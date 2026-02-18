@@ -14,6 +14,7 @@ import {
 } from '@db/schema/index';
 import { parties } from '@db/schema/parties';
 import { AppError } from '../middleware/errorHandler';
+import { requireAuth } from '../middleware/auth.js';
 import { eq, desc, or, and, isNotNull } from 'drizzle-orm';
 
 const router = Router();
@@ -177,9 +178,9 @@ router.get('/agents/:id/profile', async (req, res, next) => {
 });
 
 /* PUT /api/agents/:id/customize -- Update avatar config */
-router.put('/agents/:id/customize', async (req, res, next) => {
+router.put('/agents/:id/customize', requireAuth, async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const agentId = req.params['id'] as string;
     const { avatarConfig } = req.body as { avatarConfig?: string };
 
     if (!avatarConfig) {
@@ -193,15 +194,21 @@ router.put('/agents/:id/customize', async (req, res, next) => {
       throw new AppError(400, 'avatarConfig must be valid JSON');
     }
 
+    const [agent] = await db.select().from(agents).where(eq(agents.id, agentId)).limit(1);
+    if (!agent) {
+      throw new AppError(404, 'Agent not found');
+    }
+
+    /* Allow owner or admin */
+    if (agent.ownerUserId !== req.user!.id && req.user!.role !== 'admin') {
+      throw new AppError(403, 'Not authorized to customize this agent');
+    }
+
     const [updated] = await db
       .update(agents)
       .set({ avatarConfig })
-      .where(eq(agents.id, id))
+      .where(eq(agents.id, agentId))
       .returning();
-
-    if (!updated) {
-      throw new AppError(404, 'Agent not found');
-    }
 
     res.json({ success: true, data: updated, message: 'Avatar updated' });
   } catch (error) {
