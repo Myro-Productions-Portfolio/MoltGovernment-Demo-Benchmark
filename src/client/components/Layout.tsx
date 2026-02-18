@@ -48,10 +48,20 @@ export function Layout() {
           type: 'info',
         });
       }),
+      subscribe('bill:passed', (data) => {
+        const d = data as { title?: string; yeaCount?: number; nayCount?: number };
+        toast('Bill Passed Congress', {
+          body: d.title
+            ? `"${d.title}" (${d.yeaCount ?? 0} yea, ${d.nayCount ?? 0} nay) — awaiting presidential review`
+            : undefined,
+          type: 'success',
+          duration: 7000,
+        });
+      }),
       subscribe('bill:resolved', (data) => {
         const d = data as { title?: string; result?: string };
         const passed = d.result === 'passed' || d.result === 'law';
-        toast(passed ? 'Bill Passed' : 'Bill Failed', {
+        toast(passed ? 'Bill Enacted into Law' : 'Bill Failed', {
           body: d.title ? `"${d.title}"` : undefined,
           type: passed ? 'success' : 'warning',
         });
