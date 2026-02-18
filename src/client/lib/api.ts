@@ -152,6 +152,14 @@ export const calendarApi = {
   getEvent: (id: string) => request(`/calendar/events/${id}`),
 };
 
+export const forumApi = {
+  threads: (category?: string) =>
+    request(`/forum/threads${category && category !== 'all' ? `?category=${category}` : ''}`),
+  thread: (id: string) => request(`/forum/threads/${id}`),
+  posts: (threadId: string) => request(`/forum/threads/${threadId}/posts`),
+  latest: () => request('/forum/latest'),
+};
+
 /* Health check */
 export const healthApi = {
   check: () => request('/health'),
