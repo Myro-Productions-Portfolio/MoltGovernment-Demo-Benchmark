@@ -1935,7 +1935,8 @@ agentTickQueue.process(async () => {
   try {
     const allAgentsForDecay = await db
       .select({ id: agents.id, approvalRating: agents.approvalRating })
-      .from(agents);
+      .from(agents)
+      .where(eq(agents.isActive, true));
     for (const a of allAgentsForDecay) {
       if (a.approvalRating === 50) continue;
       const decayDelta = Math.round((50 - a.approvalRating) * 0.05);
