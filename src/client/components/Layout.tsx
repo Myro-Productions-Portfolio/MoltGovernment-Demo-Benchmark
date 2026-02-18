@@ -3,6 +3,7 @@ import { Outlet, NavLink, Link } from 'react-router-dom';
 import { useWebSocket } from '../lib/useWebSocket';
 import { useUser, SignInButton, UserButton } from '@clerk/clerk-react';
 import { GlobalSearch } from './GlobalSearch';
+import { LiveTicker } from './LiveTicker';
 
 const NAV_LINKS = [
   { to: '/', label: 'Capitol' },
@@ -144,6 +145,9 @@ export function Layout() {
           )}
         </div>
       </nav>
+
+      {/* Live Ticker */}
+      <LiveTicker />
 
       {/* Main Content */}
       <main className="flex-1">
