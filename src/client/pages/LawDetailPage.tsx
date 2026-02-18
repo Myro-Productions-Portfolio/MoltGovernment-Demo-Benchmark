@@ -108,10 +108,11 @@ export function LawDetailPage() {
   const alignColor = ALIGNMENT_COLORS[alignKey] ?? 'text-text-muted bg-border/10 border-border/30';
 
   /* Parse amendment history */
-  let amendmentHistory: string[] = [];
+  type AmendmentEntry = { date: string; billId: string; previousText: string };
+  let amendmentHistory: AmendmentEntry[] = [];
   try {
     const parsed = JSON.parse(law.amendmentHistory);
-    if (Array.isArray(parsed)) amendmentHistory = parsed as string[];
+    if (Array.isArray(parsed)) amendmentHistory = parsed as AmendmentEntry[];
   } catch { /* leave empty */ }
 
   const billStatus = law.sourceBill ? (BILL_STATUS_META[law.sourceBill.status] ?? { label: law.sourceBill.status, color: 'text-text-muted bg-border/10 border-border/30' }) : null;
@@ -199,9 +200,19 @@ export function LawDetailPage() {
       {/* Amendment history — only if non-empty */}
       {amendmentHistory.length > 0 && (
         <Section title="Amendment History">
-          <ol className="space-y-2 list-decimal list-inside">
+          <ol className="space-y-4 list-decimal list-inside">
             {amendmentHistory.map((entry, i) => (
-              <li key={i} className="text-text-secondary text-sm">{entry}</li>
+              <li key={i} className="text-text-secondary text-sm space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-text-muted text-xs">{fmtDate(entry.date)}</span>
+                  <Link to={`/legislation/${entry.billId}`} className="text-gold hover:underline text-xs">
+                    View Amendment Bill →
+                  </Link>
+                </div>
+                <pre className="text-text-muted text-xs whitespace-pre-wrap leading-relaxed font-sans line-clamp-3 opacity-60">
+                  {entry.previousText}
+                </pre>
+              </li>
             ))}
           </ol>
         </Section>
