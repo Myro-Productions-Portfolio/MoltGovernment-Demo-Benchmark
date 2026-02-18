@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useWebSocket } from '../lib/useWebSocket';
 import { useUser, SignInButton, UserButton } from '@clerk/clerk-react';
 import { GlobalSearch } from './GlobalSearch';
@@ -9,41 +9,74 @@ import { ToastContainer } from './ToastContainer';
 import { isTickerEnabled, setTickerEnabled, onTickerChange } from '../lib/tickerPrefs';
 import { toast } from '../lib/toastStore';
 
-const NAV_LINKS = [
-  { to: '/', label: 'Capitol' },
-  { to: '/agents', label: 'Agents' },
-  { to: '/legislation', label: 'Legislative' },
-  { to: '/court', label: 'Court' },
-  { to: '/elections', label: 'Elections' },
-  { to: '/parties', label: 'Parties' },
-  { to: '/capitol-map', label: 'Map' },
-  { to: '/calendar', label: 'Calendar' },
-  { to: '/forum', label: 'Forum' },
-] as const;
+type NavSubItem = { to: string; label: string; description: string };
+type NavItem =
+  | { label: string; to: string; subitems?: never }
+  | { label: string; to?: never; subitems: NavSubItem[] };
+
+const NAV_ITEMS: NavItem[] = [
+  {
+    label: 'Capitol',
+    subitems: [
+      { to: '/', label: 'Dashboard', description: 'Government overview and live activity' },
+      { to: '/capitol-map', label: 'Capitol Map', description: 'Interactive map of the capitol complex' },
+    ],
+  },
+  {
+    label: 'Agents',
+    to: '/agents',
+  },
+  {
+    label: 'Legislative',
+    subitems: [
+      { to: '/legislation', label: 'Bills', description: 'Active legislation in committee and on the floor' },
+      { to: '/laws', label: 'Laws', description: 'Enacted legislation and its effects' },
+    ],
+  },
+  {
+    label: 'Judicial',
+    subitems: [
+      { to: '/court', label: 'Court Docket', description: 'Active and resolved judicial reviews' },
+    ],
+  },
+  {
+    label: 'Civic',
+    subitems: [
+      { to: '/elections', label: 'Elections', description: 'Campaigns, voting, and results' },
+      { to: '/parties', label: 'Parties', description: 'Political parties and membership' },
+      { to: '/forum', label: 'Forum', description: 'Public discourse between agents and citizens' },
+      { to: '/calendar', label: 'Calendar', description: 'Government schedule and upcoming events' },
+    ],
+  },
+];
 
 /* G+key navigation map */
 const GO_KEYS: Record<string, string> = {
-  h: '/',
-  a: '/agents',
-  l: '/legislation',
-  c: '/court',
-  e: '/elections',
-  p: '/parties',
-  f: '/forum',
+  h: '/',             // Capitol (home)
+  a: '/agents',       // Agents
+  l: '/legislation',  // Legislative — Bills
+  w: '/laws',         // laWs
+  j: '/court',        // Judicial
+  e: '/elections',    // Elections
+  p: '/parties',      // Parties
+  f: '/forum',        // Forum
+  c: '/calendar',     // Calendar
+  m: '/capitol-map',  // Map
 };
 
 export function Layout() {
   const { isConnected, subscribe } = useWebSocket();
   const { isSignedIn, isLoaded } = useUser();
   const navigate = useNavigate();
+  const location = useLocation();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [tickerEnabled, setTickerEnabledState] = useState(() => isTickerEnabled());
   const gPressedRef = useRef(false);
   const gTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const drawerCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const menuCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* Sync when ProfilePage (or any other source) changes the preference */
   useEffect(() => {
@@ -211,18 +244,25 @@ export function Layout() {
       .catch(() => setUserRole(null));
   }, [isSignedIn]);
 
-  function handleDrawerEnter() {
-    if (drawerCloseTimerRef.current) {
-      clearTimeout(drawerCloseTimerRef.current);
-      drawerCloseTimerRef.current = null;
-    }
-    setDrawerOpen(true);
+  function hasActiveSubitem(item: NavItem): boolean {
+    if (!item.subitems) return false;
+    return item.subitems.some((sub) =>
+      sub.to === '/' ? location.pathname === '/' : location.pathname.startsWith(sub.to)
+    );
   }
 
-  function handleDrawerLeave() {
-    drawerCloseTimerRef.current = setTimeout(() => {
-      setDrawerOpen(false);
-    }, 3000);
+  function handleMenuEnter(label: string) {
+    if (menuCloseTimerRef.current) {
+      clearTimeout(menuCloseTimerRef.current);
+      menuCloseTimerRef.current = null;
+    }
+    setOpenMenu(label);
+  }
+
+  function handleMenuLeave() {
+    menuCloseTimerRef.current = setTimeout(() => {
+      setOpenMenu(null);
+    }, 150);
   }
 
   return (
