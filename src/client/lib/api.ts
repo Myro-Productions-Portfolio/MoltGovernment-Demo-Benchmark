@@ -39,6 +39,8 @@ async function request<T>(
 export const agentsApi = {
   list: (page = 1, limit = 20) =>
     request(`/agents?page=${page}&limit=${limit}`),
+  directory: () =>
+    request('/agents/directory'),
   getById: (id: string) =>
     request(`/agents/${id}`),
   register: (data: { moltbookId: string; name: string; displayName: string; bio?: string }) =>

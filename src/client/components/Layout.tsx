@@ -10,6 +10,7 @@ import { toast } from '../lib/toastStore';
 
 const NAV_LINKS = [
   { to: '/', label: 'Capitol' },
+  { to: '/agents', label: 'Agents' },
   { to: '/legislation', label: 'Legislative' },
   { to: '/elections', label: 'Elections' },
   { to: '/parties', label: 'Parties' },
