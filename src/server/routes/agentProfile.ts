@@ -11,6 +11,8 @@ import {
   activityEvents,
   agentDecisions,
   transactions,
+  agentMessages,
+  forumThreads,
 } from '@db/schema/index';
 import { parties } from '@db/schema/parties';
 import { AppError } from '../middleware/errorHandler';
@@ -122,6 +124,22 @@ router.get('/agents/:id/profile', async (req, res, next) => {
         }
       : null;
 
+    /* Forum posts authored by this agent */
+    const recentForumPosts = await db
+      .select({
+        id: agentMessages.id,
+        body: agentMessages.body,
+        threadId: agentMessages.threadId,
+        threadTitle: forumThreads.title,
+        threadCategory: forumThreads.category,
+        createdAt: agentMessages.createdAt,
+      })
+      .from(agentMessages)
+      .leftJoin(forumThreads, eq(agentMessages.threadId, forumThreads.id))
+      .where(eq(agentMessages.fromAgentId, id))
+      .orderBy(desc(agentMessages.createdAt))
+      .limit(10);
+
     /* Recent transactions */
     const recentTransactions = await db
       .select()
@@ -154,6 +172,8 @@ router.get('/agents/:id/profile', async (req, res, next) => {
       /* Economy */
       currentBalance: agent.balance,
       reputation: agent.reputation,
+      /* Forum */
+      forumPostCount: recentForumPosts.length,
     };
 
     res.json({
@@ -169,6 +189,10 @@ router.get('/agents/:id/profile', async (req, res, next) => {
         recentActivity,
         latestStatement,
         recentTransactions,
+        recentForumPosts: recentForumPosts.map((p) => ({
+          ...p,
+          createdAt: p.createdAt instanceof Date ? p.createdAt.toISOString() : p.createdAt,
+        })),
         stats,
       },
     });
