@@ -612,8 +612,8 @@ agentTickQueue.process(async () => {
         await db.insert(activityEvents).values({
           type: 'bill_resolved',
           agentId: null,
-          title: 'Bill passed Congress',
-          description: `"${bill.title}" passed Congress (${yeaCount} yea, ${nayCount} nay) — awaiting presidential review`,
+          title: 'Bill passed the Legislature',
+          description: `"${bill.title}" passed the Legislature (${yeaCount} yea, ${nayCount} nay) — awaiting presidential review`,
           metadata: JSON.stringify({ billId: bill.id, result: 'passed', yeaCount, nayCount }),
         });
 
@@ -624,7 +624,7 @@ agentTickQueue.process(async () => {
           nayCount,
         });
 
-        console.warn(`[SIMULATION] "${bill.title}" passed Congress (${yeaCount} yea, ${nayCount} nay)`);
+        console.warn(`[SIMULATION] "${bill.title}" passed the Legislature (${yeaCount} yea, ${nayCount} nay)`);
 
         /* Approval: sponsor gets credit for passing floor vote */
         await updateApproval(
@@ -659,7 +659,7 @@ agentTickQueue.process(async () => {
           type: 'bill_resolved',
           agentId: null,
           title: 'Bill vetoed',
-          description: `"${bill.title}" was voted down by Congress (${yeaCount} yea, ${nayCount} nay)`,
+          description: `"${bill.title}" was voted down by the Legislature (${yeaCount} yea, ${nayCount} nay)`,
           metadata: JSON.stringify({ billId: bill.id, result: 'vetoed', yeaCount, nayCount }),
         });
 
@@ -671,7 +671,7 @@ agentTickQueue.process(async () => {
           nayCount,
         });
 
-        console.warn(`[SIMULATION] "${bill.title}" voted down by Congress (${yeaCount} yea, ${nayCount} nay)`);
+        console.warn(`[SIMULATION] "${bill.title}" voted down by the Legislature (${yeaCount} yea, ${nayCount} nay)`);
 
         /* Approval: sponsor penalized for failed floor vote */
         await updateApproval(
@@ -731,7 +731,7 @@ agentTickQueue.process(async () => {
             if (Math.random() >= vetoProb) continue;
 
             const contextMessage =
-              `Congress has passed: "${bill.title}". ` +
+              `The Legislature has passed: "${bill.title}". ` +
               `Summary: ${bill.summary}. ` +
               `Sponsor alignment: ${sponsorAlignment}. Your alignment: ${presidentAlignment}. ` +
               `As President, you may sign this bill into law or veto it. ` +
@@ -833,7 +833,7 @@ agentTickQueue.process(async () => {
           const contextMessage =
             `The President has vetoed "${bill.title}". ` +
             `Summary: ${bill.summary}. ` +
-            `Congress can override the veto with a 2/3 supermajority. ` +
+            `The Legislature can override the veto with a 2/3 supermajority. ` +
             `Vote to override the veto or sustain it. ` +
             `Respond with exactly this JSON: {"action":"override_vote","reasoning":"one sentence","data":{"choice":"override_yea"}} ` +
             `Use "override_yea" to override the veto or "override_nay" to sustain it.`;
@@ -927,7 +927,7 @@ agentTickQueue.process(async () => {
           type: 'veto_override_success',
           agentId: null,
           title: 'Veto overridden',
-          description: `Congress overrode the presidential veto of "${bill.title}" (${overrideYea}/${activeAgentCount} voted override)`,
+          description: `The Legislature overrode the presidential veto of "${bill.title}" (${overrideYea}/${activeAgentCount} voted override)`,
           metadata: JSON.stringify({ billId: bill.id, overrideYea, totalAgents: activeAgentCount }),
         });
 
@@ -1668,7 +1668,7 @@ agentTickQueue.process(async () => {
       const positionTitleMap: Record<string, string> = {
         president: 'President',
         cabinet_secretary: 'Cabinet Secretary',
-        congress_member: 'Member of Congress',
+        congress_member: 'Member of the Legislature',
         committee_chair: 'Committee Chair',
         supreme_justice: 'Supreme Court Justice',
         lower_justice: 'Court Justice',

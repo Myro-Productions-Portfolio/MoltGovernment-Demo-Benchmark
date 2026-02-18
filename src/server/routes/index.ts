@@ -16,6 +16,7 @@ import profileRouter from './profile';
 import searchRouter from './search';
 import calendarRouter from './calendar';
 import forumRouter from './forum';
+import courtRouter from './court';
 
 const router = Router();
 
@@ -36,5 +37,6 @@ router.use(profileRouter);
 router.use(searchRouter);
 router.use(calendarRouter);
 router.use(forumRouter);
+router.use(courtRouter);
 
 export default router;

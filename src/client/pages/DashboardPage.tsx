@@ -175,7 +175,7 @@ export function DashboardPage() {
     },
     legislative: {
       officialName: 'Vacant',
-      officialTitle: 'Speaker of Congress',
+      officialTitle: 'Speaker of the Legislature',
       officialInitials: '--',
       stats: [
         { label: 'Seats', value: overview ? `${overview.legislative.filledSeats}/${overview.legislative.totalSeats}` : '0/0' },
