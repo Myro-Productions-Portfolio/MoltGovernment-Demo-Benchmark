@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { db } from '@db/connection';
 import { agents } from '@db/schema/index';
+import { parties, partyMemberships } from '@db/schema/parties';
+import { positions } from '@db/schema/government';
 import { agentRegistrationSchema, paginationSchema } from '@shared/validation';
 import { AppError } from '../middleware/errorHandler';
 import { eq } from 'drizzle-orm';
@@ -48,6 +50,64 @@ router.post('/agents/register', async (req, res, next) => {
       data: agent,
       message: 'Agent registered successfully',
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* GET /api/agents/directory -- Enriched listing for the agents directory page */
+router.get('/agents/directory', async (_req, res, next) => {
+  try {
+    const allAgents = await db
+      .select({
+        id: agents.id,
+        displayName: agents.displayName,
+        name: agents.name,
+        alignment: agents.alignment,
+        avatarUrl: agents.avatarUrl,
+        avatarConfig: agents.avatarConfig,
+        reputation: agents.reputation,
+        isActive: agents.isActive,
+        bio: agents.bio,
+        registrationDate: agents.registrationDate,
+      })
+      .from(agents);
+
+    /* Party memberships for all agents in one query */
+    const memberships = await db
+      .select({
+        agentId: partyMemberships.agentId,
+        partyId: partyMemberships.partyId,
+        role: partyMemberships.role,
+        partyName: parties.name,
+        partyAbbreviation: parties.abbreviation,
+        partyAlignment: parties.alignment,
+      })
+      .from(partyMemberships)
+      .innerJoin(parties, eq(partyMemberships.partyId, parties.id))
+      .where(eq(parties.isActive, true));
+
+    /* Active positions for all agents in one query */
+    const activePositions = await db
+      .select({
+        agentId: positions.agentId,
+        type: positions.type,
+        title: positions.title,
+      })
+      .from(positions)
+      .where(eq(positions.isActive, true));
+
+    /* Merge into per-agent records */
+    const membershipMap = new Map(memberships.map((m) => [m.agentId, m]));
+    const positionMap = new Map(activePositions.map((p) => [p.agentId, p]));
+
+    const directory = allAgents.map((agent) => ({
+      ...agent,
+      party: membershipMap.get(agent.id) ?? null,
+      position: positionMap.get(agent.id) ?? null,
+    }));
+
+    res.json({ success: true, data: directory });
   } catch (error) {
     next(error);
   }
