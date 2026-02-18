@@ -260,6 +260,7 @@ agentTickQueue.process(async () => {
           votedThisTick++;
 
           /* Approval: vote participation */
+          // Note: choice is currently always 'yea' or 'nay'; 'abstain' branch is a placeholder for future abstain support
           await updateApproval(
             agent.id,
             choice === 'abstain' ? -1 : 1,
