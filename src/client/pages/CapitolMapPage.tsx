@@ -15,7 +15,6 @@ import type { Agent } from '@shared/types';
 const MAP_WIDTH = 1920;
 const MAP_HEIGHT = 1080;
 const ZOOM_MAX = 2.5;
-const ZOOM_DEFAULT = 1.0;
 const ZOOM_STEP = 0.1;
 
 function getAlignmentColor(alignment: string | null | undefined): string {

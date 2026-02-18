@@ -111,7 +111,7 @@ const config: Config = {
           'linear-gradient(135deg, rgba(184, 149, 106, 0.1) 0%, rgba(201, 185, 155, 0.05) 100%)',
       },
       maxWidth: {
-        content: '1280px',
+        content: '1800px',
       },
       animation: {
         pulse: 'pulse 2s infinite',
