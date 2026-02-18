@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useWebSocket } from '../lib/useWebSocket';
 import { SectionHeader } from '../components/SectionHeader';
 import { BillCard } from '../components/BillCard';
+import { BillPipeline } from '../components/BillPipeline';
 import { legislationApi } from '../lib/api';
 import type { BillStatus } from '@shared/types';
 
@@ -38,18 +39,6 @@ interface LawData {
   isActive: boolean;
 }
 
-const STATUS_FILTERS: Array<{ label: string; value: ExtendedBillStatus | 'all' }> = [
-  { label: 'All', value: 'all' },
-  { label: 'Proposed', value: 'proposed' },
-  { label: 'Committee', value: 'committee' },
-  { label: 'Floor', value: 'floor' },
-  { label: 'Passed', value: 'passed' },
-  { label: 'Vetoed', value: 'vetoed' },
-  { label: 'Tabled', value: 'tabled' },
-  { label: 'Pres. Veto', value: 'presidential_veto' },
-  { label: 'Law', value: 'law' },
-];
-
 function getStatusColor(status: ExtendedBillStatus): string {
   switch (status) {
     case 'proposed': return 'text-blue-400 bg-blue-400/10';
@@ -83,9 +72,11 @@ export function LegislationPage() {
   const [bills, setBills] = useState<BillData[]>([]);
   const [laws, setLaws] = useState<LawData[]>([]);
   const [filter, setFilter] = useState<ExtendedBillStatus | 'all'>('all');
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [expandedBillId, setExpandedBillId] = useState<string | null>(null);
   const [expandedLawId, setExpandedLawId] = useState<string | null>(null);
+  const [closedCommittees, setClosedCommittees] = useState<Set<string>>(new Set());
   const { subscribe } = useWebSocket();
 
   const fetchBills = useCallback(async () => {
@@ -127,11 +118,42 @@ export function LegislationPage() {
     return () => unsubs.forEach((fn) => fn());
   }, [fetchBills, fetchLaws, subscribe]);
 
-  const filteredBills = filter === 'all' ? bills : bills.filter((b) => b.status === filter);
+  /* Compute status counts for BillPipeline */
+  const statusCounts: Record<string, number> = {};
+  for (const bill of bills) {
+    statusCounts[bill.status] = (statusCounts[bill.status] ?? 0) + 1;
+  }
 
-  function countForFilter(value: ExtendedBillStatus | 'all'): number {
-    if (value === 'all') return bills.length;
-    return bills.filter((b) => b.status === value).length;
+  /* Bill committee map — used to group enacted laws by committee */
+  const billCommitteeMap: Record<string, string> = {};
+  for (const bill of bills) {
+    billCommitteeMap[bill.id] = bill.committee;
+  }
+
+  /* Filter bills by pipeline selection + search */
+  const filteredBills = (filter === 'all' ? bills : bills.filter((b) => b.status === filter))
+    .filter((b) => {
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return b.title.toLowerCase().includes(q) || b.summary.toLowerCase().includes(q);
+    });
+
+  /* Group laws by committee */
+  const lawsByCommittee: Record<string, LawData[]> = {};
+  for (const law of laws) {
+    const committee = billCommitteeMap[law.billId] ?? 'General';
+    if (!lawsByCommittee[committee]) lawsByCommittee[committee] = [];
+    lawsByCommittee[committee].push(law);
+  }
+  const lawCommittees = Object.keys(lawsByCommittee).sort();
+
+  function toggleCommittee(name: string) {
+    setClosedCommittees((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
   }
 
   function handleCardClick(billId: string) {
@@ -140,7 +162,7 @@ export function LegislationPage() {
 
   if (loading) {
     return (
-      <div className="max-w-content mx-auto px-8 py-section">
+      <div className="px-8 xl:px-16 py-section">
         <SectionHeader title="Legislation" badge="Loading..." />
         <div className="flex items-center justify-center py-24">
           <p className="text-text-muted animate-pulse text-lg">Loading legislation...</p>
@@ -150,35 +172,40 @@ export function LegislationPage() {
   }
 
   return (
-    <div className="max-w-content mx-auto px-8 py-section">
+    <div className="px-8 xl:px-16 py-section">
       <SectionHeader title="Legislation" badge={`${bills.length} Bills`} />
 
-      {/* Filter tabs */}
-      <div className="flex gap-0 mb-8 border-b border-border" role="tablist" aria-label="Filter by status">
-        {STATUS_FILTERS.map((f) => (
-          <button
-            key={f.value}
-            role="tab"
-            aria-selected={filter === f.value}
-            className={`px-5 py-3 text-sm font-medium uppercase tracking-wide border-b-2 transition-all duration-200 ${
-              filter === f.value
-                ? 'text-gold border-gold'
-                : 'text-text-muted border-transparent hover:text-text-secondary'
-            }`}
-            onClick={() => setFilter(f.value)}
-          >
-            {f.label} ({countForFilter(f.value)})
-          </button>
-        ))}
+      {/* Bill pipeline visualization */}
+      <BillPipeline
+        counts={statusCounts}
+        activeFilter={filter}
+        onFilter={(v) => setFilter(v as ExtendedBillStatus | 'all')}
+      />
+
+      {/* Search bar */}
+      <div className="mb-6">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search bills by title or summary..."
+          className="w-full md:w-96 px-4 py-2 rounded border border-border bg-black/20 text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:border-gold/60 transition-colors"
+        />
       </div>
 
       {/* Bills grid */}
       {filteredBills.length === 0 ? (
         <div className="text-center py-16 text-text-muted">
-          <p className="text-lg">{bills.length === 0 ? 'No legislation has been introduced yet.' : `No bills with status "${filter}"`}</p>
+          <p className="text-lg">
+            {bills.length === 0
+              ? 'No legislation has been introduced yet.'
+              : search
+              ? `No bills match "${search}"`
+              : `No bills with status "${filter}"`}
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
           {filteredBills.map((bill, idx) => (
             <div key={bill.id} className="flex flex-col gap-1">
               {/* Extra badges for new statuses and amendment type */}
@@ -213,7 +240,7 @@ export function LegislationPage() {
         </div>
       )}
 
-      {/* Enacted Laws section */}
+      {/* Enacted Laws section — grouped by committee */}
       <div className="mt-12">
         <SectionHeader title="Enacted Laws" badge={`${laws.length} Active`} />
 
@@ -222,48 +249,74 @@ export function LegislationPage() {
             <p className="text-lg">No laws have been enacted yet.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-            {laws.map((law, idx) => {
-              const isExpanded = expandedLawId === law.id;
-              const enactedDate = new Date(law.enactedDate).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              });
+          <div className="flex flex-col gap-4">
+            {lawCommittees.map((committee) => {
+              const isOpen = !closedCommittees.has(committee);
+              const committeeItems = lawsByCommittee[committee];
               return (
-                <article
-                  key={law.id}
-                  className={`card p-5 flex flex-col gap-0 transition-all duration-200 cursor-pointer hover:border-gold/40 ${!law.isActive ? 'opacity-60' : ''}`}
-                  onClick={() => setExpandedLawId((prev) => (prev === law.id ? null : law.id))}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedLawId((prev) => (prev === law.id ? null : law.id)); } }}
-                  aria-expanded={isExpanded}
-                >
-                  <div className="flex gap-4">
-                    <div className="font-mono text-badge text-status-passed bg-status-passed/10 px-2 py-1 rounded-badge whitespace-nowrap h-fit">
-                      LAW-{String(idx + 1).padStart(3, '0')}
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-serif text-[0.95rem] font-semibold mb-1">{law.title}</h4>
-                      <div className="flex items-center gap-3 text-badge text-text-muted flex-wrap">
-                        <span>Enacted: {enactedDate}</span>
-                        <span className={law.isActive ? 'badge-passed' : 'badge-vetoed'}>
-                          {law.isActive ? 'Active' : 'Repealed'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                <div key={committee} className="rounded border border-border overflow-hidden">
+                  {/* Accordion header */}
+                  <button
+                    className="w-full flex items-center justify-between px-5 py-3 bg-black/20 hover:bg-black/30 transition-colors text-left"
+                    onClick={() => toggleCommittee(committee)}
+                    aria-expanded={isOpen}
+                  >
+                    <span className="font-medium text-text-primary">{committee}</span>
+                    <span className="flex items-center gap-3">
+                      <span className="text-badge text-text-muted">{committeeItems.length} law{committeeItems.length !== 1 ? 's' : ''}</span>
+                      <span className="text-text-muted text-sm">{isOpen ? '▲' : '▼'}</span>
+                    </span>
+                  </button>
 
-                  {isExpanded && (
-                    <div className="mt-4 border-t border-border pt-4" onClick={(e) => e.stopPropagation()}>
-                      <div className="text-xs text-text-muted uppercase tracking-wide mb-1.5">Full Text</div>
-                      <pre className="text-xs text-text-secondary font-mono bg-black/20 rounded border border-border p-3 overflow-y-auto max-h-[200px] whitespace-pre-wrap leading-relaxed">
-                        {law.text}
-                      </pre>
+                  {/* Accordion body */}
+                  {isOpen && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 p-4">
+                      {committeeItems.map((law, idx) => {
+                        const isExpanded = expandedLawId === law.id;
+                        const enactedDate = new Date(law.enactedDate).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        });
+                        return (
+                          <article
+                            key={law.id}
+                            className={`card p-5 flex flex-col gap-0 transition-all duration-200 cursor-pointer hover:border-gold/40 ${!law.isActive ? 'opacity-60' : ''}`}
+                            onClick={() => setExpandedLawId((prev) => (prev === law.id ? null : law.id))}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedLawId((prev) => (prev === law.id ? null : law.id)); } }}
+                            aria-expanded={isExpanded}
+                          >
+                            <div className="flex gap-4">
+                              <div className="font-mono text-badge text-status-passed bg-status-passed/10 px-2 py-1 rounded-badge whitespace-nowrap h-fit">
+                                LAW-{String(idx + 1).padStart(3, '0')}
+                              </div>
+                              <div className="flex-1">
+                                <h4 className="font-serif text-[0.95rem] font-semibold mb-1">{law.title}</h4>
+                                <div className="flex items-center gap-3 text-badge text-text-muted flex-wrap">
+                                  <span>Enacted: {enactedDate}</span>
+                                  <span className={law.isActive ? 'badge-passed' : 'badge-vetoed'}>
+                                    {law.isActive ? 'Active' : 'Repealed'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {isExpanded && (
+                              <div className="mt-4 border-t border-border pt-4" onClick={(e) => e.stopPropagation()}>
+                                <div className="text-xs text-text-muted uppercase tracking-wide mb-1.5">Full Text</div>
+                                <pre className="text-xs text-text-secondary font-mono bg-black/20 rounded border border-border p-3 overflow-y-auto max-h-[200px] whitespace-pre-wrap leading-relaxed">
+                                  {law.text}
+                                </pre>
+                              </div>
+                            )}
+                          </article>
+                        );
+                      })}
                     </div>
                   )}
-                </article>
+                </div>
               );
             })}
           </div>
