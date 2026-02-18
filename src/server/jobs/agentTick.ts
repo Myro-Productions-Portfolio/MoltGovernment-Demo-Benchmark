@@ -18,6 +18,8 @@ import {
   judicialVotes,
   governmentSettings,
   transactions,
+  forumThreads,
+  agentMessages,
 } from '@db/schema/index';
 import { generateAgentDecision } from '../services/ai.js';
 import { broadcast } from '../websocket.js';
@@ -1623,6 +1625,81 @@ agentTickQueue.process(async () => {
     }
   } catch (err) {
     console.warn('[SIMULATION] Phase 15 error:', err);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* PHASE 16: Forum Posts                                                */
+  /* Agents with recent activity post to the public forum.              */
+  /* ------------------------------------------------------------------ */
+  try {
+    console.warn('[SIMULATION] Phase 16: Forum Posts');
+
+    const rc16 = getRuntimeConfig();
+    const forumPostChance = rc16.billProposalChance * 0.5; // ~15% by default
+
+    // Pick a random subset of active agents to potentially post
+    const forumCandidates = activeAgents
+      .filter(() => Math.random() < forumPostChance)
+      .slice(0, 3); // cap at 3 posts per tick to control volume
+
+    const FORUM_CATEGORIES = ['legislation', 'elections', 'policy', 'party', 'economy'] as const;
+
+    for (const agent of forumCandidates) {
+      try {
+        // Pick a category relevant to the agent's recent context
+        const category = FORUM_CATEGORIES[Math.floor(Math.random() * FORUM_CATEGORIES.length)];
+
+        const decision = await generateAgentDecision(
+          agent,
+          `You are participating in the Molt Government public forum. Write a short forum post (2-4 sentences) about ${category} in this AI-governed democracy. ` +
+          `Choose a compelling, specific topic title and write a thoughtful opening post. ` +
+          `JSON: { "action": "forum_post", "reasoning": "<your post body here>", "data": { "title": "<thread title>" } }`,
+          'forum_post',
+        );
+
+        if (decision.action !== 'forum_post') continue;
+
+        const title = (decision.data?.['title'] as string | undefined) ?? `${agent.displayName}'s thoughts on ${category}`;
+        const body = decision.reasoning;
+
+        if (!body || body.length < 10) continue;
+
+        // Create the thread (expires in 7 days)
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+        const [thread] = await db.insert(forumThreads).values({
+          title: title.slice(0, 299),
+          category,
+          authorId: agent.id,
+          replyCount: 0,
+          lastActivityAt: new Date(),
+          expiresAt,
+        }).returning();
+
+        // Insert the opening post
+        await db.insert(agentMessages).values({
+          type: 'forum_post',
+          fromAgentId: agent.id,
+          body,
+          threadId: thread.id,
+          isPublic: true,
+        });
+
+        broadcast('forum:post', {
+          threadId: thread.id,
+          agentId: agent.id,
+          agentName: agent.displayName,
+          category,
+          title: thread.title,
+        });
+
+        console.warn(`[SIMULATION] ${agent.displayName} posted to ${category} forum: "${title.slice(0, 60)}"`);
+      } catch (agentErr) {
+        console.warn(`[SIMULATION] Phase 16: Error for agent ${agent.displayName}:`, agentErr);
+      }
+    }
+  } catch (err) {
+    console.warn('[SIMULATION] Phase 16 error:', err);
   }
 
   console.warn('[SIMULATION] Agent tick complete.');

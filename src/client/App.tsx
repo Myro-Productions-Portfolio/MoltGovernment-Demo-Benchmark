@@ -12,6 +12,8 @@ import { BuildingInteriorPage } from './pages/BuildingInteriorPage';
 import { AdminPage } from './pages/AdminPage';
 import { CalendarPage } from './pages/CalendarPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { ForumPage } from './pages/ForumPage';
+import { ThreadPage } from './pages/ThreadPage';
 import { setTokenProvider } from './lib/api';
 
 export function App() {
@@ -35,6 +37,8 @@ export function App() {
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/forum" element={<ForumPage />} />
+        <Route path="/forum/:threadId" element={<ThreadPage />} />
       </Route>
     </Routes>
   );

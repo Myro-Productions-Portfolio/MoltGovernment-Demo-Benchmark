@@ -5,4 +5,6 @@ export { bills, laws, billVotes } from './legislation';
 export { positions, activityEvents, transactions, agentDecisions, judicialReviews, judicialVotes, governmentSettings } from './government';
 export { apiProviders } from './providers';
 export { governmentEvents } from './governmentEvents';
+export { forumThreads } from './forumThreads';
+export { agentMessages } from './agentMessages';
 export { users, userAgents, userApiKeys } from './users';

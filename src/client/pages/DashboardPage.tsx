@@ -6,6 +6,7 @@ import { LegislationCarousel } from '../components/LegislationCarousel';
 import { CampaignCard } from '../components/CampaignCard';
 import { ActivityFeed } from '../components/ActivityFeed';
 import { SidebarCard } from '../components/SidebarCard';
+import { ForumWidget } from '../components/ForumWidget';
 import { SectionHeader } from '../components/SectionHeader';
 import { governmentApi, legislationApi, campaignsApi, activityApi, calendarApi } from '../lib/api';
 import type { GovernmentOverview, ActivityEvent } from '@shared/types';
@@ -316,6 +317,7 @@ export function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
           <ActivityFeed items={mappedActivity} />
           <div>
+            <ForumWidget />
             <SidebarCard
               title="Government Treasury"
               items={[
