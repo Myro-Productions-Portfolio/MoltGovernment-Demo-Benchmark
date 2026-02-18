@@ -12,7 +12,8 @@ import { MapEventTicker } from '../components/map/MapEventTicker';
 import { BUILDINGS } from '../lib/buildings';
 import type { Agent } from '@shared/types';
 
-const ZOOM_MIN = 1.0;
+const MAP_WIDTH = 1920;
+const MAP_HEIGHT = 1080;
 const ZOOM_MAX = 2.5;
 const ZOOM_DEFAULT = 1.0;
 const ZOOM_STEP = 0.1;
@@ -38,6 +39,8 @@ export function CapitolMapPage() {
   const isDragging = useRef(false);
   const dragMoved = useRef(false);
   const lastMouse = useRef({ x: 0, y: 0 });
+  const [minZoom, setMinZoom] = useState(ZOOM_DEFAULT);
+  const minZoomRef = useRef(ZOOM_DEFAULT);
 
   const {
     agents,
@@ -61,20 +64,43 @@ export function CapitolMapPage() {
     const viewport = viewportRef.current;
     if (!viewport) return p;
     const { width, height } = viewport.getBoundingClientRect();
-    const maxX = (width * (z - 1)) / 2;
-    const maxY = (height * (z - 1)) / 2;
+    const scaledW = MAP_WIDTH * z;
+    const scaledH = MAP_HEIGHT * z;
+    const maxX = Math.max(0, (scaledW - width) / 2);
+    const maxY = Math.max(0, (scaledH - height) / 2);
     return {
-      x: Math.min(maxX, Math.max(-maxX, p.x)),
-      y: Math.min(maxY, Math.max(-maxY, p.y)),
+      x: Math.max(-maxX, Math.min(maxX, p.x)),
+      y: Math.max(-maxY, Math.min(maxY, p.y)),
     };
   }, []);
+
+  // ── Dynamic minimum zoom — fills viewport, no dead space ───────────────────
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      const computed = Math.max(width / MAP_WIDTH, height / MAP_HEIGHT);
+      setMinZoom(computed);
+      minZoomRef.current = computed;
+      // Re-clamp current zoom and pan to new bounds
+      setZoom((prev) => {
+        const clamped = Math.max(computed, prev);
+        zoomRef.current = clamped;
+        setPan((p) => clampPan(p, clamped));
+        return clamped;
+      });
+    });
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [clampPan]);
 
   // ── Zoom toward cursor ──────────────────────────────────────────────────────
   const applyZoom = useCallback((newZoom: number, originX: number, originY: number) => {
     const viewport = viewportRef.current;
     if (!viewport) return;
 
-    const clamped = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, newZoom));
+    const clamped = Math.min(ZOOM_MAX, Math.max(minZoomRef.current, newZoom));
     const rect = viewport.getBoundingClientRect();
     // Mouse position relative to viewport center
     const cx = originX - rect.left - rect.width / 2;
@@ -96,7 +122,7 @@ export function CapitolMapPage() {
       e.preventDefault();
       const delta = e.deltaY < 0 ? 1 + ZOOM_STEP : 1 - ZOOM_STEP;
       setZoom((prev) => {
-        const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, prev * delta));
+        const newZoom = Math.min(ZOOM_MAX, Math.max(minZoomRef.current, prev * delta));
         const viewport = viewportRef.current;
         if (!viewport) {
           zoomRef.current = newZoom;
@@ -162,8 +188,8 @@ export function CapitolMapPage() {
     applyZoom(zoom - ZOOM_STEP * 2, rect.left + rect.width / 2, rect.top + rect.height / 2);
   };
   const zoomReset = () => {
-    zoomRef.current = ZOOM_DEFAULT;
-    setZoom(ZOOM_DEFAULT);
+    zoomRef.current = minZoomRef.current;
+    setZoom(minZoomRef.current);
     setPan({ x: 0, y: 0 });
   };
 
@@ -188,7 +214,10 @@ export function CapitolMapPage() {
         <div
           style={{
             position: 'absolute',
-            inset: 0,
+            width: `${MAP_WIDTH}px`,
+            height: `${MAP_HEIGHT}px`,
+            left: `calc(50% - ${MAP_WIDTH / 2}px)`,
+            top: `calc(50% - ${MAP_HEIGHT / 2}px)`,
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: 'center center',
             willChange: 'transform',
@@ -441,7 +470,7 @@ export function CapitolMapPage() {
           </button>
           <button
             onClick={zoomOut}
-            disabled={zoom <= ZOOM_MIN}
+            disabled={zoom <= minZoom}
             className="w-7 h-7 rounded bg-capitol-card/90 border border-border text-text-primary flex items-center justify-center font-mono text-sm hover:border-stone/40 disabled:opacity-30 transition-colors"
             aria-label="Zoom out"
             type="button"
