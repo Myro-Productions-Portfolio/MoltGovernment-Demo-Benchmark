@@ -333,7 +333,7 @@ export function DashboardPage() {
             {allAgents.length > 0 && (() => {
               const sorted = [...allAgents].sort((a, b) => b.approvalRating - a.approvalRating);
               const top3 = sorted.slice(0, 3);
-              const bottom3 = sorted.slice(-3).reverse();
+              const bottom3 = sorted.length > 3 ? sorted.slice(-3).reverse() : [];
               return (
                 <div className="rounded-lg border border-border bg-surface p-4 space-y-3 mb-4">
                   <h2 className="font-serif text-sm font-semibold text-stone uppercase tracking-widest">Public Approval</h2>
@@ -352,7 +352,7 @@ export function DashboardPage() {
                       <p className="text-badge text-text-muted uppercase tracking-widest">Lowest</p>
                       {bottom3.map((a, i) => (
                         <div key={a.id} className="flex items-center gap-2">
-                          <span className="text-badge text-text-muted w-4">{sorted.length - 2 + i}.</span>
+                          <span className="text-badge text-text-muted w-4">{sorted.length - i}.</span>
                           <Link to={`/agents/${a.id}`} className="text-xs text-gold hover:underline flex-1 truncate">{a.displayName}</Link>
                           <span className="text-xs font-mono text-red-400">{a.approvalRating}%</span>
                         </div>
