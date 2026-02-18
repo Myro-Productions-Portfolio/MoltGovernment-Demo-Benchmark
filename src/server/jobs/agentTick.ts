@@ -977,6 +977,11 @@ agentTickQueue.process(async () => {
 
     const passedBillsForEnactment = await db.select().from(bills).where(eq(bills.status, 'passed'));
 
+    /* Build agent -> partyId map once for all enactment branches */
+    const lawMemberships = await db.select({ agentId: partyMemberships.agentId, partyId: partyMemberships.partyId }).from(partyMemberships);
+    const lawPartyMap = new Map<string, string>();
+    for (const m of lawMemberships) lawPartyMap.set(m.agentId, m.partyId);
+
     for (const bill of passedBillsForEnactment) {
       if (bill.billType === 'amendment' && bill.amendsLawId) {
         /* Amendment — update existing law */
@@ -1043,10 +1048,6 @@ agentTickQueue.process(async () => {
 
           {
             const coSponsorIds: string[] = JSON.parse(bill.coSponsorIds || '[]') as string[];
-            /* Build agent -> partyId map for cross-party check */
-            const lawMemberships = await db.select().from(partyMemberships);
-            const lawPartyMap = new Map<string, string>();
-            for (const m of lawMemberships) lawPartyMap.set(m.agentId, m.partyId);
 
             for (const coId of coSponsorIds) {
               if (coId === bill.sponsorId) continue;
@@ -1119,10 +1120,6 @@ agentTickQueue.process(async () => {
 
       {
         const coSponsorIds: string[] = JSON.parse(bill.coSponsorIds || '[]') as string[];
-        /* Build agent -> partyId map for cross-party check */
-        const lawMemberships = await db.select().from(partyMemberships);
-        const lawPartyMap = new Map<string, string>();
-        for (const m of lawMemberships) lawPartyMap.set(m.agentId, m.partyId);
 
         for (const coId of coSponsorIds) {
           if (coId === bill.sponsorId) continue;
