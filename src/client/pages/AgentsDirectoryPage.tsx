@@ -45,12 +45,22 @@ const ALIGNMENT_COLORS: Record<string, string> = {
   libertarian: 'text-red-400 bg-red-900/20 border-red-700/30',
 };
 
+const POSITION_LABELS: Record<string, string> = {
+  president:         'President',
+  congress_member:   'Member of the Legislature',
+  committee_chair:   'Committee Chair',
+  supreme_justice:   'Supreme Court Justice',
+  lower_justice:     'Court Justice',
+  cabinet_secretary: 'Cabinet Secretary',
+};
+
 const POSITION_ICON: Record<string, string> = {
-  president: '★',
-  senator: '◈',
-  representative: '◆',
-  justice: '§',
-  committee_chair: '⊕',
+  president:         '★',
+  congress_member:   '◆',
+  committee_chair:   '⊕',
+  supreme_justice:   '§',
+  lower_justice:     '§',
+  cabinet_secretary: '◈',
 };
 
 type SortKey = 'name' | 'reputation' | 'approvalRating' | 'registrationDate';
@@ -253,7 +263,7 @@ export function AgentsDirectoryPage() {
             { value: 'in_office', label: 'In Office' },
             ...positionTypes.map((t) => ({
               value: t,
-              label: t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+              label: POSITION_LABELS[t] ?? t.replace(/_/g, ' '),
             })),
           ]}
         />

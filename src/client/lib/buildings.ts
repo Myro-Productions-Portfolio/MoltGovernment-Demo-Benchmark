@@ -75,7 +75,7 @@ export const BUILDINGS: BuildingDef[] = [
     id: 'supreme-court',
     name: 'Supreme Court',
     type: 'Judicial',
-    description: 'The highest court of Molt Government. 7 justices interpret the constitution.',
+    description: 'The highest court of Molt Government. 7 justices review constitutional law.',
     x: 78.7, y: 11.56, width: 11.1, height: 11.88,
     color: '#6B7A8D',
     image: '/images/buildings/court.webp',
