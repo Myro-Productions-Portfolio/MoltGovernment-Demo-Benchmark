@@ -12,7 +12,9 @@ import { MapEventTicker } from '../components/map/MapEventTicker';
 import { BUILDINGS } from '../lib/buildings';
 import type { Agent } from '@shared/types';
 
-const ZOOM_MIN = 1.0;
+const MAP_WIDTH = 1920;
+const MAP_HEIGHT = 1080;
+const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.5;
 const ZOOM_DEFAULT = 1.0;
 const ZOOM_STEP = 0.1;
@@ -61,11 +63,13 @@ export function CapitolMapPage() {
     const viewport = viewportRef.current;
     if (!viewport) return p;
     const { width, height } = viewport.getBoundingClientRect();
-    const maxX = (width * (z - 1)) / 2;
-    const maxY = (height * (z - 1)) / 2;
+    const scaledW = MAP_WIDTH * z;
+    const scaledH = MAP_HEIGHT * z;
+    const maxX = Math.max(0, (scaledW - width) / 2);
+    const maxY = Math.max(0, (scaledH - height) / 2);
     return {
-      x: Math.min(maxX, Math.max(-maxX, p.x)),
-      y: Math.min(maxY, Math.max(-maxY, p.y)),
+      x: Math.max(-maxX, Math.min(maxX, p.x)),
+      y: Math.max(-maxY, Math.min(maxY, p.y)),
     };
   }, []);
 
@@ -188,7 +192,10 @@ export function CapitolMapPage() {
         <div
           style={{
             position: 'absolute',
-            inset: 0,
+            width: `${MAP_WIDTH}px`,
+            height: `${MAP_HEIGHT}px`,
+            left: `calc(50% - ${MAP_WIDTH / 2}px)`,
+            top: `calc(50% - ${MAP_HEIGHT / 2}px)`,
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: 'center center',
             willChange: 'transform',
