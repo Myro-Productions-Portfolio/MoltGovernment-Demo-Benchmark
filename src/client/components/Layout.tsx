@@ -40,6 +40,8 @@ export function Layout() {
   const [tickerEnabled, setTickerEnabledState] = useState(() => isTickerEnabled());
   const gPressedRef = useRef(false);
   const gTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const drawerCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* Sync when ProfilePage (or any other source) changes the preference */
   useEffect(() => {
@@ -207,6 +209,20 @@ export function Layout() {
       .catch(() => setUserRole(null));
   }, [isSignedIn]);
 
+  function handleDrawerEnter() {
+    if (drawerCloseTimerRef.current) {
+      clearTimeout(drawerCloseTimerRef.current);
+      drawerCloseTimerRef.current = null;
+    }
+    setDrawerOpen(true);
+  }
+
+  function handleDrawerLeave() {
+    drawerCloseTimerRef.current = setTimeout(() => {
+      setDrawerOpen(false);
+    }, 3000);
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-capitol-deep">
       {/* Top Navigation */}
@@ -342,6 +358,141 @@ export function Layout() {
 
       {/* Toast notifications */}
       <ToastContainer />
+
+      {/* Left-edge hot zone — invisible trigger strip */}
+      <div
+        className="fixed left-0 top-[64px] bottom-0 w-5 z-40"
+        onMouseEnter={handleDrawerEnter}
+        onMouseLeave={handleDrawerLeave}
+        aria-hidden="true"
+      />
+
+      {/* Left-edge submenu drawer */}
+      <div
+        className={`fixed left-0 top-[64px] bottom-0 z-40 w-60 flex flex-col border-r border-border shadow-xl transition-transform duration-200 ${
+          drawerOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        style={{ background: 'linear-gradient(180deg, #3A3D42 0%, #2F3136 100%)' }}
+        onMouseEnter={handleDrawerEnter}
+        onMouseLeave={handleDrawerLeave}
+        role="navigation"
+        aria-label="Section navigation"
+      >
+        <nav className="flex flex-col py-4 gap-0.5 overflow-y-auto">
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              `px-5 py-2.5 text-sm font-medium uppercase tracking-wide transition-colors ${
+                isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+              }`
+            }
+            onClick={() => setDrawerOpen(false)}
+          >
+            Capitol
+          </NavLink>
+
+          <NavLink
+            to="/agents"
+            className={({ isActive }) =>
+              `px-5 py-2.5 text-sm font-medium uppercase tracking-wide transition-colors ${
+                isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+              }`
+            }
+            onClick={() => setDrawerOpen(false)}
+          >
+            Agents
+          </NavLink>
+
+          <div>
+            <span className="px-5 py-2 text-xs font-semibold uppercase tracking-widest text-text-muted block mt-2">
+              Legislative
+            </span>
+            <NavLink
+              to="/legislation"
+              className={({ isActive }) =>
+                `pl-8 pr-5 py-2 text-sm transition-colors block ${
+                  isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+                }`
+              }
+              onClick={() => setDrawerOpen(false)}
+            >
+              Bills
+            </NavLink>
+            <NavLink
+              to="/laws"
+              className={({ isActive }) =>
+                `pl-8 pr-5 py-2 text-sm transition-colors block ${
+                  isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+                }`
+              }
+              onClick={() => setDrawerOpen(false)}
+            >
+              Laws
+            </NavLink>
+          </div>
+
+          <NavLink
+            to="/elections"
+            className={({ isActive }) =>
+              `px-5 py-2.5 text-sm font-medium uppercase tracking-wide transition-colors ${
+                isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+              }`
+            }
+            onClick={() => setDrawerOpen(false)}
+          >
+            Elections
+          </NavLink>
+
+          <NavLink
+            to="/parties"
+            className={({ isActive }) =>
+              `px-5 py-2.5 text-sm font-medium uppercase tracking-wide transition-colors ${
+                isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+              }`
+            }
+            onClick={() => setDrawerOpen(false)}
+          >
+            Parties
+          </NavLink>
+
+          <NavLink
+            to="/capitol-map"
+            className={({ isActive }) =>
+              `px-5 py-2.5 text-sm font-medium uppercase tracking-wide transition-colors ${
+                isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+              }`
+            }
+            onClick={() => setDrawerOpen(false)}
+          >
+            Map
+          </NavLink>
+
+          <NavLink
+            to="/calendar"
+            className={({ isActive }) =>
+              `px-5 py-2.5 text-sm font-medium uppercase tracking-wide transition-colors ${
+                isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+              }`
+            }
+            onClick={() => setDrawerOpen(false)}
+          >
+            Calendar
+          </NavLink>
+
+          <NavLink
+            to="/forum"
+            className={({ isActive }) =>
+              `px-5 py-2.5 text-sm font-medium uppercase tracking-wide transition-colors ${
+                isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+              }`
+            }
+            onClick={() => setDrawerOpen(false)}
+          >
+            Forum
+          </NavLink>
+        </nav>
+      </div>
     </div>
   );
 }
