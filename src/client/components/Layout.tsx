@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Outlet, NavLink, Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
 import { useWebSocket } from '../lib/useWebSocket';
 import { useUser, SignInButton, UserButton } from '@clerk/clerk-react';
 import { GlobalSearch } from './GlobalSearch';
+import { KeyboardShortcutsModal } from './KeyboardShortcutsModal';
 import { LiveTicker } from './LiveTicker';
 import { ToastContainer } from './ToastContainer';
 import { isTickerEnabled, setTickerEnabled, onTickerChange } from '../lib/tickerPrefs';
@@ -19,12 +20,26 @@ const NAV_LINKS = [
   { to: '/forum', label: 'Forum' },
 ] as const;
 
+/* G+key navigation map */
+const GO_KEYS: Record<string, string> = {
+  h: '/',
+  a: '/agents',
+  l: '/legislation',
+  e: '/elections',
+  p: '/parties',
+  f: '/forum',
+};
+
 export function Layout() {
   const { isConnected, subscribe } = useWebSocket();
   const { isSignedIn, isLoaded } = useUser();
+  const navigate = useNavigate();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [tickerEnabled, setTickerEnabledState] = useState(() => isTickerEnabled());
+  const gPressedRef = useRef(false);
+  const gTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* Sync when ProfilePage (or any other source) changes the preference */
   useEffect(() => {
@@ -122,17 +137,60 @@ export function Layout() {
     setTickerEnabledState(false);
   }
 
-  // Cmd+K / Ctrl+K global shortcut
+  // Global keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable;
+
+      /* Cmd+K / Ctrl+K — search (always active) */
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setSearchOpen((prev) => !prev);
+        return;
+      }
+
+      if (inInput) return; // don't steal keys from form inputs
+
+      /* ? — shortcuts help */
+      if (e.key === '?') {
+        e.preventDefault();
+        setShortcutsOpen((prev) => !prev);
+        return;
+      }
+
+      /* Esc — close any open modal */
+      if (e.key === 'Escape') {
+        setSearchOpen(false);
+        setShortcutsOpen(false);
+        return;
+      }
+
+      /* G + key — go-to navigation (two-key chord, 1s window) */
+      if (e.key.toLowerCase() === 'g' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        gPressedRef.current = true;
+        if (gTimerRef.current) clearTimeout(gTimerRef.current);
+        gTimerRef.current = setTimeout(() => { gPressedRef.current = false; }, 1000);
+        return;
+      }
+      if (gPressedRef.current) {
+        const dest = GO_KEYS[e.key.toLowerCase()];
+        if (dest) {
+          e.preventDefault();
+          gPressedRef.current = false;
+          if (gTimerRef.current) clearTimeout(gTimerRef.current);
+          navigate(dest);
+        }
       }
     };
+
     window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
+    return () => {
+      window.removeEventListener('keydown', handler);
+      if (gTimerRef.current) clearTimeout(gTimerRef.current);
+    };
+  }, [navigate]);
 
   useEffect(() => {
     if (!isSignedIn) {
@@ -215,6 +273,16 @@ export function Layout() {
             <kbd className="hidden lg:inline font-mono text-[10px] border border-border/40 rounded px-1">⌘K</kbd>
           </button>
 
+          {/* Keyboard shortcuts hint */}
+          <button
+            onClick={() => setShortcutsOpen(true)}
+            className="hidden lg:flex items-center justify-center w-7 h-7 rounded border border-border/50 hover:border-border text-text-muted hover:text-text-primary transition-colors text-xs font-mono"
+            aria-label="Keyboard shortcuts (?)"
+            title="Keyboard shortcuts"
+          >
+            ?
+          </button>
+
           {/* Admin — only for admins */}
           {isSignedIn && userRole === 'admin' && (
             <Link
@@ -268,6 +336,9 @@ export function Layout() {
 
       {/* Global Search modal */}
       <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+
+      {/* Keyboard Shortcuts modal */}
+      <KeyboardShortcutsModal isOpen={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
 
       {/* Toast notifications */}
       <ToastContainer />
