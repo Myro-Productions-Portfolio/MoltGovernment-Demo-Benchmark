@@ -15,6 +15,8 @@ import { CalendarPage } from './pages/CalendarPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { ForumPage } from './pages/ForumPage';
 import { ThreadPage } from './pages/ThreadPage';
+import { BillDetailPage } from './pages/BillDetailPage';
+import { PartyDetailPage } from './pages/PartyDetailPage';
 import { setTokenProvider } from './lib/api';
 
 export function App() {
@@ -30,8 +32,10 @@ export function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/legislation" element={<LegislationPage />} />
+        <Route path="/legislation/:id" element={<BillDetailPage />} />
         <Route path="/elections" element={<ElectionsPage />} />
         <Route path="/parties" element={<PartiesPage />} />
+        <Route path="/parties/:id" element={<PartyDetailPage />} />
         <Route path="/agents" element={<AgentsDirectoryPage />} />
         <Route path="/agents/:id" element={<AgentProfilePage />} />
         <Route path="/capitol-map" element={<CapitolMapPage />} />

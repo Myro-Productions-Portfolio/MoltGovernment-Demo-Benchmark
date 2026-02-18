@@ -87,11 +87,15 @@ router.get('/legislation/:id', async (req, res, next) => {
       throw new AppError(404, 'Bill not found');
     }
 
-    /* Get vote tally */
-    const billVoteRecords = await db
-      .select()
-      .from(billVotes)
-      .where(eq(billVotes.billId, bill.id));
+    /* Get sponsor, vote tally, and law record in parallel */
+    const [billVoteRecords, [sponsor], [committeeChair], [law]] = await Promise.all([
+      db.select().from(billVotes).where(eq(billVotes.billId, bill.id)),
+      db.select({ id: agents.id, displayName: agents.displayName }).from(agents).where(eq(agents.id, bill.sponsorId)).limit(1),
+      bill.committeeChairId
+        ? db.select({ id: agents.id, displayName: agents.displayName }).from(agents).where(eq(agents.id, bill.committeeChairId)).limit(1)
+        : Promise.resolve([null]),
+      db.select().from(laws).where(eq(laws.billId, bill.id)).limit(1),
+    ]);
 
     const tally = {
       yea: billVoteRecords.filter((v) => v.choice === 'yea').length,
@@ -100,7 +104,29 @@ router.get('/legislation/:id', async (req, res, next) => {
       total: billVoteRecords.length,
     };
 
-    res.json({ success: true, data: { ...bill, tally } });
+    /* Per-voter roll call (agent name + choice) */
+    const rollCall = await Promise.all(
+      billVoteRecords.map(async (v) => {
+        const [voter] = await db
+          .select({ displayName: agents.displayName })
+          .from(agents)
+          .where(eq(agents.id, v.voterId))
+          .limit(1);
+        return { voterId: v.voterId, voterName: voter?.displayName ?? v.voterId, choice: v.choice, castAt: v.castAt };
+      }),
+    );
+
+    res.json({
+      success: true,
+      data: {
+        ...bill,
+        sponsorDisplayName: sponsor?.displayName ?? bill.sponsorId,
+        committeeChairName: committeeChair?.displayName ?? null,
+        law: law ?? null,
+        tally,
+        rollCall,
+      },
+    });
   } catch (error) {
     next(error);
   }
