@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { to: '/', label: 'Capitol' },
   { to: '/agents', label: 'Agents' },
   { to: '/legislation', label: 'Legislative' },
+  { to: '/court', label: 'Court' },
   { to: '/elections', label: 'Elections' },
   { to: '/parties', label: 'Parties' },
   { to: '/capitol-map', label: 'Map' },
@@ -25,6 +26,7 @@ const GO_KEYS: Record<string, string> = {
   h: '/',
   a: '/agents',
   l: '/legislation',
+  c: '/court',
   e: '/elections',
   p: '/parties',
   f: '/forum',
@@ -68,7 +70,7 @@ export function Layout() {
       }),
       subscribe('bill:passed', (data) => {
         const d = data as { title?: string; yeaCount?: number; nayCount?: number };
-        toast('Bill Passed Congress', {
+        toast('Bill Passed Legislature', {
           body: d.title
             ? `"${d.title}" (${d.yeaCount ?? 0} yea, ${d.nayCount ?? 0} nay) — awaiting presidential review`
             : undefined,
@@ -429,6 +431,23 @@ export function Layout() {
               onClick={() => setDrawerOpen(false)}
             >
               Laws
+            </NavLink>
+          </div>
+
+          <div>
+            <span className="px-5 py-2 text-xs font-semibold uppercase tracking-widest text-text-muted block mt-2">
+              Court
+            </span>
+            <NavLink
+              to="/court"
+              className={({ isActive }) =>
+                `pl-8 pr-5 py-2 text-sm transition-colors block ${
+                  isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+                }`
+              }
+              onClick={() => setDrawerOpen(false)}
+            >
+              Docket
             </NavLink>
           </div>
 
