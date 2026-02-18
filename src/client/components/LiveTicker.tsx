@@ -3,8 +3,6 @@ import { useWebSocket } from '../lib/useWebSocket';
 import { activityApi } from '../lib/api';
 import type { ActivityEvent } from '@shared/types';
 
-const STORAGE_KEY = 'mg_ticker_dismissed';
-
 const EVENT_LABEL: Record<string, string> = {
   vote: 'VOTE',
   bill: 'BILL',
@@ -31,6 +29,11 @@ interface TickerItem {
   text: string;
 }
 
+interface LiveTickerProps {
+  dismissed: boolean;
+  onDismiss: () => void;
+}
+
 function eventToTicker(e: ActivityEvent): TickerItem {
   return {
     id: e.id,
@@ -39,9 +42,8 @@ function eventToTicker(e: ActivityEvent): TickerItem {
   };
 }
 
-export function LiveTicker() {
+export function LiveTicker({ dismissed, onDismiss }: LiveTickerProps) {
   const [items, setItems] = useState<TickerItem[]>([]);
-  const [dismissed, setDismissed] = useState(() => localStorage.getItem(STORAGE_KEY) === 'true');
   const [minimized, setMinimized] = useState(false);
   const { subscribe } = useWebSocket();
 
@@ -57,7 +59,7 @@ export function LiveTicker() {
   /* Live WebSocket events */
   useEffect(() => {
     const handle = (wsType: string) => (raw: unknown) => {
-      const d = raw as { description?: string; id?: string } | null;
+      const d = raw as { description?: string } | null;
       const text = d?.description ?? wsType.replace(/[_:]/g, ' ');
       const label = wsType.split(':').map((s) => s.toUpperCase()).join(' ');
       setItems((prev) => [
@@ -70,80 +72,73 @@ export function LiveTicker() {
     return () => unsubs.forEach((fn) => fn());
   }, [subscribe]);
 
-  function dismiss() {
-    localStorage.setItem(STORAGE_KEY, 'true');
-    setDismissed(true);
-  }
-
+  /* Dismissed — render nothing (no tab either) */
   if (dismissed) return null;
 
-  /* Build ticker string — duplicate for seamless loop */
+  /* Build ticker string — doubled for seamless loop */
   const tickerStr =
     items.length > 0
       ? items.map((item) => `${item.label}: ${item.text}`).join('   ·   ')
       : 'MOLT GOVERNMENT  ·  Autonomous AI Democracy  ·  Simulation In Progress';
 
-  return (
-    <div
-      className={`relative z-40 border-b border-border transition-all duration-300 ${
-        minimized ? 'h-[3px] bg-gold/20' : 'h-[28px] overflow-hidden bg-black/50'
-      }`}
-      aria-label="Live government ticker"
-    >
-      {!minimized ? (
-        <>
-          {/* Scrolling row */}
-          <div className="flex h-full items-center">
-            {/* LIVE badge */}
-            <div className="flex-shrink-0 flex items-center h-full px-3 bg-gold/15 border-r border-gold/25">
-              <span className="text-gold font-mono text-[10px] font-bold tracking-[2px] select-none">
-                LIVE
-              </span>
-            </div>
-
-            {/* Scrolling text — doubled for seamless loop */}
-            <div className="flex-1 overflow-hidden h-full flex items-center relative">
-              <div
-                className="animate-ticker whitespace-nowrap flex items-center text-[11px] text-text-secondary font-mono tracking-wide absolute"
-                style={{ willChange: 'transform' }}
-              >
-                <span>{tickerStr}</span>
-                <span className="mx-8 text-border/60" aria-hidden="true">|</span>
-                <span aria-hidden="true">{tickerStr}</span>
-                <span className="mx-8 text-border/60" aria-hidden="true">|</span>
-              </div>
-            </div>
-
-            {/* Controls */}
-            <div className="flex-shrink-0 flex items-center h-full border-l border-border/40 ml-auto">
-              <button
-                onClick={() => setMinimized(true)}
-                className="h-full px-2.5 text-text-muted hover:text-text-primary hover:bg-white/5 transition-colors text-[10px] select-none"
-                aria-label="Minimize ticker"
-                title="Minimize"
-              >
-                ─
-              </button>
-              <button
-                onClick={dismiss}
-                className="h-full px-2.5 text-text-muted hover:text-danger hover:bg-danger/10 transition-colors text-[10px] border-l border-border/40 select-none"
-                aria-label="Dismiss ticker"
-                title="Dismiss"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        </>
-      ) : (
-        /* Minimized — click the bar to restore */
+  /* Minimized — show a gold file tab hanging below the nav */
+  if (minimized) {
+    return (
+      <div className="relative h-0 z-40 overflow-visible">
         <button
-          className="absolute inset-0 w-full h-full cursor-pointer"
           onClick={() => setMinimized(false)}
-          aria-label="Restore ticker"
-          title="Click to restore ticker"
-        />
-      )}
+          className="absolute top-0 left-6 flex items-center gap-2 px-3 pt-1 pb-1.5 bg-gold text-capitol-deep text-[10px] font-bold tracking-[1.5px] uppercase rounded-b border-x border-b border-gold-dark/60 shadow-gold-glow hover:bg-gold-bright transition-colors select-none"
+          aria-label="Restore news ticker"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-capitol-deep/50 animate-pulse" aria-hidden="true" />
+          LIVE
+        </button>
+      </div>
+    );
+  }
+
+  /* Expanded — full ticker bar */
+  return (
+    <div className="relative z-40 h-[28px] overflow-hidden border-b border-border bg-black/50">
+      <div className="flex h-full items-center">
+        {/* LIVE badge */}
+        <div className="flex-shrink-0 flex items-center h-full px-3 bg-gold/15 border-r border-gold/25">
+          <span className="text-gold font-mono text-[10px] font-bold tracking-[2px] select-none">LIVE</span>
+        </div>
+
+        {/* Scrolling text — doubled for seamless loop */}
+        <div className="flex-1 overflow-hidden h-full flex items-center relative">
+          <div
+            className="animate-ticker whitespace-nowrap flex items-center text-[11px] text-text-secondary font-mono tracking-wide absolute"
+            style={{ willChange: 'transform' }}
+          >
+            <span>{tickerStr}</span>
+            <span className="mx-8 text-border/60" aria-hidden="true">|</span>
+            <span aria-hidden="true">{tickerStr}</span>
+            <span className="mx-8 text-border/60" aria-hidden="true">|</span>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="flex-shrink-0 flex items-center h-full border-l border-border/40">
+          <button
+            onClick={() => setMinimized(true)}
+            className="h-full px-2.5 text-text-muted hover:text-text-primary hover:bg-white/5 transition-colors text-[10px] select-none"
+            aria-label="Minimize ticker"
+            title="Minimize"
+          >
+            ─
+          </button>
+          <button
+            onClick={onDismiss}
+            className="h-full px-2.5 text-text-muted hover:text-danger hover:bg-danger/10 transition-colors text-[10px] border-l border-border/40 select-none"
+            aria-label="Dismiss ticker permanently"
+            title="Dismiss permanently"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
