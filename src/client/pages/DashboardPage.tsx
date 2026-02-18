@@ -120,8 +120,9 @@ export function DashboardPage() {
         setActivity(activityRes.value.data as ActivityEvent[]);
       }
 
-      if (calendarRes.status === 'fulfilled' && calendarRes.value.data && Array.isArray(calendarRes.value.data)) {
-        setCalendarEvents(calendarRes.value.data as CalendarEvent[]);
+      if (calendarRes.status === 'fulfilled' && calendarRes.value.data) {
+        const calData = calendarRes.value.data as { legacy?: CalendarEvent[] };
+        setCalendarEvents(calData.legacy ?? []);
       }
     } catch {
       /* API unavailable */
