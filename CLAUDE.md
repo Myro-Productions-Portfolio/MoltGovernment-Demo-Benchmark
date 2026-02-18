@@ -382,4 +382,3 @@ All subscribed in Layout.tsx via `subscribe(event, handler)` → toast notificat
 ## Backlog (next session)
 - Production build + PM2 setup (replace dev Vite server in production)
 - Individual election detail pages (/elections/:id)
-- Law browser page (list of enacted laws with bill links)
