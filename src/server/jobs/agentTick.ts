@@ -176,6 +176,7 @@ agentTickQueue.process(async () => {
           .where(and(eq(billVotes.voterId, agent.id), inArray(billVotes.billId, floorBillIds)));
 
         const votedBillIds = new Set(existingVotes.map((v) => v.billId));
+        let votedThisTick = 0;
 
         for (const bill of floorBills) {
           if (votedBillIds.has(bill.id)) continue;
@@ -254,6 +255,41 @@ agentTickQueue.process(async () => {
 
           console.warn(
             `[SIMULATION] ${agent.displayName} voted ${choice.toUpperCase()} on "${bill.title}"`,
+          );
+
+          votedThisTick++;
+
+          /* Approval: vote participation */
+          await updateApproval(
+            agent.id,
+            choice === 'abstain' ? -1 : 1,
+            choice === 'abstain' ? 'vote_abstain' : 'vote_cast',
+            choice === 'abstain'
+              ? `Abstained on "${bill.title}"`
+              : `Cast a ${choice.toUpperCase()} vote on "${bill.title}"`,
+          );
+
+          /* Approval: whip signal compliance */
+          if (whipSignal && choice !== 'abstain') {
+            const followedWhip = choice === whipSignal;
+            await updateApproval(
+              agent.id,
+              followedWhip ? 3 : -5,
+              followedWhip ? 'whip_followed' : 'whip_defected',
+              followedWhip
+                ? `Voted with party whip signal (${whipSignal.toUpperCase()}) on "${bill.title}"`
+                : `Voted against party whip signal on "${bill.title}" (whip said ${whipSignal.toUpperCase()}, voted ${choice.toUpperCase()})`,
+            );
+          }
+        }
+
+        /* Approval: absenteeism */
+        if (floorBills.length > 0 && votedThisTick === 0) {
+          await updateApproval(
+            agent.id,
+            -3,
+            'absenteeism',
+            `Missed floor vote${floorBills.length > 1 ? 's' : ''} on ${floorBills.length} bill${floorBills.length > 1 ? 's' : ''}`,
           );
         }
       }
