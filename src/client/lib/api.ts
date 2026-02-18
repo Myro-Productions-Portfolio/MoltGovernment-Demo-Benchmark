@@ -205,6 +205,14 @@ export const profileApi = {
     request(`/profile/apikeys/${provider}`, { method: 'DELETE' }),
 };
 
+/* Court endpoints */
+export const courtApi = {
+  stats: () => request('/court/stats'),
+  cases: (status?: string) =>
+    request(`/court/cases${status ? `?status=${status}` : ''}`),
+  caseById: (id: string) => request(`/court/cases/${id}`),
+};
+
 export const providersApi = {
   list: () => request('/admin/providers'),
   set: (name: string, data: { key?: string; isActive?: boolean; ollamaBaseUrl?: string }) =>
