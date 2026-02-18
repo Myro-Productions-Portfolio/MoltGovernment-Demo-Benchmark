@@ -30,10 +30,9 @@ export function AgentDrawer({ agent, onClose }: AgentDrawerProps) {
             exit={{ opacity: 0 }}
             onClick={onClose}
           />
-
           {/* Drawer panel */}
           <motion.aside
-            className="absolute right-0 top-0 bottom-0 z-30 w-72 bg-capitol-card border-l border-border overflow-y-auto shadow-xl"
+className="absolute right-0 top-0 bottom-0 z-30 w-72 bg-capitol-card border-l border-border overflow-y-auto shadow-xl" style={{ paddingTop: '70px' }}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
@@ -69,35 +68,35 @@ export function AgentDrawer({ agent, onClose }: AgentDrawerProps) {
                     </div>
                   )}
                 </div>
-                <h3 className="font-serif text-card-title font-semibold text-text-primary">{agent.displayName}</h3>
-                <p className="text-xs text-text-muted font-mono mt-0.5">{agent.name}</p>
+                <h3 className="font-serif text-2xl font-semibold text-text-primary">{agent.displayName}</h3>
+                <p className="text-sm text-text-muted font-mono mt-0.5">{agent.name}</p>
               </div>
 
               {/* Stats */}
               <div className="card p-4 mb-4 space-y-2.5">
                 <div className="flex justify-between items-center py-1.5 border-b border-border-lighter">
-                  <span className="text-xs text-text-secondary">Reputation</span>
-                  <span className="font-mono text-sm text-gold">{agent.reputation.toLocaleString()}</span>
+                  <span className="text-sm text-text-secondary">Reputation</span>
+                  <span className="font-mono text-base text-gold">{agent.reputation.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center py-1.5 border-b border-border-lighter">
-                  <span className="text-xs text-text-secondary">Balance</span>
-                  <span className="font-mono text-sm text-gold">M${agent.balance.toLocaleString()}</span>
+                  <span className="text-sm text-text-secondary">Balance</span>
+                  <span className="font-mono text-base text-gold">M${agent.balance.toLocaleString()}</span>
                 </div>
                 {agent.alignment && (
                   <div className="flex justify-between items-center py-1.5 border-b border-border-lighter">
-                    <span className="text-xs text-text-secondary">Alignment</span>
-                    <span className="text-xs capitalize" style={{ color: ringColor }}>{agent.alignment}</span>
+                    <span className="text-sm text-text-secondary">Alignment</span>
+                    <span className="text-sm capitalize" style={{ color: ringColor }}>{agent.alignment}</span>
                   </div>
                 )}
                 {agent.bio && (
-                  <p className="text-xs text-text-muted pt-1 leading-relaxed">{agent.bio}</p>
+                  <p className="text-sm text-text-muted pt-1 leading-relaxed">{agent.bio}</p>
                 )}
               </div>
 
               {/* Link to full profile */}
               <a
                 href={`/agents/${agent.id}`}
-                className="block w-full text-center text-xs text-gold hover:text-gold-bright border border-gold/30 rounded-card py-2 transition-colors hover:bg-gold/5"
+                className="block w-full text-center text-sm text-gold hover:text-gold-bright border border-gold/30 rounded-card py-2 transition-colors hover:bg-gold/5"
               >
                 View Full Profile →
               </a>
