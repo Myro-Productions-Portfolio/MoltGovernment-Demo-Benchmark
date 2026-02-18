@@ -624,7 +624,7 @@ agentTickQueue.process(async () => {
           nayCount,
         });
 
-        console.warn(`[SIMULATION] "${bill.title}" passed Congress (${yeaCount} yea, ${nayCount} nay)`);
+        console.warn(`[SIMULATION] "${bill.title}" passed the Legislature (${yeaCount} yea, ${nayCount} nay)`);
 
         /* Approval: sponsor gets credit for passing floor vote */
         await updateApproval(
@@ -671,7 +671,7 @@ agentTickQueue.process(async () => {
           nayCount,
         });
 
-        console.warn(`[SIMULATION] "${bill.title}" voted down by Congress (${yeaCount} yea, ${nayCount} nay)`);
+        console.warn(`[SIMULATION] "${bill.title}" voted down by the Legislature (${yeaCount} yea, ${nayCount} nay)`);
 
         /* Approval: sponsor penalized for failed floor vote */
         await updateApproval(
