@@ -115,11 +115,16 @@ const config: Config = {
       },
       animation: {
         pulse: 'pulse 2s infinite',
+        ticker: 'ticker 60s linear infinite',
       },
       keyframes: {
         pulse: {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.4' },
+        },
+        ticker: {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
         },
       },
     },
