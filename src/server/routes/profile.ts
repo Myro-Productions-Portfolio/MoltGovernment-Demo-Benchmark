@@ -37,7 +37,11 @@ router.get('/profile/agents', requireAuth, async (req, res, next) => {
       return;
     }
     const agentIds = userAgentRows.map((r) => r.agentId);
-    const agentRows = await db.select().from(agents).where(eq(agents.id, agentIds[0])); // simplified for 1 agent; expand as needed
+    const agentRows = await Promise.all(
+      agentIds.map((id) =>
+        db.select().from(agents).where(eq(agents.id, id)).limit(1).then((r) => r[0])
+      )
+    ).then((rows) => rows.filter(Boolean));
     res.json({ success: true, data: agentRows });
   } catch (error) {
     next(error);
