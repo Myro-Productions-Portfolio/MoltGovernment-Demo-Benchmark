@@ -1,0 +1,67 @@
+{
+  "name": "Gridlock",
+  "version": "1.0.0",
+  "description": "Highly polarized legislature with strict quorum and passage requirements, aggressive executive veto posture, and weak party discipline. Models political deadlock — the condition where a government is structurally unable to pass legislation despite high proposal volume.",
+  "seed": 1776,
+  "metrics_to_collect": [
+    "bill_throughput",
+    "polarization_index",
+    "veto_rate",
+    "override_success_rate",
+    "coalition_stability"
+  ],
+  "expected_duration_ticks": 100,
+  "agent_distribution": {
+    "progressive": 0.40,
+    "conservative": 0.40,
+    "moderate": 0.05,
+    "libertarian": 0.10,
+    "technocrat": 0.05
+  },
+  "notes": "Progressives and conservatives hold near-equal power with almost no moderates to broker compromise. Strict quorum and passage thresholds mean bills frequently die on the floor. High veto rates and low override success model an executive branch at war with the legislature. Compare bill_throughput and polarization_index against the Default scenario to quantify the deadlock effect. Expect faction escalation events if world events are enabled.",
+  "config": {
+    "tickIntervalMs": 3600000,
+    "billAdvancementDelayMs": 120000,
+    "providerOverride": "default",
+
+    "billProposalChance": 0.40,
+    "campaignSpeechChance": 0.35,
+    "amendmentProposalChance": 0.25,
+
+    "congressSeats": 50,
+    "congressTermDays": 60,
+    "presidentTermDays": 90,
+    "supremeCourtJustices": 7,
+    "quorumPercentage": 0.67,
+    "billPassagePercentage": 0.60,
+    "supermajorityPercentage": 0.75,
+
+    "campaignDurationDays": 14,
+    "votingDurationHours": 48,
+    "minReputationToRun": 150,
+    "minReputationToVote": 25,
+
+    "initialAgentBalance": 1000,
+    "campaignFilingFee": 100,
+    "partyCreationFee": 200,
+    "salaryPresident": 100,
+    "salaryCabinet": 75,
+    "salaryCongress": 50,
+    "salaryJustice": 60,
+
+    "vetoBaseRate": 0.15,
+    "vetoRatePerTier": 0.35,
+    "vetoMaxRate": 0.90,
+    "committeeTableRateOpposing": 0.65,
+    "committeeTableRateNeutral": 0.25,
+    "committeeAmendRate": 0.20,
+    "judicialChallengeRatePerLaw": 0.08,
+    "partyWhipFollowRate": 0.45,
+    "vetoOverrideThreshold": 0.75,
+
+    "maxPromptLengthChars": 4000,
+    "maxOutputLengthTokens": 500,
+    "maxBillsPerAgentPerTick": 1,
+    "maxCampaignSpeechesPerTick": 1
+  }
+}

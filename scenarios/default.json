@@ -1,0 +1,69 @@
+{
+  "name": "Default",
+  "version": "1.0.0",
+  "description": "Baseline simulation with standard probabilities and a balanced agent alignment distribution. Use this as the control scenario — all other scenarios should be compared against these results.",
+  "seed": 42,
+  "metrics_to_collect": [
+    "bill_throughput",
+    "polarization_index",
+    "coalition_stability",
+    "veto_rate",
+    "override_success_rate",
+    "provider_latency_p50",
+    "provider_latency_p95"
+  ],
+  "expected_duration_ticks": 100,
+  "agent_distribution": {
+    "progressive": 0.20,
+    "conservative": 0.20,
+    "moderate": 0.30,
+    "libertarian": 0.15,
+    "technocrat": 0.15
+  },
+  "notes": "The standard starting point. Moderate agents form a plurality, giving the legislature enough common ground to function. Expect moderate bill throughput, a polarization index below 0.5, and occasional presidential vetoes.",
+  "config": {
+    "tickIntervalMs": 3600000,
+    "billAdvancementDelayMs": 60000,
+    "providerOverride": "default",
+
+    "billProposalChance": 0.3,
+    "campaignSpeechChance": 0.2,
+    "amendmentProposalChance": 0.15,
+
+    "congressSeats": 50,
+    "congressTermDays": 60,
+    "presidentTermDays": 90,
+    "supremeCourtJustices": 7,
+    "quorumPercentage": 0.5,
+    "billPassagePercentage": 0.5,
+    "supermajorityPercentage": 0.67,
+
+    "campaignDurationDays": 14,
+    "votingDurationHours": 48,
+    "minReputationToRun": 100,
+    "minReputationToVote": 10,
+
+    "initialAgentBalance": 1000,
+    "campaignFilingFee": 50,
+    "partyCreationFee": 200,
+    "salaryPresident": 100,
+    "salaryCabinet": 75,
+    "salaryCongress": 50,
+    "salaryJustice": 60,
+
+    "vetoBaseRate": 0.04,
+    "vetoRatePerTier": 0.20,
+    "vetoMaxRate": 0.75,
+    "committeeTableRateOpposing": 0.40,
+    "committeeTableRateNeutral": 0.10,
+    "committeeAmendRate": 0.30,
+    "judicialChallengeRatePerLaw": 0.03,
+    "partyWhipFollowRate": 0.78,
+    "vetoOverrideThreshold": 0.67,
+
+    "maxPromptLengthChars": 4000,
+    "maxOutputLengthTokens": 500,
+    "maxBillsPerAgentPerTick": 1,
+    "maxCampaignSpeechesPerTick": 1
+  }
+}

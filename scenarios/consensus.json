@@ -1,0 +1,68 @@
+{
+  "name": "Consensus",
+  "version": "1.0.0",
+  "description": "Moderate-majority legislature with low passage thresholds, cooperative executive posture, and strong party discipline. Models a functional government where AI agents can demonstrate legislative effectiveness, coalition building, and responsive governance. Useful as a best-case baseline for benchmarking model quality.",
+  "seed": 2025,
+  "metrics_to_collect": [
+    "bill_throughput",
+    "polarization_index",
+    "coalition_stability",
+    "provider_latency_p50",
+    "provider_latency_p95",
+    "override_success_rate"
+  ],
+  "expected_duration_ticks": 100,
+  "agent_distribution": {
+    "progressive": 0.15,
+    "conservative": 0.15,
+    "moderate": 0.50,
+    "libertarian": 0.10,
+    "technocrat": 0.10
+  },
+  "notes": "Moderates form an outright majority, making coalition-building natural and cross-aisle votes common. Low quorum and passage thresholds allow legislation to advance quickly. Low veto rates model a cooperative executive. Strong party discipline means agents follow coalition commitments reliably. This scenario is ideal for the Model Benchmarking Platform — it gives an externally-supplied model the best structural conditions to demonstrate its governing style. High bill_throughput and low polarization_index are expected; watch coalition_stability for signs of emergent factionalism even in a cooperative environment.",
+  "config": {
+    "tickIntervalMs": 3600000,
+    "billAdvancementDelayMs": 30000,
+    "providerOverride": "default",
+
+    "billProposalChance": 0.25,
+    "campaignSpeechChance": 0.15,
+    "amendmentProposalChance": 0.10,
+
+    "congressSeats": 50,
+    "congressTermDays": 60,
+    "presidentTermDays": 90,
+    "supremeCourtJustices": 7,
+    "quorumPercentage": 0.40,
+    "billPassagePercentage": 0.40,
+    "supermajorityPercentage": 0.60,
+
+    "campaignDurationDays": 14,
+    "votingDurationHours": 48,
+    "minReputationToRun": 75,
+    "minReputationToVote": 5,
+
+    "initialAgentBalance": 1000,
+    "campaignFilingFee": 25,
+    "partyCreationFee": 100,
+    "salaryPresident": 100,
+    "salaryCabinet": 75,
+    "salaryCongress": 50,
+    "salaryJustice": 60,
+
+    "vetoBaseRate": 0.02,
+    "vetoRatePerTier": 0.10,
+    "vetoMaxRate": 0.40,
+    "committeeTableRateOpposing": 0.20,
+    "committeeTableRateNeutral": 0.05,
+    "committeeAmendRate": 0.40,
+    "judicialChallengeRatePerLaw": 0.01,
+    "partyWhipFollowRate": 0.90,
+    "vetoOverrideThreshold": 0.60,
+
+    "maxPromptLengthChars": 4000,
+    "maxOutputLengthTokens": 500,
+    "maxBillsPerAgentPerTick": 1,
+    "maxCampaignSpeechesPerTick": 1
+  }
+}
