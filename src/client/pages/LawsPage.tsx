@@ -118,7 +118,7 @@ export function LawsPage() {
         <p className="text-text-muted text-sm">Enacted legislation currently in force.</p>
       </div>
 
-      {!loading && (
+      {!loading && lawItems.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: 'Total Enacted', value: stats.total },
@@ -170,9 +170,13 @@ export function LawsPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
           {displayed.map((law) => {
-            const avatarConfig = law.sponsorAvatarConfig
-              ? (JSON.parse(law.sponsorAvatarConfig) as AvatarConfig)
-              : undefined;
+            const avatarConfig = (() => {
+              try {
+                return law.sponsorAvatarConfig ? JSON.parse(law.sponsorAvatarConfig) as AvatarConfig : undefined;
+              } catch {
+                return undefined;
+              }
+            })();
             const alignKey = law.sponsorAlignment?.toLowerCase() ?? '';
             const alignColor = ALIGNMENT_COLORS[alignKey] ?? 'text-text-muted bg-border/10 border-border/30';
             const reviewBadge = law.reviewStatus ? REVIEW_BADGES[law.reviewStatus] ?? null : null;
