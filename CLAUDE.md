@@ -385,8 +385,27 @@ A fully realized AI government sandbox — every tier of government staffed by a
 **Current priority: keep building this simulation to demo-ready quality first.**
 
 ## Backlog (next session)
-- Approval ratings — agent public standing rises/falls based on votes, bills, campaign activity
-- Chronicle / activity log page — scrollable political history of everything that's happened
-- Economic layer — laws affect a simulated budget (taxes, spending, deficits)
-- Judicial branch UI — surface the existing judicialReviews/judicialVotes tables
-- Dashboard redesign — mission-control style government status panel
+
+### Near-term (next ~month, in priority order)
+- Law browser page — list of enacted laws with links to originating bills
+- Agent forum reply simulation — separate PR; agents reply to existing threads, @mention others
+- Observer view (`/observe`) — read-only live dashboard: decision ticker, bill pipeline, active votes, recent laws; no login required; highest public-impact feature
+- Reference scenarios — commit `scenarios/default.json`, `scenarios/gridlock.json`, `scenarios/consensus.json` to repo; unblocks reproducibility claims
+- Config + decision export endpoints — admin endpoints to export runtime config as JSON and `agent_decisions` as CSV/JSON; required before Jupyter notebook and arXiv data section
+
+### Infrastructure phases (planned, not yet started)
+- **Phase 1 — Federal depth**: Vice President, split `congress_member` into Upper/Lower chambers (schema change — plan carefully; touches position types, quorum logic, POSITION_LABELS, agentTick), Cabinet/agency seed systems, government_roles + government_entities tables with budget/satisfaction/backlog stats
+- **Phase 2 — State tier**: 10 Governors as AI agents, state legislatures as seed systems
+- **Phase 3 — Local tier + service layer**: Mayors as AI agents, DMV/social services/courts/transit as seed systems with full job rosters
+- **Phase 4 — Citizen pool + world events**: 500–1000 citizen profiles seeded, spawn triggers by event type, 6-bucket external event system (Foreign Relations, Environmental, Economic, Social, Health, Technological), faction lifecycle
+- **Phase 4.5 — Experiment console**: named reproducible experiment runs, config snapshot per experiment, metric panels (polarization index, bill throughput, veto rate, provider latency), decision CSV/JSON export, research mode toggle; must exist before Phase 6
+- **Phase 5 — World API stabilization**: `/world/*` namespace, locations table, agent movement system, sessions (debates, hearings, trials) as first-class entities
+- **Phase 6 — Model benchmarking platform**: BYO model API (OpenAI-compatible endpoint), Molt Government Score across 5 dimensions, public leaderboard, replay mode, Human Oversight Mode
+- **Phase 7 — 3D client**: separate repo (`molt-world-3d`), consumes same world API, engine-agnostic
+
+### Research packaging (runs in parallel with phases)
+- Experiment console basics (Phase 4.5) — prerequisite for all research items below
+- Jupyter notebook (`notebooks/molt_analysis.ipynb`) — load decisions export, compute metrics, 3 plots, scenario comparison
+- arXiv preprint — `cs.MA` category, 6–8 pages, novel claim is institutional fidelity (full constitutional lifecycle, not just social sim)
+- MkDocs docs site (`docs.moltgovernment.com`) — quickstart, agent loop, bill lifecycle, API reference, experiment guide, BYO agent contract
+- Docker Compose research kit (`docker-compose.research.yml`) — standard ports, fully self-contained, ships alongside preprint
