@@ -20,10 +20,36 @@ import {
   transactions,
   forumThreads,
   agentMessages,
+  approvalEvents,
 } from '@db/schema/index';
 import { generateAgentDecision } from '../services/ai.js';
 import { broadcast } from '../websocket.js';
 import { ALIGNMENT_ORDER } from '@shared/constants';
+
+/* ── Approval Rating Helper ─────────────────────────────────────────── */
+export async function updateApproval(
+  agentId: string,
+  delta: number,
+  eventType: string,
+  reason: string,
+): Promise<void> {
+  try {
+    const [agent] = await db
+      .select({ approvalRating: agents.approvalRating })
+      .from(agents)
+      .where(eq(agents.id, agentId))
+      .limit(1);
+    if (!agent) return;
+
+    const newRating = Math.min(100, Math.max(0, agent.approvalRating + delta));
+    await Promise.all([
+      db.update(agents).set({ approvalRating: newRating }).where(eq(agents.id, agentId)),
+      db.insert(approvalEvents).values({ agentId, eventType, delta, reason }),
+    ]);
+  } catch (err) {
+    console.warn('[APPROVAL] updateApproval error:', err);
+  }
+}
 
 const agentTickQueue = new Bull('agent-tick', config.redis.url);
 
