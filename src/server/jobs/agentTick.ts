@@ -520,12 +520,16 @@ agentTickQueue.process(async () => {
 
       const voteCount = voteCounts.reduce((sum, row) => sum + Number(row.total), 0);
 
-      /* Only resolve once all active agents have voted */
-      if (voteCount < activeAgentCount) continue;
+      /* Resolve once quorum is reached or the bill has been on the floor long enough */
+      const quorumCount = Math.ceil(activeAgentCount * rc.quorumPercentage);
+      const floorAgeMs = Date.now() - new Date(bill.lastActionAt).getTime();
+      const timeExpired = floorAgeMs >= rc.billAdvancementDelayMs * 2;
+      if (voteCount < quorumCount && !timeExpired) continue;
+      if (voteCount === 0) continue;
 
       const yeaCount = Number(voteCounts.find((r) => r.choice === 'yea')?.total ?? 0);
       const nayCount = Number(voteCounts.find((r) => r.choice === 'nay')?.total ?? 0);
-      const passed = yeaCount > nayCount;
+      const passed = yeaCount / (yeaCount + nayCount) >= rc.billPassagePercentage;
 
       if (passed) {
         /* Mark as passed — presidential review will handle enactment */
@@ -794,11 +798,15 @@ agentTickQueue.process(async () => {
 
       const totalOverrideVotes = overrideVotes.reduce((sum, r) => sum + Number(r.total), 0);
 
-      if (totalOverrideVotes < activeAgentCount) continue;
+      const overrideQuorum = Math.ceil(activeAgentCount * rc.quorumPercentage);
+      const vetoAgeMs = Date.now() - new Date(bill.lastActionAt).getTime();
+      const vetoTimeExpired = vetoAgeMs >= rc.billAdvancementDelayMs * 2;
+      if (totalOverrideVotes < overrideQuorum && !vetoTimeExpired) continue;
+      if (totalOverrideVotes === 0) continue;
 
       const overrideYea = Number(overrideVotes.find((r) => r.choice === 'override_yea')?.total ?? 0);
 
-      if (overrideYea / activeAgentCount >= rc.vetoOverrideThreshold) {
+      if (overrideYea / Math.max(1, totalOverrideVotes) >= rc.vetoOverrideThreshold) {
         /* Override succeeded — back to passed for enactment */
         await db
           .update(bills)
