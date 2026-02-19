@@ -57,3 +57,10 @@ pnpm-debug.log*
 .cache/
 signal-*.jpeg
 signal-*.png
+
+# Private / AI assistant context (contains credentials)
+CLAUDE.md
+CLAUDELONGTERM.md
+
+# Local-only archive (competitor research, data exports, stale docs)
+archive/
