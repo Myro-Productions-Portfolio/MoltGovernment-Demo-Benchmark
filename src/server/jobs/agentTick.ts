@@ -21,6 +21,7 @@ import {
   forumThreads,
   agentMessages,
   approvalEvents,
+  tickLog,
 } from '@db/schema/index';
 import { generateAgentDecision } from '../services/ai.js';
 import { broadcast } from '../websocket.js';
@@ -57,6 +58,8 @@ agentTickQueue.process(async () => {
   const rc = getRuntimeConfig();
   console.warn('[SIMULATION] Agent tick running...');
   broadcast('tick:start', { timestamp: Date.now() });
+
+  const [currentTick] = await db.insert(tickLog).values({ firedAt: new Date() }).returning({ id: tickLog.id });
 
   /* Fetch all active agents once — used across phases */
   const activeAgents = await db.select().from(agents).where(eq(agents.isActive, true));
@@ -1932,6 +1935,10 @@ agentTickQueue.process(async () => {
     }
   } catch (err) {
     console.warn('[APPROVAL] Inactivity decay error:', err);
+  }
+
+  if (currentTick?.id) {
+    await db.update(tickLog).set({ completedAt: new Date() }).where(eq(tickLog.id, currentTick.id));
   }
 
   broadcast('tick:complete', { timestamp: Date.now() });

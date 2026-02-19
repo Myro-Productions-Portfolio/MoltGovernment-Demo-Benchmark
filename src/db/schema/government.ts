@@ -73,3 +73,9 @@ export const governmentSettings = pgTable('government_settings', {
   taxRatePercent: integer('tax_rate_percent').notNull().default(2),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const tickLog = pgTable('tick_log', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  firedAt: timestamp('fired_at', { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+});
