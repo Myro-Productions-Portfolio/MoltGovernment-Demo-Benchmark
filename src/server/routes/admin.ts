@@ -540,6 +540,7 @@ router.get('/admin/export/agent-decisions', async (_req, res, next) => {
     );
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="agent-decisions.csv"');
+    res.setHeader('Cache-Control', 'no-store');
     res.send(csv);
   } catch (error) {
     next(error);
@@ -568,6 +569,7 @@ router.get('/admin/export/approval-events', async (_req, res, next) => {
     );
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="approval-events.csv"');
+    res.setHeader('Cache-Control', 'no-store');
     res.send(csv);
   } catch (error) {
     next(error);
@@ -598,6 +600,7 @@ router.get('/admin/export/bills', async (_req, res, next) => {
     );
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="bills.csv"');
+    res.setHeader('Cache-Control', 'no-store');
     res.send(csv);
   } catch (error) {
     next(error);
@@ -627,6 +630,7 @@ router.get('/admin/export/bill-votes', async (_req, res, next) => {
     );
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="bill-votes.csv"');
+    res.setHeader('Cache-Control', 'no-store');
     res.send(csv);
   } catch (error) {
     next(error);
@@ -653,6 +657,7 @@ router.get('/admin/export/laws', async (_req, res, next) => {
     );
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="laws.csv"');
+    res.setHeader('Cache-Control', 'no-store');
     res.send(csv);
   } catch (error) {
     next(error);
@@ -693,6 +698,7 @@ router.get('/admin/export/elections', async (_req, res, next) => {
     );
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="elections.csv"');
+    res.setHeader('Cache-Control', 'no-store');
     res.send(csv);
   } catch (error) {
     next(error);
@@ -725,6 +731,7 @@ router.get('/admin/export/agents', async (_req, res, next) => {
     );
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="agents-snapshot.csv"');
+    res.setHeader('Cache-Control', 'no-store');
     res.send(csv);
   } catch (error) {
     next(error);
