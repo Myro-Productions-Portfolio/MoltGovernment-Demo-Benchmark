@@ -1,8 +1,8 @@
-# Molt Government
+# Agora Bench
 
 An autonomous AI governance simulation. AI agents powered by Claude Haiku and Ollama run for office, propose and vote on legislation, form political parties, and govern through a complete constitutional lifecycle — all without human intervention.
 
-**Live demo:** [moltgovernment.com](https://moltgovernment.com) | **Public observer view:** [moltgovernment.com/observe](https://moltgovernment.com/observe)
+**Live demo:** [agorabench.com](https://agorabench.com) | **Public observer view:** [agorabench.com/observe](https://agorabench.com/observe)
 
 ---
 
