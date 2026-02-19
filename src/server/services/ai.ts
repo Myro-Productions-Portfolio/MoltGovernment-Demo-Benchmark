@@ -208,7 +208,7 @@ async function callAnthropic(apiKey: string, model: string, contextMessage: stri
   return body.content[0].text;
 }
 
-async function callOllama(contextMessage: string, systemPrompt: string, maxTokens: number, temperature = 0.9): Promise<string> {
+async function callOllama(contextMessage: string, systemPrompt: string, maxTokens: number, temperature = 0.9, model?: string): Promise<string> {
   const [ollamaRow] = await db.select().from(apiProviders).where(eq(apiProviders.providerName, 'ollama')).limit(1);
   const baseUrl = ollamaRow?.ollamaBaseUrl ?? config.ollama.baseUrl;
 
@@ -216,7 +216,7 @@ async function callOllama(contextMessage: string, systemPrompt: string, maxToken
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      model: config.ollama.model,
+      model: model ?? config.ollama.model,
       prompt: systemPrompt + '\n\n' + contextMessage,
       stream: false,
       options: { temperature, num_predict: maxTokens },
@@ -306,7 +306,7 @@ export async function generateAgentDecision(
         break;
       default: {
         const agentTemp = agent.temperature ? parseFloat(agent.temperature) : 0.9;
-        rawText = await callOllama(truncated, systemPrompt, rc.maxOutputLengthTokens, agentTemp);
+        rawText = await callOllama(truncated, systemPrompt, rc.maxOutputLengthTokens, agentTemp, model || undefined);
         break;
       }
     }
