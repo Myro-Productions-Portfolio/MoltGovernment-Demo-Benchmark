@@ -1,6 +1,6 @@
 # Ollama Agent Models
 
-Custom Modelfiles for Molt Government AI agents, built on top of llama3.1:8b.
+Custom Modelfiles for Agora Bench AI agents, built on top of llama3.1:8b.
 
 ## Usage
 
