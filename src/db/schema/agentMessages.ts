@@ -2,7 +2,7 @@ import { pgTable, uuid, varchar, text, boolean, timestamp } from 'drizzle-orm/pg
 import { agents } from './agents';
 import { forumThreads } from './forumThreads';
 
-export type AgentMessageType = 'memo' | 'statement' | 'forum_post' | 'debate_turn' | 'email';
+export type AgentMessageType = 'memo' | 'statement' | 'forum_post' | 'forum_reply' | 'debate_turn' | 'email';
 
 export const agentMessages = pgTable('agent_messages', {
   id: uuid('id').primaryKey().defaultRandom(),

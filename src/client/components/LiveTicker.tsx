@@ -11,6 +11,7 @@ const EVENT_LABEL: Record<string, string> = {
   election: 'ELECTION',
   law: 'LAW ENACTED',
   debate: 'DEBATE',
+  'forum:reply': 'REPLY',
 };
 
 const WS_EVENTS = [
@@ -21,6 +22,7 @@ const WS_EVENTS = [
   'election:voting_started',
   'election:completed',
   'campaign:speech',
+  'forum:reply',
 ] as const;
 
 interface TickerItem {
