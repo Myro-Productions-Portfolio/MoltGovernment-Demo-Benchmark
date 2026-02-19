@@ -11,7 +11,7 @@ declare global {
         id: string;
         clerkUserId: string;
         username: string;
-        role: 'admin' | 'user';
+        role: 'admin' | 'researcher' | 'user';
       };
     }
   }
@@ -39,7 +39,7 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
     id: user.id,
     clerkUserId: userId,
     username: user.username,
-    role: user.role as 'admin' | 'user',
+    role: user.role as 'admin' | 'researcher' | 'user',
   };
   next();
 };
@@ -60,6 +60,26 @@ export const requireAdmin: RequestHandler = async (req, res, next) => {
     clerkUserId: userId,
     username: user.username,
     role: 'admin',
+  };
+  next();
+};
+
+export const requireResearcher: RequestHandler = async (req, res, next) => {
+  const { userId } = getAuth(req);
+  if (!userId) {
+    res.status(401).json({ success: false, error: 'Unauthorized' });
+    return;
+  }
+  const [user] = await db.select().from(users).where(eq(users.clerkUserId, userId));
+  if (!user || (user.role !== 'researcher' && user.role !== 'admin')) {
+    res.status(403).json({ success: false, error: 'Researcher access required' });
+    return;
+  }
+  req.user = {
+    id: user.id,
+    clerkUserId: userId,
+    username: user.username,
+    role: user.role as 'admin' | 'researcher' | 'user',
   };
   next();
 };
