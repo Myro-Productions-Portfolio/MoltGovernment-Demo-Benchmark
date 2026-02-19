@@ -123,6 +123,16 @@ interface ProviderRow {
   models: string[];
 }
 
+const EXPORT_KEY_MAP: Record<string, string> = {
+  'agent-decisions': 'agentDecisions',
+  'approval-events': 'approvalEvents',
+  'bills': 'bills',
+  'bill-votes': 'billVotes',
+  'laws': 'laws',
+  'elections': 'elections',
+  'agents': 'agents',
+};
+
 const SIDEBAR_TABS: { id: AdminTab; label: string; icon: string }[] = [
   { id: 'overview',    label: 'Overview',        icon: '\u25A3' },
   { id: 'simulation',  label: 'Simulation',      icon: '\u2699' },
@@ -365,6 +375,10 @@ export function AdminPage() {
   });
   const [agentFormLoading, setAgentFormLoading] = useState(false);
 
+  /* Experiments / export state */
+  const [exportCounts, setExportCounts] = useState<Record<string, number> | null>(null);
+  const [exportingDataset, setExportingDataset] = useState<string | null>(null);
+
   const handleTabChange = (tab: AdminTab) => {
     setActiveTab(tab);
     localStorage.setItem('admin_active_tab', tab);
@@ -376,6 +390,17 @@ export function AdminPage() {
       localStorage.setItem('admin_sidebar_open', String(next));
       return next;
     });
+  };
+
+  const handleExport = async (dataset: string, filename: string) => {
+    setExportingDataset(dataset);
+    try {
+      await adminApi.downloadExport(dataset, filename);
+    } catch {
+      /* silent */
+    } finally {
+      setExportingDataset(null);
+    }
   };
 
   const fetchResearcherRequests = useCallback(async () => {
@@ -451,6 +476,13 @@ export function AdminPage() {
     } catch { /* ignore */ }
   }, []);
 
+  const fetchExportCounts = useCallback(async () => {
+    try {
+      const res = await adminApi.exportCounts();
+      setExportCounts(res.data as Record<string, number>);
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     void fetchStatus();
     void fetchDecisions();
@@ -461,6 +493,7 @@ export function AdminPage() {
     void fetchProviders();
     void fetchUsers();
     void fetchResearcherRequests();
+    void fetchExportCounts();
 
     const refetchLight = () => {
       void fetchStatus();
@@ -472,6 +505,7 @@ export function AdminPage() {
       void fetchDecisions();
       void fetchAgents();
       void fetchEconomy();
+      void fetchExportCounts();
     };
 
     const unsubs = [
@@ -481,7 +515,7 @@ export function AdminPage() {
       subscribe('campaign:speech', refetchLight),
     ];
     return () => unsubs.forEach((fn) => fn());
-  }, [fetchStatus, fetchDecisions, fetchConfig, fetchEconomy, fetchAgents, fetchAvatarAgents, fetchProviders, subscribe, fetchUsers, fetchResearcherRequests]);
+  }, [fetchStatus, fetchDecisions, fetchConfig, fetchEconomy, fetchAgents, fetchAvatarAgents, fetchProviders, subscribe, fetchUsers, fetchResearcherRequests, fetchExportCounts]);
 
   const flash = (msg: string) => {
     setActionMsg(msg);
@@ -680,7 +714,7 @@ export function AdminPage() {
         <nav className="flex-1 overflow-y-auto py-2">
           {SIDEBAR_TABS.map((tab) => {
             const isActive = activeTab === tab.id;
-            const isDisabled = tab.id === 'experiments';
+            const isDisabled = false;
             return (
               <button
                 key={tab.id}
@@ -703,9 +737,6 @@ export function AdminPage() {
                   <span className="flex-shrink-0 min-w-[20px] h-5 rounded-full bg-gold text-capitol-deep text-xs font-bold flex items-center justify-center px-1">
                     {pendingCount}
                   </span>
-                )}
-                {sidebarOpen && tab.id === 'experiments' && (
-                  <span className="text-xs text-text-muted/40">soon</span>
                 )}
               </button>
             );
@@ -1818,9 +1849,55 @@ export function AdminPage() {
         )}
 
         {activeTab === 'experiments' && (
-          <div className="rounded-lg border border-border bg-surface p-8 text-center space-y-2">
-            <p className="font-serif text-stone text-lg">Experiments</p>
-            <p className="text-text-muted text-sm">Coming in Phase 4.5</p>
+          <div className="space-y-6">
+            <div>
+              <h2 className="font-serif text-stone text-xl font-semibold">Experiments</h2>
+              <p className="text-text-muted text-sm mt-1">Export raw simulation data as CSV for analysis.</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {([
+                { dataset: 'agent-decisions', filename: 'agent-decisions.csv', label: 'Agent Decisions', description: 'Every AI decision: action, reasoning, provider, latency.' },
+                { dataset: 'approval-events', filename: 'approval-events.csv', label: 'Approval Events', description: 'Full audit trail of every approval rating change by event type.' },
+                { dataset: 'bills', filename: 'bills.csv', label: 'Bills', description: 'All legislation: sponsor, committee, status, and timestamps.' },
+                { dataset: 'bill-votes', filename: 'bill-votes.csv', label: 'Bill Votes', description: 'How each agent voted on every bill.' },
+                { dataset: 'laws', filename: 'laws.csv', label: 'Laws', description: 'All enacted laws with enactment date and active status.' },
+                { dataset: 'elections', filename: 'elections.csv', label: 'Elections & Campaigns', description: 'Election results joined with candidate campaign data.' },
+                { dataset: 'agents', filename: 'agents-snapshot.csv', label: 'Agent Snapshot', description: 'Current state of all agents: alignment, provider, balance, approval.' },
+              ] as const).map(({ dataset, filename, label, description }) => {
+                const countKey = EXPORT_KEY_MAP[dataset];
+                const rowCount = exportCounts ? exportCounts[countKey] : null;
+                return (
+                  <div key={dataset} className="rounded-lg border border-border bg-surface p-5 flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-text-primary">{label}</p>
+                        <p className="text-text-muted text-xs mt-0.5">{description}</p>
+                      </div>
+                      {rowCount !== null && rowCount !== undefined && (
+                        <span className="badge border border-border/40 text-text-muted bg-border/10 whitespace-nowrap shrink-0">
+                          {rowCount.toLocaleString()} rows
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => void handleExport(dataset, filename)}
+                      disabled={exportingDataset !== null}
+                      className="mt-auto px-4 py-2 rounded text-sm font-medium transition-all bg-white/10 text-text-primary hover:bg-white/20 border border-border disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {exportingDataset === dataset ? (
+                        <>
+                          <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                          Exporting...
+                        </>
+                      ) : (
+                        'Download CSV'
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

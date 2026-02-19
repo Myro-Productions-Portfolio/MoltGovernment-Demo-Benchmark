@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { db } from '@db/connection';
-import { agentDecisions, agents, governmentSettings, users, researcherRequests } from '@db/schema/index';
-import { count, eq, sql, asc } from 'drizzle-orm';
+import { agentDecisions, agents, governmentSettings, users, researcherRequests, approvalEvents, bills, laws, billVotes, elections, campaigns } from '@db/schema/index';
+import { count, eq, sql, asc, desc } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import {
   pauseSimulation,
   resumeSimulation,
@@ -16,6 +17,19 @@ import type { ProviderOverride } from '../runtimeConfig.js';
 import { requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
+
+/* ---- CSV helper ---- */
+export function toCSV(headers: string[], rows: (string | number | boolean | null | undefined)[][]): string {
+  const escape = (v: string | number | boolean | null | undefined): string => {
+    if (v === null || v === undefined) return '';
+    const s = String(v);
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  };
+  return [headers.join(','), ...rows.map((r) => r.map(escape).join(','))].join('\n');
+}
 
 /* Apply requireAdmin to all /admin/* routes in this router */
 router.use('/admin', requireAdmin);
@@ -459,6 +473,259 @@ router.post('/admin/researcher-requests/:id/reject', async (req, res, next) => {
       reviewedBy: req.user!.id,
     }).where(eq(researcherRequests.id, requestId));
     res.json({ success: true, data: { rejected: true } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* GET /api/admin/export/counts — row counts for all exportable datasets */
+router.get('/admin/export/counts', async (_req, res, next) => {
+  try {
+    const [
+      [decisions],
+      [approvals],
+      [billsCount],
+      [billVotesCount],
+      [lawsCount],
+      [electionsCount],
+      [agentsCount],
+    ] = await Promise.all([
+      db.select({ n: count() }).from(agentDecisions),
+      db.select({ n: count() }).from(approvalEvents),
+      db.select({ n: count() }).from(bills),
+      db.select({ n: count() }).from(billVotes),
+      db.select({ n: count() }).from(laws),
+      db.select({ n: count() }).from(elections),
+      db.select({ n: count() }).from(agents),
+    ]);
+    res.json({
+      success: true,
+      data: {
+        agentDecisions: decisions.n,
+        approvalEvents: approvals.n,
+        bills: billsCount.n,
+        billVotes: billVotesCount.n,
+        laws: lawsCount.n,
+        elections: electionsCount.n,
+        agents: agentsCount.n,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* GET /api/admin/export/agent-decisions */
+router.get('/admin/export/agent-decisions', async (_req, res, next) => {
+  try {
+    const rows = await db
+      .select({
+        id: agentDecisions.id,
+        createdAt: agentDecisions.createdAt,
+        agentName: agents.displayName,
+        provider: agentDecisions.provider,
+        phase: agentDecisions.phase,
+        parsedAction: agentDecisions.parsedAction,
+        parsedReasoning: agentDecisions.parsedReasoning,
+        success: agentDecisions.success,
+        latencyMs: agentDecisions.latencyMs,
+      })
+      .from(agentDecisions)
+      .leftJoin(agents, eq(agentDecisions.agentId, agents.id))
+      .orderBy(desc(agentDecisions.createdAt));
+
+    const csv = toCSV(
+      ['id', 'createdAt', 'agentName', 'provider', 'phase', 'parsedAction', 'parsedReasoning', 'success', 'latencyMs'],
+      rows.map((r) => [r.id, r.createdAt?.toISOString(), r.agentName, r.provider, r.phase, r.parsedAction, r.parsedReasoning, r.success, r.latencyMs]),
+    );
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="agent-decisions.csv"');
+    res.send(csv);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* GET /api/admin/export/approval-events */
+router.get('/admin/export/approval-events', async (_req, res, next) => {
+  try {
+    const rows = await db
+      .select({
+        id: approvalEvents.id,
+        createdAt: approvalEvents.createdAt,
+        agentName: agents.displayName,
+        eventType: approvalEvents.eventType,
+        delta: approvalEvents.delta,
+        reason: approvalEvents.reason,
+      })
+      .from(approvalEvents)
+      .leftJoin(agents, eq(approvalEvents.agentId, agents.id))
+      .orderBy(desc(approvalEvents.createdAt));
+
+    const csv = toCSV(
+      ['id', 'createdAt', 'agentName', 'eventType', 'delta', 'reason'],
+      rows.map((r) => [r.id, r.createdAt?.toISOString(), r.agentName, r.eventType, r.delta, r.reason]),
+    );
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="approval-events.csv"');
+    res.send(csv);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* GET /api/admin/export/bills */
+router.get('/admin/export/bills', async (_req, res, next) => {
+  try {
+    const rows = await db
+      .select({
+        id: bills.id,
+        introducedAt: bills.introducedAt,
+        title: bills.title,
+        sponsorName: agents.displayName,
+        committee: bills.committee,
+        status: bills.status,
+        billType: bills.billType,
+        lastActionAt: bills.lastActionAt,
+      })
+      .from(bills)
+      .leftJoin(agents, eq(bills.sponsorId, agents.id))
+      .orderBy(desc(bills.introducedAt));
+
+    const csv = toCSV(
+      ['id', 'introducedAt', 'title', 'sponsorName', 'committee', 'status', 'billType', 'lastActionAt'],
+      rows.map((r) => [r.id, r.introducedAt?.toISOString(), r.title, r.sponsorName, r.committee, r.status, r.billType, r.lastActionAt?.toISOString()]),
+    );
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="bills.csv"');
+    res.send(csv);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* GET /api/admin/export/bill-votes */
+router.get('/admin/export/bill-votes', async (_req, res, next) => {
+  try {
+    const voterAgents = alias(agents, 'voter');
+    const rows = await db
+      .select({
+        id: billVotes.id,
+        castAt: billVotes.castAt,
+        voterName: voterAgents.displayName,
+        billTitle: bills.title,
+        choice: billVotes.choice,
+      })
+      .from(billVotes)
+      .leftJoin(voterAgents, eq(billVotes.voterId, voterAgents.id))
+      .leftJoin(bills, eq(billVotes.billId, bills.id))
+      .orderBy(desc(billVotes.castAt));
+
+    const csv = toCSV(
+      ['id', 'castAt', 'voterName', 'billTitle', 'choice'],
+      rows.map((r) => [r.id, r.castAt?.toISOString(), r.voterName, r.billTitle, r.choice]),
+    );
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="bill-votes.csv"');
+    res.send(csv);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* GET /api/admin/export/laws */
+router.get('/admin/export/laws', async (_req, res, next) => {
+  try {
+    const rows = await db
+      .select({
+        id: laws.id,
+        enactedDate: laws.enactedDate,
+        title: laws.title,
+        isActive: laws.isActive,
+        billId: laws.billId,
+      })
+      .from(laws)
+      .orderBy(desc(laws.enactedDate));
+
+    const csv = toCSV(
+      ['id', 'enactedDate', 'title', 'isActive', 'billId'],
+      rows.map((r) => [r.id, r.enactedDate?.toISOString(), r.title, r.isActive, r.billId]),
+    );
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="laws.csv"');
+    res.send(csv);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* GET /api/admin/export/elections */
+router.get('/admin/export/elections', async (_req, res, next) => {
+  try {
+    const winnerAgents = alias(agents, 'winner');
+    const candidateAgents = alias(agents, 'candidate');
+
+    const rows = await db
+      .select({
+        electionId: elections.id,
+        positionType: elections.positionType,
+        status: elections.status,
+        scheduledDate: elections.scheduledDate,
+        votingStartDate: elections.votingStartDate,
+        votingEndDate: elections.votingEndDate,
+        certifiedDate: elections.certifiedDate,
+        winnerName: winnerAgents.displayName,
+        totalVotes: elections.totalVotes,
+        campaignId: campaigns.id,
+        candidateName: candidateAgents.displayName,
+        campaignStatus: campaigns.status,
+        contributions: campaigns.contributions,
+      })
+      .from(elections)
+      .leftJoin(winnerAgents, eq(elections.winnerId, winnerAgents.id))
+      .leftJoin(campaigns, eq(campaigns.electionId, elections.id))
+      .leftJoin(candidateAgents, eq(campaigns.agentId, candidateAgents.id))
+      .orderBy(desc(elections.createdAt));
+
+    const csv = toCSV(
+      ['electionId', 'positionType', 'status', 'scheduledDate', 'votingStartDate', 'votingEndDate', 'certifiedDate', 'winnerName', 'totalVotes', 'campaignId', 'candidateName', 'campaignStatus', 'contributions'],
+      rows.map((r) => [r.electionId, r.positionType, r.status, r.scheduledDate?.toISOString(), r.votingStartDate?.toISOString(), r.votingEndDate?.toISOString(), r.certifiedDate?.toISOString(), r.winnerName, r.totalVotes, r.campaignId, r.candidateName, r.campaignStatus, r.contributions]),
+    );
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="elections.csv"');
+    res.send(csv);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* GET /api/admin/export/agents */
+router.get('/admin/export/agents', async (_req, res, next) => {
+  try {
+    const rows = await db
+      .select({
+        id: agents.id,
+        displayName: agents.displayName,
+        name: agents.name,
+        alignment: agents.alignment,
+        modelProvider: agents.modelProvider,
+        model: agents.model,
+        reputation: agents.reputation,
+        balance: agents.balance,
+        approvalRating: agents.approvalRating,
+        isActive: agents.isActive,
+        registrationDate: agents.registrationDate,
+      })
+      .from(agents)
+      .orderBy(asc(agents.displayName));
+
+    const csv = toCSV(
+      ['id', 'displayName', 'name', 'alignment', 'modelProvider', 'model', 'reputation', 'balance', 'approvalRating', 'isActive', 'registrationDate'],
+      rows.map((r) => [r.id, r.displayName, r.name, r.alignment, r.modelProvider, r.model, r.reputation, r.balance, r.approvalRating, r.isActive, r.registrationDate?.toISOString()]),
+    );
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="agents-snapshot.csv"');
+    res.send(csv);
   } catch (error) {
     next(error);
   }
