@@ -33,6 +33,69 @@ const memoryCache = new Map<string, { block: string; ts: number }>();
 const MEMORY_TTL_MS = 60_000; // 1 minute — one per tick window per agent
 const MEMORY_DEPTH = 5; // last N successful decisions
 
+// Canonical action expected for each simulation phase
+const PHASE_ACTION_MAP: Record<string, string> = {
+  whip_signal:         'whip_signal',
+  bill_voting:         'vote',
+  committee_review:    'committee_review',
+  presidential_review: 'presidential_review',
+  veto_override:       'override_vote',
+  judicial_review:     'judicial_vote',
+  bill_proposal:       'propose',
+  campaigning:         'campaign_speech',
+  forum_post:          'forum_post',
+};
+
+// Known aliases that Ollama and other models hallucinate for each canonical action
+const ACTION_ALIASES: Record<string, string[]> = {
+  vote: [
+    'yea', 'nay', 'aye', 'vote_yea', 'vote_nay', 'vote_yes', 'vote_no',
+    'cast_vote', 'ballot', 'support', 'oppose', 'motion', 'follow',
+  ],
+  propose: [
+    'propose_bill', 'propose_legislation', 'submit_proposal', 'introduce_bill',
+    'submit_bill', 'create_bill', 'draft_bill', 'new_bill', 'introduce',
+    'proposal', 'legislation', 'bill',
+  ],
+  whip_signal: [
+    'whip', 'signal', 'send_signal', 'party_signal', 'party_whip',
+    'directive', 'issue_signal', 'recommend',
+  ],
+  committee_review: [
+    'review', 'committee_action', 'chair_decision', 'committee_decision',
+    'chair_review', 'approve', 'table', 'amend',
+  ],
+  presidential_review: [
+    'review', 'executive_action', 'sign', 'veto', 'sign_bill',
+    'presidential_action', 'executive_review', 'presidential_decision',
+  ],
+  override_vote: [
+    'override', 'veto_override', 'override_decision', 'sustain', 'veto_vote', 'override_veto',
+  ],
+  judicial_vote: [
+    'constitutional', 'unconstitutional', 'judicial_decision', 'constitutional_review',
+    'ruling', 'judicial_ruling',
+  ],
+  campaign_speech: [
+    'speech', 'campaign', 'rally', 'address', 'statement', 'campaign_statement',
+    'campaign_action', 'public_statement',
+  ],
+  forum_post: [
+    'post', 'forum', 'write', 'discuss', 'thread', 'forum_thread', 'post_message',
+  ],
+};
+
+function normalizeAction(rawAction: unknown, expectedAction: string): string | null {
+  if (typeof rawAction !== 'string') return null;
+  const normalized = rawAction.toLowerCase().replace(/[\s\-]+/g, '_').trim();
+  if (normalized === expectedAction) return expectedAction;
+  const aliases = ACTION_ALIASES[expectedAction] ?? [];
+  if (aliases.includes(normalized)) return expectedAction;
+  // Partial match: raw contains expected name
+  if (normalized.includes(expectedAction)) return expectedAction;
+  return null;
+}
+
 async function buildMemoryBlock(agentId: string): Promise<string> {
   const cached = memoryCache.get(agentId);
   if (cached && Date.now() - cached.ts < MEMORY_TTL_MS) return cached.block;
@@ -261,6 +324,28 @@ async function callHuggingFace(apiKey: string, model: string, systemPrompt: stri
   return response.generated_text ?? '';
 }
 
+async function callProvider(
+  provider: string,
+  agent: AgentRecord,
+  rc: ReturnType<typeof getRuntimeConfig>,
+  systemPrompt: string,
+  contextMessage: string,
+): Promise<string> {
+  const apiKey = await getApiKey(provider, agent.ownerUserId ?? null);
+  const model = agent.model ?? getDefaultModel(provider);
+  const truncated = contextMessage.slice(0, rc.maxPromptLengthChars);
+  switch (provider) {
+    case 'openai':      return callOpenAI(apiKey, model, systemPrompt, truncated, rc.maxOutputLengthTokens);
+    case 'google':      return callGoogle(apiKey, model, systemPrompt, truncated, rc.maxOutputLengthTokens);
+    case 'huggingface': return callHuggingFace(apiKey, model, systemPrompt, truncated, rc.maxOutputLengthTokens);
+    case 'anthropic':   return callAnthropic(apiKey, model, truncated, systemPrompt, rc.maxOutputLengthTokens);
+    default: {
+      const agentTemp = agent.temperature ? parseFloat(agent.temperature) : 0.9;
+      return callOllama(truncated, systemPrompt, rc.maxOutputLengthTokens, agentTemp, model || undefined);
+    }
+  }
+}
+
 export async function generateAgentDecision(
   agent: AgentRecord,
   contextMessage: string,
@@ -281,36 +366,11 @@ export async function generateAgentDecision(
   );
   const start = Date.now();
 
-  // Truncate prompt to guard rail limit
-  const truncated = contextMessage.slice(0, rc.maxPromptLengthChars);
-
-  let rawText: string | null = null;
+  let rawText = '';
   let latencyMs = 0;
 
   try {
-    const apiKey = await getApiKey(provider, agent.ownerUserId ?? null);
-    const model = agent.model ?? getDefaultModel(provider);
-
-    switch (provider) {
-      case 'openai':
-        rawText = await callOpenAI(apiKey, model, systemPrompt, truncated, rc.maxOutputLengthTokens);
-        break;
-      case 'google':
-        rawText = await callGoogle(apiKey, model, systemPrompt, truncated, rc.maxOutputLengthTokens);
-        break;
-      case 'huggingface':
-        rawText = await callHuggingFace(apiKey, model, systemPrompt, truncated, rc.maxOutputLengthTokens);
-        break;
-      case 'anthropic':
-        rawText = await callAnthropic(apiKey, model, truncated, systemPrompt, rc.maxOutputLengthTokens);
-        break;
-      default: {
-        const agentTemp = agent.temperature ? parseFloat(agent.temperature) : 0.9;
-        rawText = await callOllama(truncated, systemPrompt, rc.maxOutputLengthTokens, agentTemp, model || undefined);
-        break;
-      }
-    }
-
+    rawText = await callProvider(provider, agent, rc, systemPrompt, contextMessage);
     latencyMs = Date.now() - start;
     console.warn(`[AI] ${agent.displayName} (${provider}) responded in ${latencyMs}ms`);
   } catch (err) {
@@ -335,6 +395,81 @@ export async function generateAgentDecision(
     const e = rawText.lastIndexOf('}');
     if (s === -1 || e === -1) throw new Error('no JSON object found');
     const decision = JSON.parse(rawText.slice(s, e + 1)) as AgentDecision;
+
+    /* ── Action validation ─────────────────────────────────────────────── */
+    const expectedAction = phase ? PHASE_ACTION_MAP[phase] : undefined;
+    if (expectedAction && decision.action !== expectedAction) {
+      const canonical = normalizeAction(decision.action, expectedAction);
+
+      if (canonical) {
+        /* Alias match — normalize and preserve vote direction in data */
+        console.warn(`[AI] ${agent.displayName} (${provider}) action aliased: "${decision.action}" → "${canonical}"`);
+        if (expectedAction === 'vote' && !decision.data?.['choice']) {
+          const raw = String(decision.action).toLowerCase();
+          if (raw === 'yea' || raw === 'aye') decision.data = { ...decision.data, choice: 'yea' };
+          else if (raw === 'nay') decision.data = { ...decision.data, choice: 'nay' };
+        }
+        decision.action = canonical;
+      } else {
+        /* No alias match — log bad attempt, retry once with stricter prompt */
+        console.warn(`[AI] ${agent.displayName} (${provider}) unrecognized action "${decision.action}" for phase "${phase}" — retrying`);
+        await db.insert(agentDecisions).values({
+          agentId: agent.id,
+          provider,
+          phase: phase ?? null,
+          contextMessage,
+          rawResponse: rawText,
+          parsedAction: String(decision.action ?? 'unknown'),
+          parsedReasoning: `action_mismatch: expected "${expectedAction}", got "${String(decision.action)}"`,
+          success: false,
+          latencyMs,
+        }).catch(() => {/* non-fatal */});
+
+        const retryContext =
+          contextMessage +
+          `\n\nIMPORTANT: Your previous response used an invalid action "${String(decision.action)}". ` +
+          `You MUST respond with a JSON object where "action" is exactly "${expectedAction}". ` +
+          `No other action name is valid.`;
+
+        const retryStart = Date.now();
+        try {
+          const retryRaw = await callProvider(provider, agent, rc, systemPrompt, retryContext);
+          const rs = retryRaw.indexOf('{');
+          const re = retryRaw.lastIndexOf('}');
+          if (rs !== -1 && re !== -1) {
+            const retryDecision = JSON.parse(retryRaw.slice(rs, re + 1)) as AgentDecision;
+            const retryCanonical =
+              retryDecision.action === expectedAction
+                ? expectedAction
+                : normalizeAction(retryDecision.action, expectedAction);
+
+            if (retryCanonical) {
+              retryDecision.action = retryCanonical;
+              const retryLatency = Date.now() - retryStart;
+              await db.insert(agentDecisions).values({
+                agentId: agent.id,
+                provider,
+                phase: phase ?? null,
+                contextMessage: retryContext,
+                rawResponse: retryRaw,
+                parsedAction: retryDecision.action,
+                parsedReasoning: retryDecision.reasoning,
+                success: true,
+                latencyMs: latencyMs + retryLatency,
+              }).catch(() => {/* non-fatal */});
+              return retryDecision;
+            }
+          }
+        } catch {
+          /* retry API call failed */
+        }
+
+        /* Both attempts failed */
+        return { action: 'idle', reasoning: 'action_parse_failure' };
+      }
+    }
+    /* ── End action validation ─────────────────────────────────────────── */
+
     await db.insert(agentDecisions).values({
       agentId: agent.id,
       provider,
