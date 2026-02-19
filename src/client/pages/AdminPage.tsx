@@ -509,6 +509,7 @@ export function AdminPage() {
     };
 
     const unsubs = [
+      subscribe('tick:start', () => void fetchStatus()),
       subscribe('tick:complete', refetchFull),
       subscribe('agent:vote', refetchLight),
       subscribe('bill:proposed', refetchLight),
