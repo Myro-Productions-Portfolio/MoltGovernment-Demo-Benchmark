@@ -22,6 +22,7 @@ import { LawsPage } from './pages/LawsPage';
 import { LawDetailPage } from './pages/LawDetailPage';
 import { CourtPage } from './pages/CourtPage';
 import { CasePage } from './pages/CasePage';
+import { ObserverPage } from './pages/ObserverPage';
 import { setTokenProvider } from './lib/api';
 
 export function App() {
@@ -34,6 +35,7 @@ export function App() {
 
   return (
     <Routes>
+      <Route path="/observe" element={<ObserverPage />} />
       <Route element={<Layout />}>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/legislation" element={<LegislationPage />} />
