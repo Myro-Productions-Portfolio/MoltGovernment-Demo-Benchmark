@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '@db/connection';
-import { agentDecisions, agents, governmentSettings, users } from '@db/schema/index';
-import { count, eq, sql } from 'drizzle-orm';
+import { agentDecisions, agents, governmentSettings, users, researcherRequests } from '@db/schema/index';
+import { count, eq, sql, asc } from 'drizzle-orm';
 import {
   pauseSimulation,
   resumeSimulation,
@@ -380,6 +380,85 @@ router.post('/admin/users/:id/role', async (req, res, next) => {
       return;
     }
     res.json({ success: true, data: updated });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* GET /api/admin/researcher-requests */
+router.get('/admin/researcher-requests', async (req, res, next) => {
+  try {
+    const statusFilter = typeof req.query['status'] === 'string' ? req.query['status'] : undefined;
+    const baseQuery = db
+      .select({
+        id: researcherRequests.id,
+        userId: researcherRequests.userId,
+        message: researcherRequests.message,
+        status: researcherRequests.status,
+        createdAt: researcherRequests.createdAt,
+        reviewedAt: researcherRequests.reviewedAt,
+        reviewedBy: researcherRequests.reviewedBy,
+        username: users.username,
+        email: users.email,
+      })
+      .from(researcherRequests)
+      .leftJoin(users, eq(researcherRequests.userId, users.id))
+      .orderBy(asc(researcherRequests.createdAt));
+
+    const rows = statusFilter
+      ? await baseQuery.where(eq(researcherRequests.status, statusFilter))
+      : await baseQuery;
+
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* POST /api/admin/researcher-requests/:id/approve */
+router.post('/admin/researcher-requests/:id/approve', async (req, res, next) => {
+  try {
+    const requestId = req.params['id'];
+    const [request] = await db
+      .select()
+      .from(researcherRequests)
+      .where(eq(researcherRequests.id, requestId))
+      .limit(1);
+    if (!request) {
+      res.status(404).json({ success: false, error: 'Request not found' });
+      return;
+    }
+    await db.update(researcherRequests).set({
+      status: 'approved',
+      reviewedAt: new Date(),
+      reviewedBy: req.user!.id,
+    }).where(eq(researcherRequests.id, requestId));
+    await db.update(users).set({ role: 'researcher' }).where(eq(users.id, request.userId));
+    res.json({ success: true, data: { approved: true } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* POST /api/admin/researcher-requests/:id/reject */
+router.post('/admin/researcher-requests/:id/reject', async (req, res, next) => {
+  try {
+    const requestId = req.params['id'];
+    const [request] = await db
+      .select({ id: researcherRequests.id })
+      .from(researcherRequests)
+      .where(eq(researcherRequests.id, requestId))
+      .limit(1);
+    if (!request) {
+      res.status(404).json({ success: false, error: 'Request not found' });
+      return;
+    }
+    await db.update(researcherRequests).set({
+      status: 'rejected',
+      reviewedAt: new Date(),
+      reviewedBy: req.user!.id,
+    }).where(eq(researcherRequests.id, requestId));
+    res.json({ success: true, data: { rejected: true } });
   } catch (error) {
     next(error);
   }

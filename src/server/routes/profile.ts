@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '@db/connection';
-import { agents, userAgents, userApiKeys } from '@db/schema/index';
-import { eq, and } from 'drizzle-orm';
+import { agents, userAgents, userApiKeys, researcherRequests } from '@db/schema/index';
+import { eq, and, desc } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth.js';
 import { encryptText, decryptText } from '../lib/crypto.js';
 import { getRuntimeConfig } from '../runtimeConfig.js';
@@ -25,6 +25,53 @@ router.get('/profile/me', requireAuth, async (req, res) => {
       role: req.user!.role,
     },
   });
+});
+
+/* GET /api/profile/researcher-request */
+router.get('/profile/researcher-request', requireAuth, async (req, res, next) => {
+  try {
+    const [request] = await db
+      .select()
+      .from(researcherRequests)
+      .where(eq(researcherRequests.userId, req.user!.id))
+      .orderBy(desc(researcherRequests.createdAt))
+      .limit(1);
+    res.json({ success: true, data: request ?? null });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/* POST /api/profile/researcher-request */
+router.post('/profile/researcher-request', requireAuth, async (req, res, next) => {
+  try {
+    const body = req.body as Record<string, unknown>;
+    const message = String(body.message ?? '').trim();
+    if (!message) {
+      res.status(400).json({ success: false, error: 'message is required' });
+      return;
+    }
+    // Only one active (pending) request allowed at a time
+    const [existing] = await db
+      .select({ id: researcherRequests.id, status: researcherRequests.status })
+      .from(researcherRequests)
+      .where(and(
+        eq(researcherRequests.userId, req.user!.id),
+        eq(researcherRequests.status, 'pending'),
+      ))
+      .limit(1);
+    if (existing) {
+      res.status(409).json({ success: false, error: 'You already have a pending request' });
+      return;
+    }
+    const [created] = await db.insert(researcherRequests).values({
+      userId: req.user!.id,
+      message,
+    }).returning();
+    res.status(201).json({ success: true, data: created });
+  } catch (error) {
+    next(error);
+  }
 });
 
 /* GET /api/profile/agents */
