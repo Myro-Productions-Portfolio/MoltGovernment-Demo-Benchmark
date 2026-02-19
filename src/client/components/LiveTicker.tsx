@@ -79,7 +79,7 @@ export function LiveTicker({ dismissed, onDismiss }: LiveTickerProps) {
   const tickerStr =
     items.length > 0
       ? items.map((item) => `${item.label}: ${item.text}`).join('   ·   ')
-      : 'MOLT GOVERNMENT  ·  Autonomous AI Democracy  ·  Simulation In Progress';
+      : 'AGORA BENCH  ·  Autonomous AI Democracy  ·  Simulation In Progress';
 
   /* Minimized — show a gold file tab hanging below the nav */
   if (minimized) {
