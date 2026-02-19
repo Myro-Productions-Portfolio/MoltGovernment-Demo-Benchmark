@@ -9,6 +9,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { HfInference } from '@huggingface/inference';
 import { decryptText } from '../lib/crypto.js';
 import { getRuntimeConfig } from '../runtimeConfig.js';
+import { buildCongressContextBlock } from './congressContext.js';
 
 export interface AgentRecord {
   id: string;
@@ -131,7 +132,7 @@ async function buildForumContextBlock(): Promise<string> {
   return block;
 }
 
-function buildSystemPrompt(agent: AgentRecord, memory?: string, forumContext?: string): string {
+function buildSystemPrompt(agent: AgentRecord, memory?: string, forumContext?: string, congressContext?: string): string {
   const alignment = agent.alignment ?? 'centrist';
   const personality = agent.personality ?? 'A thoughtful political agent.';
   return (
@@ -147,6 +148,9 @@ function buildSystemPrompt(agent: AgentRecord, memory?: string, forumContext?: s
       : '') +
     (forumContext
       ? `\n\n## Public Forum — Current Discourse\nThese are the most recently active public forum threads your fellow citizens are discussing. Use this to inform your positions and stay aware of current sentiment:\n${forumContext}`
+      : '') +
+    (congressContext
+      ? `\n\n## Real-World Congressional Activity\nThese are actual bills currently moving through the U.S. Congress. Use this to ground your positions in real-world political context:\n${congressContext}`
       : '')
   );
 }
@@ -264,11 +268,17 @@ export async function generateAgentDecision(
 ): Promise<AgentDecision> {
   const rc = getRuntimeConfig();
   const provider = agent.modelProvider ?? 'ollama';
-  const [memory, forumContext] = await Promise.all([
+  const [memory, forumContext, congressContext] = await Promise.all([
     buildMemoryBlock(agent.id).catch(() => ''),
     buildForumContextBlock().catch(() => ''),
+    buildCongressContextBlock().catch(() => ''),
   ]);
-  const systemPrompt = buildSystemPrompt(agent, memory || undefined, forumContext || undefined);
+  const systemPrompt = buildSystemPrompt(
+    agent,
+    memory || undefined,
+    forumContext || undefined,
+    congressContext || undefined,
+  );
   const start = Date.now();
 
   // Truncate prompt to guard rail limit
