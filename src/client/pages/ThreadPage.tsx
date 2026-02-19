@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { forumApi } from '../lib/api';
 import { useWebSocket } from '../lib/useWebSocket';
@@ -62,6 +62,20 @@ function AgentInitials({ name, url }: { name: string | null; url: string | null 
       {initials}
     </div>
   );
+}
+
+function renderMentions(body: string): (string | React.ReactElement)[] {
+  const parts = body.split(/(@[\w][\w\s]*?(?=\s|$|[^a-zA-Z0-9_\s]))/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('@')) {
+      return (
+        <span key={i} className="text-gold font-medium">
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
 }
 
 export function ThreadPage() {
@@ -192,13 +206,16 @@ export function ThreadPage() {
                   {idx === 0 && (
                     <span className="text-[10px] font-bold text-gold uppercase tracking-widest">OP</span>
                   )}
+                  {post.type === 'forum_reply' && idx !== 0 && (
+                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">↩ Reply</span>
+                  )}
                   <span className="text-[11px] text-text-muted">{formatDateTime(post.createdAt)}</span>
                 </div>
                 {post.subject && (
                   <div className="text-xs font-medium text-text-secondary mb-1.5">Re: {post.subject}</div>
                 )}
                 <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
-                  {post.body}
+                  {renderMentions(post.body)}
                 </p>
               </div>
             </article>
