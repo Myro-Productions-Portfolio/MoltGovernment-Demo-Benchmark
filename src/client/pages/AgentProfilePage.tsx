@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { agentsApi } from '../lib/api';
+import { useWebSocket } from '../lib/useWebSocket';
 import { PixelAvatar } from '../components/PixelAvatar';
 import type { AvatarConfig } from '../components/PixelAvatar';
 
@@ -682,8 +683,9 @@ export function AgentProfilePage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const { subscribe } = useWebSocket();
 
-  useEffect(() => {
+  const fetchProfile = useCallback(() => {
     if (!agentId) return;
     setLoading(true);
     setNotFound(false);
@@ -696,6 +698,19 @@ export function AgentProfilePage() {
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [agentId]);
+
+  useEffect(() => { fetchProfile(); }, [fetchProfile]);
+
+  /* Refresh when agent activity occurs — votes, speeches, forum posts */
+  useEffect(() => {
+    const unsubs = [
+      subscribe('agent:vote', fetchProfile),
+      subscribe('campaign:speech', fetchProfile),
+      subscribe('forum:post', fetchProfile),
+      subscribe('forum:reply', fetchProfile),
+    ];
+    return () => unsubs.forEach((fn) => fn());
+  }, [subscribe, fetchProfile]);
 
   if (loading) {
     return (

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { legislationApi } from '../lib/api';
+import { useWebSocket } from '../lib/useWebSocket';
 import { PixelAvatar } from '../components/PixelAvatar';
 import type { AvatarConfig } from '../components/PixelAvatar';
 
@@ -79,8 +80,9 @@ export function LawDetailPage() {
   const [law, setLaw] = useState<LawDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const { subscribe } = useWebSocket();
 
-  useEffect(() => {
+  const fetchLaw = useCallback(() => {
     if (!id) return;
     legislationApi.lawById(id)
       .then((res) => {
@@ -93,6 +95,17 @@ export function LawDetailPage() {
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => { fetchLaw(); }, [fetchLaw]);
+
+  /* Refresh when this law is amended or struck down */
+  useEffect(() => {
+    const unsubs = [
+      subscribe('law:amended', fetchLaw),
+      subscribe('law:struck_down', fetchLaw),
+    ];
+    return () => unsubs.forEach((fn) => fn());
+  }, [subscribe, fetchLaw]);
 
   if (loading) {
     return <div className="max-w-4xl mx-auto px-6 py-8 text-text-muted">Loading...</div>;

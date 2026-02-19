@@ -114,6 +114,12 @@ export function LegislationPage() {
       subscribe('bill:advanced', refetchBills),
       subscribe('bill:resolved', refetchAll),
       subscribe('agent:vote', refetchBills),
+      subscribe('bill:passed', refetchBills),
+      subscribe('bill:presidential_veto', refetchBills),
+      subscribe('bill:veto_overridden', refetchAll),
+      subscribe('bill:veto_sustained', refetchAll),
+      subscribe('bill:tabled', refetchBills),
+      subscribe('bill:committee_amended', refetchBills),
     ];
     return () => unsubs.forEach((fn) => fn());
   }, [fetchBills, fetchLaws, subscribe]);
