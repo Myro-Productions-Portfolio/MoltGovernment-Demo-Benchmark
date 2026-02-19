@@ -3,26 +3,20 @@ import { useWebSocket } from '../lib/useWebSocket';
 import { activityApi } from '../lib/api';
 import type { ActivityEvent } from '@shared/types';
 
-const EVENT_LABEL: Record<string, string> = {
-  vote: 'VOTE',
-  bill: 'BILL',
-  party: 'PARTY',
-  campaign: 'CAMPAIGN',
-  election: 'ELECTION',
-  law: 'LAW ENACTED',
-  debate: 'DEBATE',
-  'forum:reply': 'REPLY',
-};
+/* Only high-signal activity types shown in the ticker on initial load */
+const TICKER_TYPES = new Set([
+  'bill_resolved',
+  'law_amended',
+  'law_struck_down',
+  'judicial_review_initiated',
+]);
 
+/* Only high-signal WS events shown in the ticker */
 const WS_EVENTS = [
-  'bill:proposed',
-  'bill:advanced',
   'bill:resolved',
-  'agent:vote',
   'election:voting_started',
   'election:completed',
-  'campaign:speech',
-  'forum:reply',
+  'forum:post',
 ] as const;
 
 interface TickerItem {
@@ -36,12 +30,51 @@ interface LiveTickerProps {
   onDismiss: () => void;
 }
 
-function eventToTicker(e: ActivityEvent): TickerItem {
+function activityToTicker(e: ActivityEvent): TickerItem {
+  const labelMap: Record<string, string> = {
+    bill_resolved:             'LEGISLATION',
+    law_amended:               'LAW',
+    law_struck_down:           'COURT',
+    judicial_review_initiated: 'JUDICIAL',
+  };
   return {
     id: e.id,
-    label: EVENT_LABEL[e.type] ?? e.type.toUpperCase(),
+    label: labelMap[e.type] ?? e.type.toUpperCase(),
     text: e.description,
   };
+}
+
+function wsEventToTicker(wsType: string, raw: unknown): TickerItem {
+  const d = (raw ?? {}) as Record<string, string>;
+  let label = 'EVENT';
+  let text = wsType.replace(/[_:]/g, ' ');
+
+  switch (wsType) {
+    case 'bill:resolved':
+      label = 'LEGISLATION';
+      text = d.result === 'passed'
+        ? `"${d.title ?? 'A bill'}" enacted into law`
+        : `"${d.title ?? 'A bill'}" vetoed`;
+      break;
+    case 'election:completed':
+      label = 'ELECTION';
+      text = d.winnerName
+        ? `${d.winnerName} elected ${d.positionTitle ?? d.positionType ?? 'to office'}`
+        : 'Election results certified';
+      break;
+    case 'election:voting_started':
+      label = 'ELECTION';
+      text = `Voting underway: ${d.positionTitle ?? d.positionType ?? 'office'}`;
+      break;
+    case 'forum:post':
+      label = 'FORUM';
+      text = d.authorName && d.title
+        ? `${d.authorName}: "${d.title}"`
+        : 'New forum thread posted';
+      break;
+  }
+
+  return { id: `ws-${Date.now()}-${Math.random()}`, label, text };
 }
 
 export function LiveTicker({ dismissed, onDismiss }: LiveTickerProps) {
@@ -49,28 +82,26 @@ export function LiveTicker({ dismissed, onDismiss }: LiveTickerProps) {
   const [minimized, setMinimized] = useState(false);
   const { subscribe } = useWebSocket();
 
-  /* Initial fetch */
+  /* Initial fetch — filter to high-signal types client-side */
   useEffect(() => {
-    void activityApi.recent({ limit: 20 }).then((res) => {
+    void activityApi.recent({ limit: 100 }).then((res) => {
       if (res.data && Array.isArray(res.data)) {
-        setItems((res.data as ActivityEvent[]).map(eventToTicker));
+        const filtered = (res.data as ActivityEvent[])
+          .filter((e) => TICKER_TYPES.has(e.type))
+          .slice(0, 20)
+          .map(activityToTicker);
+        setItems(filtered);
       }
     }).catch(() => {});
   }, []);
 
-  /* Live WebSocket events */
+  /* Live WebSocket events — highlights only */
   useEffect(() => {
-    const handle = (wsType: string) => (raw: unknown) => {
-      const d = raw as { description?: string } | null;
-      const text = d?.description ?? wsType.replace(/[_:]/g, ' ');
-      const label = wsType.split(':').map((s) => s.toUpperCase()).join(' ');
-      setItems((prev) => [
-        { id: `ws-${Date.now()}-${Math.random()}`, label, text },
-        ...prev.slice(0, 29),
-      ]);
-    };
-
-    const unsubs = WS_EVENTS.map((evt) => subscribe(evt, handle(evt)));
+    const unsubs = WS_EVENTS.map((evt) =>
+      subscribe(evt, (raw) => {
+        setItems((prev) => [wsEventToTicker(evt, raw), ...prev.slice(0, 29)]);
+      })
+    );
     return () => unsubs.forEach((fn) => fn());
   }, [subscribe]);
 

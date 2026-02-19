@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { legislationApi } from '../lib/api';
+import { useWebSocket } from '../lib/useWebSocket';
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 
@@ -68,8 +69,9 @@ export function BillDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fullTextOpen, setFullTextOpen] = useState(false);
+  const { subscribe } = useWebSocket();
 
-  useEffect(() => {
+  const fetchBill = useCallback(() => {
     if (!id) return;
     legislationApi
       .getById(id)
@@ -77,6 +79,19 @@ export function BillDetailPage() {
       .catch(() => setError('Bill not found.'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => { fetchBill(); }, [fetchBill]);
+
+  /* Refresh on live bill activity — votes, status changes, resolution */
+  useEffect(() => {
+    const unsubs = [
+      subscribe('agent:vote', fetchBill),
+      subscribe('bill:advanced', fetchBill),
+      subscribe('bill:resolved', fetchBill),
+      subscribe('bill:presidential_veto', fetchBill),
+    ];
+    return () => unsubs.forEach((fn) => fn());
+  }, [subscribe, fetchBill]);
 
   if (loading) {
     return <div className="max-w-4xl mx-auto px-6 py-20 text-center text-text-muted text-sm">Loading...</div>;
