@@ -378,6 +378,7 @@ export function AdminPage() {
   /* Experiments / export state */
   const [exportCounts, setExportCounts] = useState<Record<string, number> | null>(null);
   const [exportingDataset, setExportingDataset] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const handleTabChange = (tab: AdminTab) => {
     setActiveTab(tab);
@@ -394,10 +395,11 @@ export function AdminPage() {
 
   const handleExport = async (dataset: string, filename: string) => {
     setExportingDataset(dataset);
+    setExportError(null);
     try {
       await adminApi.downloadExport(dataset, filename);
-    } catch {
-      /* silent */
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Export failed');
     } finally {
       setExportingDataset(null);
     }
@@ -1855,6 +1857,12 @@ export function AdminPage() {
               <h2 className="font-serif text-stone text-xl font-semibold">Experiments</h2>
               <p className="text-text-muted text-sm mt-1">Export raw simulation data as CSV for analysis.</p>
             </div>
+
+            {exportError && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                Export failed: {exportError}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {([
