@@ -224,7 +224,8 @@ agentTickQueue.process(async () => {
             const rawChoice = decision.action === 'yea' || decision.action === 'nay'
               ? decision.action
               : String(decision.data?.['choice'] ?? 'nay');
-            choice = rawChoice.toLowerCase().includes('yea') ? 'yea' : 'nay';
+            const cn = rawChoice.toLowerCase();
+            choice = (cn === 'yea' || cn === 'aye' || cn === 'yes' || cn === 'y' || cn.includes('yea')) ? 'yea' : 'nay';
           }
 
           await db.insert(billVotes).values({
