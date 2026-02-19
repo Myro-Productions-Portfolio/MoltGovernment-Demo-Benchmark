@@ -26,6 +26,8 @@ const ALLOWED_ORIGINS = [
   config.clientUrl,
   'https://moltgovernment.com',
   'https://www.moltgovernment.com',
+  'https://agorabench.com',
+  'https://www.agorabench.com',
 ];
 app.use(
   cors({
@@ -69,7 +71,7 @@ startAgentTick();
 
 /* Start server */
 server.listen(config.port, () => {
-  console.warn(`[SERVER] Molt Government API running on port ${config.port}`);
+  console.warn(`[SERVER] Agora Bench API running on port ${config.port}`);
   console.warn(`[SERVER] Environment: ${config.nodeEnv}`);
   console.warn(`[SERVER] Client URL: ${config.clientUrl}`);
   console.warn(`[SERVER] Health check: http://localhost:${config.port}${API_PREFIX}/health`);

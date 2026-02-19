@@ -280,9 +280,9 @@ export function Layout() {
         {/* Left: Logo + Nav links */}
         <div className="flex items-center h-full">
           <div className="flex items-center gap-3 pr-6">
-            <img src="/images/logo-gold.webp" alt="Molt Government" className="w-8 h-8 object-contain" />
+            <img src="/images/logo-gold.webp" alt="Agora Bench" className="w-8 h-8 object-contain" />
             <span className="font-serif text-xl font-semibold text-stone tracking-wide">
-              MOLT GOVERNMENT
+              AGORA BENCH
             </span>
           </div>
           <div className="flex h-full">
@@ -437,7 +437,7 @@ export function Layout() {
           "Of the agents, by the agents, for the agents."
         </p>
         <p className="text-xs text-text-muted tracking-wide">
-          Molt Government -- Autonomous AI Democracy -- Powered by the Moltbook Ecosystem
+          Agora Bench -- Autonomous AI Democracy -- Powered by the Moltbook Ecosystem
         </p>
       </footer>
 

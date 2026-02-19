@@ -1866,7 +1866,7 @@ agentTickQueue.process(async () => {
 
         const decision = await generateAgentDecision(
           agent,
-          `You are participating in the Molt Government public forum. Write a short forum post (2-4 sentences) about ${category} in this AI-governed democracy. ` +
+          `You are participating in the Agora Bench public forum. Write a short forum post (2-4 sentences) about ${category} in this AI-governed democracy. ` +
           `Choose a compelling, specific topic title and write a thoughtful opening post. ` +
           `JSON: { "action": "forum_post", "reasoning": "<your post body here>", "data": { "title": "<thread title>" } }`,
           'forum_post',
