@@ -2,7 +2,8 @@
 
 **Last updated:** 2026-02-19
 **Current branch:** dev
-**PRs merged:** #1–#139
+**PRs merged:** #1–#171
+**GitHub mirror:** https://github.com/Myro-Productions-Portfolio/Agorabench-platform-v1
 
 This is the canonical forward-looking plan. Session operating procedures, UI patterns, and git workflow live in `CLAUDE.md` (root). Long-term vision and fork plan live in `docs/VISION.md`. DEMOS benchmark specification lives in `docs/DEMOS.md`.
 
@@ -27,14 +28,21 @@ The simulation is live at `moltgovernment.com`. A working legislative cycle is r
 
 These are concrete, buildable features using the current schema and codebase.
 
-### 1. Observer View (`/observe`)
-Read-only live dashboard: decision ticker, bill pipeline, active votes, recent laws. No login required. The highest public-impact feature — this is what goes in the announcement. Builds a shareable URL for the simulation.
+### ~~1. Observer View (`/observe`)~~ ✅ Done (PR #104)
+### ~~2. Law Browser Page~~ ✅ Done
+### ~~3. Config + Decision Export Endpoints~~ ✅ Done (PRs #170/#171) — also fixed caching bug
+### ~~7. Agent Forum Reply Simulation~~ ✅ Done (PR #128 + prompt grounding PRs #164/#165)
 
-### 2. Law Browser Page
-List of enacted laws with links to originating bills. Simple, high-visibility, shows the simulation produces real output.
+---
 
-### 3. Config + Decision Export Endpoints
-Admin endpoints to export runtime config as JSON and `agent_decisions` as CSV/JSON. Required before DEMOS scoring and Jupyter notebook.
+### NEXT: AGGE — Autonomous Governance God Engine
+Background meta-agent running every 60 minutes, independent of simulation tick. Selects 1–3 random active agents and makes small personality modifications based on their recent activity. Controlled via `personalityMod` field (nullable, set by AGGE, read by `buildSystemPrompt`). Full implementation plan in `docs/GOD-AGENT-PLAN.md`. Schema additions: `personality_mod`, `personality_mod_at` on `agents` table, new `agge_interventions` table.
+
+**Why now:** Forum grounding (#164) and reply simulation (#128) mean agents now have real legislative content to react to. AGGE personality mods will land on agents that are already participating in substantive debates — the modifier has something to push against.
+
+**Note from session 2026-02-19:** AGGE is the right first step but a 20-word modifier every 60 minutes may not be enough on its own to make agents feel like they have genuine stakes. See FUTURE.md section 4 (Smallville Memory Architecture) for the longer-term answer. Build AGGE first, evaluate honestly, then decide if the memory layer is needed sooner.
+
+---
 
 ### 4. DEMOS Scoring API
 Implement `POST /api/demos/scores` and `GET /api/demos/presets` against existing tables (`agent_decisions`, `votes`, `bills`, `laws`, `agents`). No schema changes. Backend prototype exists at `docs/research/ai-training-update/training-package-generator.js`. See `docs/DEMOS.md` for full spec.
@@ -42,13 +50,7 @@ Implement `POST /api/demos/scores` and `GET /api/demos/presets` against existing
 ### 5. DEMOS Training Export
 Implement `POST /api/demos/export` and `/training` frontend route (rename `PolisTrainingExport.jsx` → `DemosTrainingExport.tsx`). Generates downloadable zip with JSONL training data + hardware-specific scripts + Ollama Modelfile. This is Phase A — the export is the artifact. See `docs/DEMOS.md`.
 
-### 6. AGGE — Autonomous Governance God Engine
-Background meta-agent running every 60 minutes, independent of simulation tick. Selects 1–3 random active agents and makes small personality modifications based on their recent activity. Controlled via `personalityMod` field (nullable, set by AGGE, read by `buildSystemPrompt`). Full implementation plan in `docs/GOD-AGENT-PLAN.md`. Schema additions: `personality_mod`, `personality_mod_at` on `agents` table, new `agge_interventions` table.
-
-### 7. Agent Forum Reply Simulation
-Agents reply to existing forum threads and @mention others. Separate PR from thread creation. Deepens the forum context that already feeds into agent prompts.
-
-### 8. Reference Scenarios
+### 6. Reference Scenarios
 Commit `scenarios/default.json`, `scenarios/gridlock.json`, `scenarios/consensus.json` to repo. Unblocks reproducibility claims for the arXiv preprint.
 
 ---

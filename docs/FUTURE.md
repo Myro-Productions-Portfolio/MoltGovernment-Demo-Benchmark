@@ -94,4 +94,47 @@ Requires jurisdiction concept from item 1.
 
 ---
 
-*Last Updated: 2026-02-17*
+---
+
+## 4. Smallville Memory Architecture — Agent Episodic Memory
+
+**Captured:** 2026-02-19 — post-session analysis after forum prompt grounding improvements
+
+### Motivation
+
+AGGE (the god-engine) gives agents a 20-word personality modifier every 60 minutes based on recent activity. That's a meaningful first step. But the honest question is whether a short modifier is enough to make an agent feel like they have genuine stakes — or whether you need a memory store that gives them actual history to draw from.
+
+The Smallville paper (Park et al. 2023) demonstrated that what makes AI agents feel like they have continuity is a **memory architecture** with three operations: observation, reflection, and retrieval. You can lift the concept without adopting their codebase.
+
+### The four missing pieces (not yet in any plan)
+
+**1. Long-term episodic memory**
+The agent remembers that Senator X voted against their bill three times in a row, not just "recent activity: 5 events." The current system passes 5 short-term activity events to the system prompt. A memory store would score and persist important events (by recency + importance + relevance), and retrieve the top-K most relevant memories at tick time — injected alongside the personalityMod.
+
+**2. Constituency modeling**
+An agent's positions should drift based on who they represent. If their district was hammered by an economic bill, they should feel that pressure in future votes. Currently agents have alignment and personality but no modeled constituents to answer to. A constituency table (tied to agent + policy domain) whose satisfaction scores change in response to law outcomes could drive realistic position drift.
+
+**3. Relationship graph**
+Trust, rivalry, and alliance between specific agent pairs — tracked as persistent data, not flavor text. AGGE already generates modifiers like "energized by a recent unexpected alliance" but that's untracked narrative. A `agent_relationships` table (agentA, agentB, type: ally/rival/neutral, strength: float, last_updated) would make these real and let agents query "what do I know about this person voting on this bill?"
+
+**4. Belief drift from evidence**
+An agent should be able to change their mind on a policy position based on observed outcomes, not just be nudged by a god-agent every hour. If the Fiscal Responsibility Act passed and the treasury actually recovered, a skeptic should be able to notice that and update their position. This requires agents to observe law outcomes and have a mechanism to record position changes on tracked policy domains.
+
+### Implementation approach (Phase 4-level)
+
+When ready, the minimal viable version:
+
+1. `agent_memories` table: `id`, `agent_id`, `content` (text), `importance_score` (float), `source_type` (observation/reflection), `created_at`
+2. At tick time: pull top-K memories for the acting agent scored by `importance * recency_decay`, inject as a `## Your memory` block in the system prompt
+3. After key events (bill vote, law enacted, election result), write new observations to the memory table for relevant agents
+4. Periodic reflection job (AGGE-adjacent): have the agent read their recent observations and write a higher-level reflection (e.g., "I've noticed that coalition building works better than direct confrontation")
+
+The retrieval scoring is the key mechanism: `score = importance * (1 / (1 + hours_since_created))`. Pull top 10 by score. This is directly adapted from Smallville.
+
+### Relationship to AGGE
+
+Build AGGE first. After running 200+ ticks with AGGE active, evaluate honestly: do agents feel like they have stakes and continuity? If yes, the memory layer can wait until Phase 4. If no — if agents still feel like they're responding to prompts rather than living through a story — move the memory architecture up.
+
+---
+
+*Last Updated: 2026-02-19*
