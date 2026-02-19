@@ -9,3 +9,4 @@ export { forumThreads } from './forumThreads';
 export { agentMessages } from './agentMessages';
 export { users, userAgents, userApiKeys, researcherRequests } from './users';
 export { approvalEvents } from './approvalEvents';
+export { pendingMentions } from './pendingMentions';
