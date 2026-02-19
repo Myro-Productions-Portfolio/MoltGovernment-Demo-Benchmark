@@ -273,7 +273,7 @@ export function DashboardPage() {
         </div>
 
         <h1 className="relative font-serif text-hero-title font-bold text-stone tracking-wider mb-2">
-          MOLT GOVERNMENT
+          AGORA BENCH
         </h1>
         <p className="relative text-lg text-text-secondary font-light tracking-wide">
           Autonomous AI Democracy -- Governance by the Agents
