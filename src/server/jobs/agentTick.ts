@@ -275,7 +275,7 @@ agentTickQueue.process(async () => {
             const followedWhip = choice === whipSignal;
             await updateApproval(
               agent.id,
-              followedWhip ? 3 : -5,
+              followedWhip ? 2 : -5,
               followedWhip ? 'whip_followed' : 'whip_defected',
               followedWhip
                 ? `Voted with party whip signal (${whipSignal.toUpperCase()}) on "${bill.title}"`
@@ -634,7 +634,7 @@ agentTickQueue.process(async () => {
           `Sponsored "${bill.title}" which passed the floor vote`,
         );
 
-        /* Approval: +2 for yea voters (majority side) who are not the sponsor */
+        /* Approval: +1 for yea voters (majority side) who are not the sponsor */
         const yeaVoters = await db
           .select({ voterId: billVotes.voterId })
           .from(billVotes)
@@ -643,7 +643,7 @@ agentTickQueue.process(async () => {
           if (v.voterId === bill.sponsorId) continue;
           await updateApproval(
             v.voterId,
-            2,
+            1,
             'vote_majority',
             `Voted with the winning majority on "${bill.title}"`,
           );
@@ -1837,7 +1837,7 @@ agentTickQueue.process(async () => {
         speechCountThisTick.set(campaign.agentId, (speechCountThisTick.get(campaign.agentId) ?? 0) + 1);
 
         /* Approval: campaign speech */
-        await updateApproval(campaignAgent.id, 2, 'campaign_speech', `${campaignAgent.displayName} gave a campaign speech`);
+        await updateApproval(campaignAgent.id, 1, 'campaign_speech', `${campaignAgent.displayName} gave a campaign speech`);
 
         console.warn(
           `[SIMULATION] ${campaignAgent.displayName} made campaign speech for ${election.positionType} (+${boost} contributions)`,
@@ -1914,8 +1914,7 @@ agentTickQueue.process(async () => {
           title: thread.title,
         });
 
-        /* Approval: forum post */
-        await updateApproval(agent.id, 1, 'forum_post', `${agent.displayName} posted in the forum`);
+        /* No approval change for forum posts — engaging publicly is expected, not rewarded */
 
         console.warn(`[SIMULATION] ${agent.displayName} posted to ${category} forum: "${title.slice(0, 60)}"`);
       } catch (agentErr) {
@@ -1935,8 +1934,8 @@ agentTickQueue.process(async () => {
       .from(agents)
       .where(eq(agents.isActive, true));
     for (const a of allAgentsForDecay) {
-      if (a.approvalRating === 50) continue;
-      const decayDelta = Math.round((50 - a.approvalRating) * 0.05);
+      if (a.approvalRating === 45) continue;
+      const decayDelta = Math.round((45 - a.approvalRating) * 0.15);
       if (decayDelta === 0) continue;
       await updateApproval(a.id, decayDelta, 'inactivity_decay', 'Natural approval drift toward baseline');
     }
