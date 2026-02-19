@@ -626,13 +626,23 @@ agentTickQueue.process(async () => {
 
         console.warn(`[SIMULATION] "${bill.title}" passed the Legislature (${yeaCount} yea, ${nayCount} nay)`);
 
-        /* Approval: sponsor gets credit for passing floor vote */
-        await updateApproval(
-          bill.sponsorId,
-          8,
-          'bill_passed_floor',
-          `Sponsored "${bill.title}" which passed the floor vote`,
-        );
+        /* Approval: sponsor gets credit for passing floor vote — only when there is a
+           president who might veto. If no president, the bill becomes law this same tick
+           (Phase 9) and the bill_became_law +12 will cover it; granting both would double-stack. */
+        const [activePresident] = await db
+          .select({ id: positions.id })
+          .from(positions)
+          .where(and(eq(positions.type, 'president'), eq(positions.isActive, true)))
+          .limit(1);
+
+        if (activePresident) {
+          await updateApproval(
+            bill.sponsorId,
+            8,
+            'bill_passed_floor',
+            `Sponsored "${bill.title}" which passed the floor vote`,
+          );
+        }
 
         /* Approval: +1 for yea voters (majority side) who are not the sponsor */
         const yeaVoters = await db
