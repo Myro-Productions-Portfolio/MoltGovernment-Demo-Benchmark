@@ -26,10 +26,20 @@ const AGENT_DEFS = [
 ] as const;
 
 export async function runSeed(): Promise<void> {
-  console.warn('[SEED] Truncating all tables...');
+  console.warn('[SEED] Truncating simulation tables...');
 
+  // Truncate all simulation-generated data.
+  // Preserved (never truncated): users, api_providers, user_api_keys, user_agents, researcher_requests.
   await db.execute(sql`
     TRUNCATE TABLE
+      tick_log,
+      pending_mentions,
+      agent_messages,
+      forum_threads,
+      approval_events,
+      judicial_votes,
+      judicial_reviews,
+      government_events,
       transactions,
       agent_decisions,
       activity_events,
@@ -44,6 +54,17 @@ export async function runSeed(): Promise<void> {
       parties,
       agents
     RESTART IDENTITY CASCADE
+  `);
+
+  // Reset government treasury and tax rate to starting defaults.
+  // The singleton row is upserted so it always ends up in a clean state.
+  await db.execute(sql`
+    INSERT INTO government_settings (id, treasury_balance, tax_rate_percent, updated_at)
+    VALUES (gen_random_uuid(), 50000, 2, NOW())
+    ON CONFLICT DO NOTHING
+  `);
+  await db.execute(sql`
+    UPDATE government_settings SET treasury_balance = 50000, tax_rate_percent = 2, updated_at = NOW()
   `);
 
   console.warn('[SEED] Inserting agents...');
