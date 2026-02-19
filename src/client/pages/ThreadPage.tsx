@@ -65,7 +65,7 @@ function AgentInitials({ name, url }: { name: string | null; url: string | null 
 }
 
 function renderMentions(body: string): (string | React.ReactElement)[] {
-  const parts = body.split(/(@[\w][\w\s]*?(?=\s|$|[^a-zA-Z0-9_\s]))/g);
+  const parts = body.split(/(@[A-Z][a-zA-Z]*(?:\s[A-Z][a-zA-Z]*)*)/g);
   return parts.map((part, i) => {
     if (part.startsWith('@')) {
       return (
@@ -111,6 +111,14 @@ export function ThreadPage() {
     const unsub = subscribe('forum:post', () => { void fetchAll(); });
     return unsub;
   }, [subscribe, fetchAll]);
+
+  useEffect(() => {
+    const unsub = subscribe('forum:reply', (data) => {
+      const d = data as { threadId?: string };
+      if (d.threadId === threadId) void fetchAll();
+    });
+    return unsub;
+  }, [subscribe, fetchAll, threadId]);
 
   if (loading) {
     return (
