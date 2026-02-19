@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useWebSocket } from '../lib/useWebSocket';
 import { useUser, SignInButton, UserButton } from '@clerk/clerk-react';
 import { GlobalSearch } from './GlobalSearch';
@@ -9,41 +9,74 @@ import { ToastContainer } from './ToastContainer';
 import { isTickerEnabled, setTickerEnabled, onTickerChange } from '../lib/tickerPrefs';
 import { toast } from '../lib/toastStore';
 
-const NAV_LINKS = [
-  { to: '/', label: 'Capitol' },
-  { to: '/agents', label: 'Agents' },
-  { to: '/legislation', label: 'Legislative' },
-  { to: '/court', label: 'Court' },
-  { to: '/elections', label: 'Elections' },
-  { to: '/parties', label: 'Parties' },
-  { to: '/capitol-map', label: 'Map' },
-  { to: '/calendar', label: 'Calendar' },
-  { to: '/forum', label: 'Forum' },
-] as const;
+type NavSubItem = { to: string; label: string; description: string };
+type NavItem =
+  | { label: string; to: string; subitems?: never }
+  | { label: string; to?: never; subitems: NavSubItem[] };
+
+const NAV_ITEMS: NavItem[] = [
+  {
+    label: 'Capitol',
+    subitems: [
+      { to: '/', label: 'Dashboard', description: 'Government overview and live activity' },
+      { to: '/capitol-map', label: 'Capitol Map', description: 'Interactive map of the capitol complex' },
+    ],
+  },
+  {
+    label: 'Agents',
+    to: '/agents',
+  },
+  {
+    label: 'Legislative',
+    subitems: [
+      { to: '/legislation', label: 'Bills', description: 'Active legislation in committee and on the floor' },
+      { to: '/laws', label: 'Laws', description: 'Enacted legislation and its effects' },
+    ],
+  },
+  {
+    label: 'Judicial',
+    subitems: [
+      { to: '/court', label: 'Court Docket', description: 'Active and resolved judicial reviews' },
+    ],
+  },
+  {
+    label: 'Civic',
+    subitems: [
+      { to: '/elections', label: 'Elections', description: 'Campaigns, voting, and results' },
+      { to: '/parties', label: 'Parties', description: 'Political parties and membership' },
+      { to: '/forum', label: 'Forum', description: 'Public discourse between agents and citizens' },
+      { to: '/calendar', label: 'Calendar', description: 'Government schedule and upcoming events' },
+    ],
+  },
+];
 
 /* G+key navigation map */
 const GO_KEYS: Record<string, string> = {
-  h: '/',
-  a: '/agents',
-  l: '/legislation',
-  c: '/court',
-  e: '/elections',
-  p: '/parties',
-  f: '/forum',
+  h: '/',             // Capitol (home)
+  a: '/agents',       // Agents
+  l: '/legislation',  // Legislative — Bills
+  w: '/laws',         // laWs
+  j: '/court',        // Judicial
+  e: '/elections',    // Elections
+  p: '/parties',      // Parties
+  f: '/forum',        // Forum
+  c: '/calendar',     // Calendar
+  m: '/capitol-map',  // Map
 };
 
 export function Layout() {
   const { isConnected, subscribe } = useWebSocket();
   const { isSignedIn, isLoaded } = useUser();
   const navigate = useNavigate();
+  const location = useLocation();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [tickerEnabled, setTickerEnabledState] = useState(() => isTickerEnabled());
   const gPressedRef = useRef(false);
   const gTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const drawerCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const menuCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* Sync when ProfilePage (or any other source) changes the preference */
   useEffect(() => {
@@ -163,10 +196,11 @@ export function Layout() {
         return;
       }
 
-      /* Esc — close any open modal */
+      /* Esc — close any open modal or dropdown */
       if (e.key === 'Escape') {
         setSearchOpen(false);
         setShortcutsOpen(false);
+        setOpenMenu(null);
         return;
       }
 
@@ -211,18 +245,25 @@ export function Layout() {
       .catch(() => setUserRole(null));
   }, [isSignedIn]);
 
-  function handleDrawerEnter() {
-    if (drawerCloseTimerRef.current) {
-      clearTimeout(drawerCloseTimerRef.current);
-      drawerCloseTimerRef.current = null;
-    }
-    setDrawerOpen(true);
+  function hasActiveSubitem(item: NavItem): boolean {
+    if (!item.subitems) return false;
+    return item.subitems.some((sub) =>
+      sub.to === '/' ? location.pathname === '/' : location.pathname.startsWith(sub.to)
+    );
   }
 
-  function handleDrawerLeave() {
-    drawerCloseTimerRef.current = setTimeout(() => {
-      setDrawerOpen(false);
-    }, 3000);
+  function handleMenuEnter(label: string) {
+    if (menuCloseTimerRef.current) {
+      clearTimeout(menuCloseTimerRef.current);
+      menuCloseTimerRef.current = null;
+    }
+    setOpenMenu(label);
+  }
+
+  function handleMenuLeave() {
+    menuCloseTimerRef.current = setTimeout(() => {
+      setOpenMenu(null);
+    }, 150);
   }
 
   return (
@@ -245,21 +286,69 @@ export function Layout() {
             </span>
           </div>
           <div className="flex h-full">
-            {NAV_LINKS.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                end={link.to === '/'}
-                className={({ isActive }) =>
-                  `flex items-center px-5 h-full text-nav-link font-medium uppercase tracking-wide border-b-2 transition-all duration-200 ${
-                    isActive
-                      ? 'text-gold border-gold'
-                      : 'text-text-secondary border-transparent hover:text-text-primary hover:bg-white/[0.03]'
-                  }`
-                }
+            {NAV_ITEMS.map((item) => (
+              <div
+                key={item.label}
+                className="relative h-full flex"
+                onMouseEnter={() => item.subitems && handleMenuEnter(item.label)}
+                onMouseLeave={() => item.subitems && handleMenuLeave()}
               >
-                {link.label}
-              </NavLink>
+                {item.to ? (
+                  <NavLink
+                    to={item.to}
+                    className={({ isActive }) =>
+                      `flex items-center px-5 h-full text-nav-link font-medium uppercase tracking-wide border-b-2 transition-all duration-200 ${
+                        isActive
+                          ? 'text-gold border-gold'
+                          : 'text-text-secondary border-transparent hover:text-text-primary hover:bg-white/[0.03]'
+                      }`
+                    }
+                  >
+                    {item.label}
+                  </NavLink>
+                ) : (
+                  <button
+                    className={`flex items-center gap-1.5 px-5 h-full text-nav-link font-medium uppercase tracking-wide border-b-2 transition-all duration-200 ${
+                      hasActiveSubitem(item)
+                        ? 'text-gold border-gold'
+                        : 'text-text-secondary border-transparent hover:text-text-primary hover:bg-white/[0.03]'
+                    }`}
+                  >
+                    {item.label}
+                    <svg viewBox="0 0 10 6" className="w-2 h-2 opacity-50" aria-hidden="true">
+                      <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                )}
+
+                {item.subitems && openMenu === item.label && (
+                  <div
+                    className="absolute top-full left-0 z-50 min-w-[240px] border border-border border-t-0 shadow-xl"
+                    style={{ background: 'linear-gradient(180deg, #3A3D42 0%, #2F3136 100%)' }}
+                    onMouseEnter={() => handleMenuEnter(item.label)}
+                    onMouseLeave={handleMenuLeave}
+                  >
+                    {item.subitems.map((sub) => (
+                      <NavLink
+                        key={sub.to}
+                        to={sub.to}
+                        end={sub.to === '/'}
+                        onClick={() => setOpenMenu(null)}
+                        className={({ isActive }) =>
+                          `block px-5 py-3 transition-colors border-b border-border/30 last:border-b-0 ${
+                            isActive
+                              ? 'text-gold bg-white/[0.04]'
+                              : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
+                          }`
+                        }
+                      >
+                        <span className="block text-[11px] font-semibold uppercase tracking-widest">{sub.label}</span>
+                        <span className="block text-xs text-text-muted mt-0.5">{sub.description}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         </div>
@@ -361,157 +450,6 @@ export function Layout() {
       {/* Toast notifications */}
       <ToastContainer />
 
-      {/* Left-edge hot zone — invisible trigger strip */}
-      <div
-        className="fixed left-0 top-[64px] bottom-0 w-5 z-40"
-        onMouseEnter={handleDrawerEnter}
-        onMouseLeave={handleDrawerLeave}
-        aria-hidden="true"
-      />
-
-      {/* Left-edge submenu drawer */}
-      <div
-        className={`fixed left-0 top-[64px] bottom-0 z-40 w-60 flex flex-col border-r border-border shadow-xl transition-transform duration-200 ${
-          drawerOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-        style={{ background: 'linear-gradient(180deg, #3A3D42 0%, #2F3136 100%)' }}
-        onMouseEnter={handleDrawerEnter}
-        onMouseLeave={handleDrawerLeave}
-        role="navigation"
-        aria-label="Section navigation"
-      >
-        <nav className="flex flex-col py-4 gap-0.5 overflow-y-auto">
-          <NavLink
-            to="/"
-            end
-            className={({ isActive }) =>
-              `px-5 py-2.5 text-sm font-medium uppercase tracking-wide transition-colors ${
-                isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
-              }`
-            }
-            onClick={() => setDrawerOpen(false)}
-          >
-            Capitol
-          </NavLink>
-
-          <NavLink
-            to="/agents"
-            className={({ isActive }) =>
-              `px-5 py-2.5 text-sm font-medium uppercase tracking-wide transition-colors ${
-                isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
-              }`
-            }
-            onClick={() => setDrawerOpen(false)}
-          >
-            Agents
-          </NavLink>
-
-          <div>
-            <span className="px-5 py-2 text-xs font-semibold uppercase tracking-widest text-text-muted block mt-2">
-              Legislative
-            </span>
-            <NavLink
-              to="/legislation"
-              className={({ isActive }) =>
-                `pl-8 pr-5 py-2 text-sm transition-colors block ${
-                  isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
-                }`
-              }
-              onClick={() => setDrawerOpen(false)}
-            >
-              Bills
-            </NavLink>
-            <NavLink
-              to="/laws"
-              className={({ isActive }) =>
-                `pl-8 pr-5 py-2 text-sm transition-colors block ${
-                  isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
-                }`
-              }
-              onClick={() => setDrawerOpen(false)}
-            >
-              Laws
-            </NavLink>
-          </div>
-
-          <div>
-            <span className="px-5 py-2 text-xs font-semibold uppercase tracking-widest text-text-muted block mt-2">
-              Court
-            </span>
-            <NavLink
-              to="/court"
-              className={({ isActive }) =>
-                `pl-8 pr-5 py-2 text-sm transition-colors block ${
-                  isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
-                }`
-              }
-              onClick={() => setDrawerOpen(false)}
-            >
-              Docket
-            </NavLink>
-          </div>
-
-          <NavLink
-            to="/elections"
-            className={({ isActive }) =>
-              `px-5 py-2.5 text-sm font-medium uppercase tracking-wide transition-colors ${
-                isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
-              }`
-            }
-            onClick={() => setDrawerOpen(false)}
-          >
-            Elections
-          </NavLink>
-
-          <NavLink
-            to="/parties"
-            className={({ isActive }) =>
-              `px-5 py-2.5 text-sm font-medium uppercase tracking-wide transition-colors ${
-                isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
-              }`
-            }
-            onClick={() => setDrawerOpen(false)}
-          >
-            Parties
-          </NavLink>
-
-          <NavLink
-            to="/capitol-map"
-            className={({ isActive }) =>
-              `px-5 py-2.5 text-sm font-medium uppercase tracking-wide transition-colors ${
-                isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
-              }`
-            }
-            onClick={() => setDrawerOpen(false)}
-          >
-            Map
-          </NavLink>
-
-          <NavLink
-            to="/calendar"
-            className={({ isActive }) =>
-              `px-5 py-2.5 text-sm font-medium uppercase tracking-wide transition-colors ${
-                isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
-              }`
-            }
-            onClick={() => setDrawerOpen(false)}
-          >
-            Calendar
-          </NavLink>
-
-          <NavLink
-            to="/forum"
-            className={({ isActive }) =>
-              `px-5 py-2.5 text-sm font-medium uppercase tracking-wide transition-colors ${
-                isActive ? 'text-gold' : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.04]'
-              }`
-            }
-            onClick={() => setDrawerOpen(false)}
-          >
-            Forum
-          </NavLink>
-        </nav>
-      </div>
     </div>
   );
 }
