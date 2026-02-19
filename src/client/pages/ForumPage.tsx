@@ -85,6 +85,11 @@ export function ForumPage() {
     return unsub;
   }, [subscribe, fetchThreads]);
 
+  useEffect(() => {
+    const unsub = subscribe('forum:reply', () => { void fetchThreads(); });
+    return unsub;
+  }, [subscribe, fetchThreads]);
+
   const pinned = threads.filter((t) => t.isPinned);
   const regular = threads.filter((t) => !t.isPinned);
 
