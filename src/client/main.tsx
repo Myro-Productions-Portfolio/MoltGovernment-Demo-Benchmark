@@ -21,7 +21,7 @@ if (!root) {
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <BrowserRouter>
-      <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignInUrl="/" afterSignUpUrl="/">
+      <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
         <App />
       </ClerkProvider>
     </BrowserRouter>
