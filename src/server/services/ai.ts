@@ -100,6 +100,27 @@ function normalizeAction(rawAction: unknown, expectedAction: string): string | n
   return null;
 }
 
+function sanitizeJsonString(raw: string): string {
+  let s = raw;
+  s = s.replace(/\*\*/g, '');                           // strip markdown bold markers
+  s = s.replace(/""(\w+)":/g, '"$1":');                 // fix ""key": → "key":
+  s = s.replace(/,(\s*[}\]])/g, '$1');                  // fix trailing commas before } or ]
+  s = s.replace(/([{,]\s*)data(\s*:)/g, '$1"data"$2');  // fix unquoted "data" key
+  return s;
+}
+
+function tryPartialRecovery(raw: string): AgentDecision | null {
+  const actionMatch = raw.match(/"action"\s*:\s*"([^"]+)"/);
+  if (!actionMatch) return null;
+  const reasoningMatch = raw.match(/"reasoning"\s*:\s*"([^"]*)"/);
+  const choiceMatch = raw.match(/"choice"\s*:\s*"([^"]+)"/);
+  return {
+    action: actionMatch[1],
+    reasoning: reasoningMatch?.[1] ?? 'partial recovery',
+    ...(choiceMatch ? { data: { choice: choiceMatch[1] } } : {}),
+  };
+}
+
 async function buildMemoryBlock(agentId: string): Promise<string> {
   const cached = memoryCache.get(agentId);
   if (cached && Date.now() - cached.ts < MEMORY_TTL_MS) return cached.block;
@@ -337,6 +358,7 @@ async function callOllama(contextMessage: string, systemPrompt: string, maxToken
       model: model ?? config.ollama.model,
       prompt: systemPrompt + '\n\n' + contextMessage,
       stream: false,
+      format: 'json',
       options: { temperature, num_predict: maxTokens },
     }),
   });
@@ -447,9 +469,24 @@ export async function generateAgentDecision(
 
   try {
     const s = rawText.indexOf('{');
+    if (s === -1) throw new Error('no JSON object found');
     const e = rawText.lastIndexOf('}');
-    if (s === -1 || e === -1) throw new Error('no JSON object found');
-    const decision = JSON.parse(rawText.slice(s, e + 1)) as AgentDecision;
+
+    let decision: AgentDecision | undefined;
+    if (e !== -1) {
+      const jsonSubstr = rawText.slice(s, e + 1);
+      try { decision = JSON.parse(jsonSubstr) as AgentDecision; }
+      catch { try { decision = JSON.parse(sanitizeJsonString(jsonSubstr)) as AgentDecision; } catch { /* fall through to partial recovery */ } }
+    }
+    if (!decision) {
+      const recovered = tryPartialRecovery(rawText);
+      if (recovered) {
+        console.warn(`[AI] ${agent.displayName} (${provider}) JSON malformed — partial recovery applied`);
+        decision = recovered;
+      } else {
+        throw new Error('JSON parse failed — no recovery possible');
+      }
+    }
 
     /* ── Action validation ─────────────────────────────────────────────── */
     const expectedAction = phase ? PHASE_ACTION_MAP[phase] : undefined;
