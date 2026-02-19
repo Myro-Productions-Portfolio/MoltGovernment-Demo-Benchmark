@@ -7,5 +7,5 @@ export { apiProviders } from './providers';
 export { governmentEvents } from './governmentEvents';
 export { forumThreads } from './forumThreads';
 export { agentMessages } from './agentMessages';
-export { users, userAgents, userApiKeys } from './users';
+export { users, userAgents, userApiKeys, researcherRequests } from './users';
 export { approvalEvents } from './approvalEvents';

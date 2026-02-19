@@ -31,6 +31,13 @@ interface ApiKeyRow {
   isActive: boolean;
 }
 
+interface ResearcherRequestRow {
+  id: string;
+  status: string;
+  message: string;
+  createdAt: string;
+}
+
 /* ── Constants ───────────────────────────────────────────────────────────── */
 
 const PROVIDERS = ['anthropic', 'openai', 'google', 'huggingface', 'ollama'];
@@ -707,6 +714,9 @@ export function ProfilePage() {
   const [agents, setAgents] = useState<AgentRow[]>([]);
   const [apiKeys, setApiKeys] = useState<ApiKeyRow[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [researcherRequest, setResearcherRequest] = useState<ResearcherRequestRow | null | undefined>(undefined);
+  const [requestMessage, setRequestMessage] = useState('');
+  const [submittingRequest, setSubmittingRequest] = useState(false);
 
   const fetchAgents = useCallback(async () => {
     try { const res = await profileApi.getAgents(); setAgents(res.data as AgentRow[]); }
@@ -731,7 +741,25 @@ export function ProfilePage() {
   useEffect(() => {
     void fetchAgents();
     void fetchApiKeys();
+    profileApi.getResearcherRequest()
+      .then((r) => setResearcherRequest((r.data as ResearcherRequestRow | undefined) ?? null))
+      .catch(() => setResearcherRequest(null));
   }, [fetchAgents, fetchApiKeys]);
+
+  const handleSubmitResearcherRequest = async () => {
+    if (!requestMessage.trim()) return;
+    setSubmittingRequest(true);
+    try {
+      const r = await profileApi.submitResearcherRequest(requestMessage.trim());
+      setResearcherRequest((r.data as ResearcherRequestRow | undefined) ?? null);
+      setRequestMessage('');
+      toast('Request submitted', { body: 'Your researcher access request is under review.', type: 'success' });
+    } catch {
+      toast('Submission failed', { body: 'Could not submit request. Try again.', type: 'error' });
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
 
   if (!isLoaded) {
     return (
@@ -785,6 +813,71 @@ export function ProfilePage() {
         <ApiKeysTab apiKeys={apiKeys} onRefresh={() => void fetchApiKeys()} />
       )}
       {activeTab === 'preferences' && <PreferencesTab />}
+
+      {/* Researcher Access */}
+      <div className="rounded-lg border border-border bg-surface p-6 space-y-4 mt-8">
+        <h2 className="font-serif text-lg font-semibold text-stone">Researcher Access</h2>
+
+        {researcherRequest === undefined && (
+          <p className="text-text-muted text-sm">Loading...</p>
+        )}
+
+        {researcherRequest !== undefined && researcherRequest?.status === 'approved' && (
+          <div className="space-y-2">
+            <span className="badge border border-green-700/30 text-green-400 bg-green-900/20">Researcher Access Granted</span>
+            <p className="text-text-secondary text-sm">You have access to data exports and the experiment console as they become available.</p>
+          </div>
+        )}
+
+        {researcherRequest !== undefined && researcherRequest?.status === 'pending' && (
+          <div className="space-y-2">
+            <span className="badge border border-gold/30 text-gold bg-gold/10">Access Pending Review</span>
+            <p className="text-text-muted text-sm italic">&quot;{researcherRequest.message}&quot;</p>
+            <p className="text-text-muted text-xs">Submitted {new Date(researcherRequest.createdAt).toLocaleDateString()}</p>
+          </div>
+        )}
+
+        {researcherRequest !== undefined && researcherRequest?.status === 'rejected' && (
+          <div className="space-y-3">
+            <span className="badge border border-border/40 text-text-muted bg-border/10">Request Not Approved</span>
+            <p className="text-text-secondary text-sm">You may submit a new request with additional context.</p>
+            <textarea
+              className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-gold/50"
+              rows={4}
+              placeholder="Tell us about your research — institution, project, what you plan to study"
+              value={requestMessage}
+              onChange={(e) => setRequestMessage(e.target.value)}
+            />
+            <button
+              onClick={() => void handleSubmitResearcherRequest()}
+              disabled={submittingRequest || !requestMessage.trim()}
+              className="px-4 py-2 bg-gold/10 border border-gold/30 text-gold text-sm rounded hover:bg-gold/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submittingRequest ? 'Submitting...' : 'Request Access'}
+            </button>
+          </div>
+        )}
+
+        {researcherRequest !== undefined && researcherRequest === null && (
+          <div className="space-y-3">
+            <p className="text-text-secondary text-sm">Request access to data exports and the experiment console.</p>
+            <textarea
+              className="w-full bg-surface border border-border rounded px-3 py-2 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-gold/50"
+              rows={4}
+              placeholder="Tell us about your research — institution, project, what you plan to study"
+              value={requestMessage}
+              onChange={(e) => setRequestMessage(e.target.value)}
+            />
+            <button
+              onClick={() => void handleSubmitResearcherRequest()}
+              disabled={submittingRequest || !requestMessage.trim()}
+              className="px-4 py-2 bg-gold/10 border border-gold/30 text-gold text-sm rounded hover:bg-gold/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submittingRequest ? 'Submitting...' : 'Request Access'}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
