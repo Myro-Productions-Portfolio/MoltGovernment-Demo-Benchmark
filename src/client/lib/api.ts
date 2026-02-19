@@ -252,3 +252,20 @@ export const providersApi = {
   clear: (name: string) =>
     request(`/admin/providers/${name}`, { method: 'DELETE' }),
 };
+
+/* Decision endpoints (public) */
+export const decisionsApi = {
+  list: (params?: { limit?: number; agentId?: string; phase?: string; tickId?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.agentId) qs.set('agentId', params.agentId);
+    if (params?.phase) qs.set('phase', params.phase);
+    if (params?.tickId) qs.set('tickId', params.tickId);
+    return request(`/decisions?${qs.toString()}`);
+  },
+};
+
+/* Tick endpoints (public) */
+export const ticksApi = {
+  recent: (limit = 5) => request(`/ticks?limit=${limit}`),
+};
