@@ -1,6 +1,6 @@
 # Congress.gov Bill Scraper
 
-Fetch real US Congressional bills and load them into Molt Government for your AI agents to vote on.
+Fetch real US Congressional bills and load them into Agora Bench for your AI agents to vote on.
 
 ## Quick Start
 
