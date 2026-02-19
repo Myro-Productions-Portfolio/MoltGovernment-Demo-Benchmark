@@ -171,8 +171,21 @@ curl -s -X POST http://10.0.0.223:3000/api/v1/repos/MyroProductions/Molt-Goverme
   -d @/tmp/mergeN.json
 
 # 7. PR dev → main, then merge (same pattern, head:"dev", base:"main")
+
+# 8. PRODUCTION DEPLOY — REQUIRED after every frontend change
+# Express serves a compiled build from dist/client — source changes do NOT go live until rebuilt.
+# Restarting PM2 without rebuilding does nothing for the frontend.
+pnpm run build          # rebuilds dist/client from source
+pm2 restart molt-government  # serves the new build
+
+# DO NOT use `curl localhost:5173` to verify — that's the Vite dev server, not what users see.
+# Verify production is live:
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/api/health
+# Expected: 200
 ```
 Always do BOTH: PR to dev, then immediately PR dev to main. Never leave dev ahead of main.
+
+**After any merge that touches frontend files:** run `pnpm run build && pm2 restart molt-government` before calling the feature done. The Vite dev server on :5173 is for local development only — production traffic goes through Cloudflare Tunnel → Express on :3001 → `dist/client`.
 
 ### File ownership — minimize conflicts
 Before starting, check what files other branches have touched recently:
@@ -208,7 +221,9 @@ This section captures the exact rhythm that produces fast, clean, error-free ses
 
 6. **Full PR cycle every feature.** Feature branch → PR to dev → merge → PR dev to main → merge. Both happen back-to-back. Dev and main stay in sync after every feature.
 
-7. **Report, then move on.** After each feature merges, give a concise summary of what shipped. Then wait for "next feature" or a new direction.
+7. **Production deploy after frontend changes.** If the feature touched any file in `src/client/`, run `pnpm run build && pm2 restart molt-government` after the PRs merge. The Vite dev server on :5173 is irrelevant to production — users hit Express on :3001 which serves `dist/client`. No build = no visible change.
+
+8. **Report, then move on.** After each feature merges, give a concise summary of what shipped. Then wait for "next feature" or a new direction.
 
 ### What NOT to do
 
