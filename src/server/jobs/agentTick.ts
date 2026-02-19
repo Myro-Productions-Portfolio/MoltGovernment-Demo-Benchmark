@@ -24,7 +24,7 @@ import {
   tickLog,
   pendingMentions,
 } from '@db/schema/index';
-import { generateAgentDecision } from '../services/ai.js';
+import { generateAgentDecision, buildSimulationStateBlock } from '../services/ai.js';
 import { broadcast } from '../websocket.js';
 import { ALIGNMENT_ORDER } from '@shared/constants';
 
@@ -1860,15 +1860,38 @@ agentTickQueue.process(async () => {
 
     const FORUM_CATEGORIES = ['legislation', 'elections', 'policy', 'party', 'economy'] as const;
 
+    // Load simulation state once for all forum candidates this tick
+    const simState = await buildSimulationStateBlock().catch(() => ({ block: '', threadTitles: [] as string[] }));
+    const recentTopicsNote = simState.threadTitles.length > 0
+      ? `\n\nTopics already discussed recently — do NOT repeat these angles:\n${simState.threadTitles.slice(0, 10).map((t) => `  - "${t}"`).join('\n')}`
+      : '';
+    const simStateNote = simState.block
+      ? `\n\nCurrent simulation events to react to:\n${simState.block}`
+      : '';
+
     for (const agent of forumCandidates) {
       try {
-        // Pick a category relevant to the agent's recent context
-        const category = FORUM_CATEGORIES[Math.floor(Math.random() * FORUM_CATEGORIES.length)];
+        // Weight category toward agent's alignment — libertarians and conservatives favor economy/policy,
+        // progressives favor policy/elections, technocrats favor legislation
+        const alignment = agent.alignment?.toLowerCase() ?? '';
+        const weightedCategories: typeof FORUM_CATEGORIES[number][] =
+          alignment === 'progressive'   ? ['policy', 'elections', 'economy', 'legislation', 'party'] :
+          alignment === 'conservative'  ? ['economy', 'policy', 'legislation', 'party', 'elections'] :
+          alignment === 'technocrat'    ? ['legislation', 'policy', 'economy', 'elections', 'party'] :
+          alignment === 'libertarian'   ? ['economy', 'policy', 'party', 'legislation', 'elections'] :
+          ['legislation', 'elections', 'policy', 'party', 'economy'];
+        // Bias toward first two in the weighted list (67% chance)
+        const category = Math.random() < 0.67
+          ? weightedCategories[Math.floor(Math.random() * 2)]
+          : weightedCategories[Math.floor(Math.random() * weightedCategories.length)];
 
         const decision = await generateAgentDecision(
           agent,
-          `You are participating in the Agora Bench public forum. Write a short forum post (2-4 sentences) about ${category} in this AI-governed democracy. ` +
-          `Choose a compelling, specific topic title and write a thoughtful opening post. ` +
+          `You are posting to the Agora Bench public forum. Write a short opening post (2-4 sentences) about a specific ${category} issue that your constituents care about.` +
+          `${simStateNote}` +
+          `${recentTopicsNote}\n\n` +
+          `Pick a concrete, specific topic — reference actual legislation, a real policy problem, or a recent event from the simulation above if relevant. ` +
+          `Do not write abstractly about governance theory or AI philosophy. Write about what needs to get done and why. ` +
           `JSON: { "action": "forum_post", "reasoning": "<your post body here>", "data": { "title": "<thread title>" } }`,
           'forum_post',
         );
@@ -2021,13 +2044,28 @@ agentTickQueue.process(async () => {
 
           const mentionContext = isMentioned ? 'You were mentioned in this thread. ' : '';
 
+          // How many posts are already in this thread?
+          const [countRow] = await db
+            .select({ n: sql<number>`COUNT(*)` })
+            .from(agentMessages)
+            .where(eq(agentMessages.threadId, thread.id));
+          const postCount = Number(countRow?.n ?? 0);
+
+          // Resolution nudge: once a thread has 3+ posts, push toward conclusion
+          const resolutionInstruction = postCount >= 3
+            ? `This thread has had ${postCount} posts already. Rather than restating positions, try to reach a conclusion: ` +
+              `propose a specific policy action, identify what the group agrees on, or call for a concrete next step. `
+            : `Add your perspective — agree, disagree, or build on what's been said, but be specific and reference actual policy details. `;
+
           const decision = await generateAgentDecision(
             agent,
             `${mentionContext}Reply to this forum thread in the Agora Bench public forum.\n\n` +
             `Thread: "${thread.title}" [${thread.category}]\n\n` +
             `Recent posts:\n${threadContext}\n\n` +
             `Agents you can @mention by name: ${allAgentNames}\n\n` +
-            `Write a reply (2-4 sentences) that engages with the discussion. Use @DisplayName to mention agents if relevant. ` +
+            `${resolutionInstruction}` +
+            `Do not repeat what was already said. Do not write in generalities about AI governance or political philosophy. ` +
+            `Use @DisplayName to mention agents if relevant. ` +
             `JSON: { "action": "forum_reply", "reasoning": "<your reply body, may contain @Name>", "data": { "threadId": "${thread.id}", "mentions": ["Name1"] } }`,
             'forum_reply',
           );
