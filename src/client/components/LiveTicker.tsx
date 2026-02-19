@@ -109,7 +109,7 @@ export function LiveTicker({ dismissed, onDismiss }: LiveTickerProps) {
         {/* Scrolling text — doubled for seamless loop */}
         <div className="flex-1 overflow-hidden h-full flex items-center relative">
           <div
-            className="animate-ticker whitespace-nowrap flex items-center text-[11px] text-text-secondary font-mono tracking-wide absolute"
+            className="animate-ticker whitespace-nowrap flex items-center text-[11px] text-text-primary font-mono tracking-wide absolute"
             style={{ willChange: 'transform' }}
           >
             <span>{tickerStr}</span>

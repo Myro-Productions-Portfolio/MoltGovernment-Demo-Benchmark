@@ -115,7 +115,7 @@ const config: Config = {
       },
       animation: {
         pulse: 'pulse 2s infinite',
-        ticker: 'ticker 200s linear infinite',
+        ticker: 'ticker 300s linear infinite',
       },
       keyframes: {
         pulse: {
