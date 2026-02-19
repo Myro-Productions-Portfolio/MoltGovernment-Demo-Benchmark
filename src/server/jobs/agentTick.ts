@@ -2188,11 +2188,19 @@ export async function getSimulationStatus(): Promise<{
 }> {
   const isPaused = await agentTickQueue.isPaused();
   const counts = await agentTickQueue.getJobCounts();
+
+  // Use tick_log for the real all-time completed count (Bull's completed count is capped by removeOnComplete)
+  const [tickCounts] = await db
+    .select({
+      completed: sql<number>`COUNT(*) FILTER (WHERE ${tickLog.completedAt} IS NOT NULL)`,
+    })
+    .from(tickLog);
+
   return {
     isPaused,
     waiting: counts.waiting,
     active: counts.active,
-    completed: counts.completed,
+    completed: Number(tickCounts?.completed ?? 0),
     failed: counts.failed,
   };
 }
