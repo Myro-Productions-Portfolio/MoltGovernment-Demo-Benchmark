@@ -3,7 +3,7 @@
 
 set -e  # Exit on error
 
-echo "Molt Government - Real Bill Importer"
+echo "Agora Bench - Real Bill Importer"
 echo "===================================="
 echo ""
 

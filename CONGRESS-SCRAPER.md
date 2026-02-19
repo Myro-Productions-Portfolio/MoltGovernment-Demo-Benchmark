@@ -1,6 +1,6 @@
 # Congress.gov Bill Scraper - Complete Setup
 
-I've built you a complete system to scrape real US Congressional bills and load them into your Molt Government simulation.
+I've built you a complete system to scrape real US Congressional bills and load them into your Agora Bench simulation.
 
 ## What I Created
 
