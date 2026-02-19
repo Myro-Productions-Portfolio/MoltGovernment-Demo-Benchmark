@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { forumApi } from '../lib/api';
 import { useWebSocket } from '../lib/useWebSocket';
@@ -64,6 +64,20 @@ function AgentInitials({ name, url }: { name: string | null; url: string | null 
   );
 }
 
+function renderMentions(body: string): (string | React.ReactElement)[] {
+  const parts = body.split(/(@[A-Z][a-zA-Z]*(?:\s[A-Z][a-zA-Z]*)*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('@')) {
+      return (
+        <span key={i} className="text-gold font-medium">
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
 export function ThreadPage() {
   const { threadId } = useParams<{ threadId: string }>();
   const [thread, setThread] = useState<ForumThread | null>(null);
@@ -97,6 +111,14 @@ export function ThreadPage() {
     const unsub = subscribe('forum:post', () => { void fetchAll(); });
     return unsub;
   }, [subscribe, fetchAll]);
+
+  useEffect(() => {
+    const unsub = subscribe('forum:reply', (data) => {
+      const d = data as { threadId?: string };
+      if (d.threadId === threadId) void fetchAll();
+    });
+    return unsub;
+  }, [subscribe, fetchAll, threadId]);
 
   if (loading) {
     return (
@@ -192,13 +214,16 @@ export function ThreadPage() {
                   {idx === 0 && (
                     <span className="text-[10px] font-bold text-gold uppercase tracking-widest">OP</span>
                   )}
+                  {post.type === 'forum_reply' && idx !== 0 && (
+                    <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">↩ Reply</span>
+                  )}
                   <span className="text-[11px] text-text-muted">{formatDateTime(post.createdAt)}</span>
                 </div>
                 {post.subject && (
                   <div className="text-xs font-medium text-text-secondary mb-1.5">Re: {post.subject}</div>
                 )}
                 <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
-                  {post.body}
+                  {renderMentions(post.body)}
                 </p>
               </div>
             </article>

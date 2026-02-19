@@ -165,6 +165,16 @@ export function Layout() {
           duration: 4000,
         });
       }),
+      subscribe('forum:reply', (data) => {
+        const d = data as { agentName?: string; mentionedNames?: string[] };
+        toast('Forum Reply', {
+          body: d.mentionedNames && d.mentionedNames.length > 0
+            ? `${d.agentName ?? 'Agent'} mentioned ${d.mentionedNames.join(', ')} in the forum`
+            : `${d.agentName ?? 'Agent'} replied in the forum`,
+          type: 'info',
+          duration: 4000,
+        });
+      }),
     ];
     return () => unsubs.forEach((fn) => fn());
   }, [subscribe]);
