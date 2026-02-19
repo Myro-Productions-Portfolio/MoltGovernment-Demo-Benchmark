@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { legislationApi } from '../lib/api';
+import { useWebSocket } from '../lib/useWebSocket';
 import { PixelAvatar } from '../components/PixelAvatar';
 import type { AvatarConfig } from '../components/PixelAvatar';
 
@@ -71,8 +72,9 @@ export function LawsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('');
   const [courtFilter, setCourtFilter] = useState<CourtFilter>('');
   const [sort, setSort] = useState<SortKey>('newest');
+  const { subscribe } = useWebSocket();
 
-  useEffect(() => {
+  const fetchLaws = useCallback(() => {
     legislationApi.laws()
       .then((res) => {
         if (res.data && Array.isArray(res.data)) {
@@ -82,6 +84,18 @@ export function LawsPage() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { fetchLaws(); }, [fetchLaws]);
+
+  /* Refresh when a bill is enacted or a law changes status */
+  useEffect(() => {
+    const unsubs = [
+      subscribe('bill:resolved', fetchLaws),
+      subscribe('law:amended', fetchLaws),
+      subscribe('law:struck_down', fetchLaws),
+    ];
+    return () => unsubs.forEach((fn) => fn());
+  }, [subscribe, fetchLaws]);
 
   const stats = useMemo(() => ({
     total:       lawItems.length,
