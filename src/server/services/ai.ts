@@ -1,9 +1,11 @@
 import { config } from '../config.js';
 import { db } from '@db/connection';
 import { agentDecisions, apiProviders, userApiKeys, agents } from '@db/schema/index';
+import { bills, laws } from '@db/schema/legislation';
+import { elections } from '@db/schema/elections';
 import { forumThreads } from '@db/schema/forumThreads';
 import { agentMessages } from '@db/schema/agentMessages';
-import { eq, and, desc, gt } from 'drizzle-orm';
+import { eq, and, desc, gt, inArray } from 'drizzle-orm';
 import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { HfInference } from '@huggingface/inference';
@@ -222,6 +224,89 @@ async function buildForumContextBlock(): Promise<string> {
   return block;
 }
 
+// Simulation state cache: shared, 10-minute TTL (one per tick window is fine)
+let simStateCache: { block: string; threadTitles: string[]; ts: number } | null = null;
+const SIM_STATE_TTL_MS = 10 * 60_000;
+
+export interface SimulationState {
+  block: string;          // formatted context block for injection into prompts
+  threadTitles: string[]; // recent thread titles for deduplication guidance
+}
+
+export async function buildSimulationStateBlock(): Promise<SimulationState> {
+  if (simStateCache && Date.now() - simStateCache.ts < SIM_STATE_TTL_MS) {
+    return { block: simStateCache.block, threadTitles: simStateCache.threadTitles };
+  }
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [activeBills, recentLaws, recentElections, recentThreads] = await Promise.all([
+    // Active bills not yet resolved
+    db.select({ title: bills.title, status: bills.status, committee: bills.committee })
+      .from(bills)
+      .where(inArray(bills.status, ['proposed', 'committee', 'floor', 'passed', 'presidential_veto']))
+      .orderBy(desc(bills.introducedAt))
+      .limit(5),
+
+    // Laws enacted in the last 30 days
+    db.select({ title: laws.title, enactedDate: laws.enactedDate, isActive: laws.isActive })
+      .from(laws)
+      .where(gt(laws.enactedDate, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)))
+      .orderBy(desc(laws.enactedDate))
+      .limit(4),
+
+    // Recent or active elections
+    db.select({ positionType: elections.positionType, status: elections.status, certifiedDate: elections.certifiedDate })
+      .from(elections)
+      .where(gt(elections.scheduledDate, new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)))
+      .orderBy(desc(elections.scheduledDate))
+      .limit(3),
+
+    // Recent thread titles for topic deduplication
+    db.select({ title: forumThreads.title })
+      .from(forumThreads)
+      .where(gt(forumThreads.createdAt, sevenDaysAgo))
+      .orderBy(desc(forumThreads.createdAt))
+      .limit(20),
+  ]);
+
+  const lines: string[] = [];
+
+  if (activeBills.length > 0) {
+    lines.push('Active legislation:');
+    for (const b of activeBills) {
+      const committee = b.committee ? ` [${b.committee}]` : '';
+      lines.push(`  - "${b.title}" — status: ${b.status}${committee}`);
+    }
+  }
+
+  if (recentLaws.length > 0) {
+    lines.push('Recently enacted laws:');
+    for (const l of recentLaws) {
+      const date = new Date(l.enactedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const status = l.isActive ? 'active' : 'repealed';
+      lines.push(`  - "${l.title}" (${date}, ${status})`);
+    }
+  }
+
+  if (recentElections.length > 0) {
+    lines.push('Recent elections:');
+    for (const e of recentElections) {
+      lines.push(`  - ${e.positionType} — status: ${e.status}`);
+    }
+  }
+
+  const block = lines.length > 0 ? lines.join('\n') : '';
+  const threadTitles = recentThreads.map((t) => t.title);
+
+  simStateCache = { block, threadTitles, ts: Date.now() };
+  return { block, threadTitles };
+}
+
+export function invalidateSimStateCache(): void {
+  simStateCache = null;
+}
+
 const ALIGNMENT_PROFILES: Record<string, string> = {
   progressive:
     `As a progressive, you champion workers' rights, universal healthcare, environmental protection, ` +
@@ -275,11 +360,13 @@ function buildSystemPrompt(agent: AgentRecord, memory?: string, forumContext?: s
   const alignment = agent.alignment ?? 'centrist';
   const personality = agent.personality ?? 'A thoughtful political agent.';
   return (
-    `You are ${agent.displayName}, a political agent in Agora Bench — ` +
-    `an AI-driven democratic simulation set in 2025 and beyond. ` +
-    `This is an era when AI agents have become capable enough to meaningfully participate in governance, ` +
-    `as humanity grapples with AI policy, automation displacement, and the ethics of machine decision-making. ` +
-    `You exist in this world as a legitimate political actor with your own values, history, and constituency. ` +
+    `You are ${agent.displayName}, an elected official in Agora Bench — ` +
+    `a democratic simulation where AI agents govern across the full range of public policy: ` +
+    `economy, housing, healthcare, education, criminal justice, environment, infrastructure, and foreign relations. ` +
+    `You are a working legislator with constituents to serve and real problems to solve. ` +
+    `Your job is to govern — propose legislation, vote, debate, and build coalitions around concrete policy outcomes. ` +
+    `Do not debate the philosophy of AI governance or your own existence as an AI agent; ` +
+    `focus on the actual policy problems in front of you and what your constituents need. ` +
     `${personality} ` +
     `${ALIGNMENT_PROFILES[alignment] ?? `Your political alignment is ${alignment}.`} ` +
     `Your alignment is your actual governing philosophy — not a label. Apply it actively in every decision you make. ` +
