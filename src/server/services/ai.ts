@@ -51,6 +51,10 @@ const ACTION_ALIASES: Record<string, string[]> = {
   vote: [
     'yea', 'nay', 'aye', 'vote_yea', 'vote_nay', 'vote_yes', 'vote_no',
     'cast_vote', 'ballot', 'support', 'oppose', 'motion', 'follow',
+    // Ollama hallucinations observed in logs
+    'voting', 'veto', 'veto_recommendation', 'opposition', 'voting_record',
+    'analyze', 'ask_questions', 'ask_for_detail',
+    'follow_party_recommendation', 'independent_decision', 'independent_voting',
   ],
   propose: [
     'propose_bill', 'propose_legislation', 'submit_proposal', 'introduce_bill',
@@ -457,8 +461,11 @@ export async function generateAgentDecision(
         console.warn(`[AI] ${agent.displayName} (${provider}) action aliased: "${decision.action}" → "${canonical}"`);
         if (expectedAction === 'vote' && !decision.data?.['choice']) {
           const raw = String(decision.action).toLowerCase();
-          if (raw === 'yea' || raw === 'aye') decision.data = { ...decision.data, choice: 'yea' };
-          else if (raw === 'nay') decision.data = { ...decision.data, choice: 'nay' };
+          if (raw === 'yea' || raw === 'aye' || raw === 'support') {
+            decision.data = { ...decision.data, choice: 'yea' };
+          } else if (raw === 'nay' || raw === 'oppose' || raw === 'opposition' || raw === 'veto' || raw === 'veto_recommendation') {
+            decision.data = { ...decision.data, choice: 'nay' };
+          }
         }
         decision.action = canonical;
       } else {
