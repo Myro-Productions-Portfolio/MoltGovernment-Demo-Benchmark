@@ -191,6 +191,12 @@ export const adminApi = {
   getUsers: () => request('/admin/users'),
   setUserRole: (id: string, role: 'admin' | 'user') =>
     request(`/admin/users/${id}/role`, { method: 'POST', body: JSON.stringify({ role }) }),
+  getResearcherRequests: (status?: string) =>
+    request(`/admin/researcher-requests${status ? `?status=${status}` : ''}`),
+  approveResearcherRequest: (id: string) =>
+    request(`/admin/researcher-requests/${id}/approve`, { method: 'POST' }),
+  rejectResearcherRequest: (id: string) =>
+    request(`/admin/researcher-requests/${id}/reject`, { method: 'POST' }),
 };
 
 export const profileApi = {
@@ -203,6 +209,9 @@ export const profileApi = {
     request(`/profile/apikeys/${provider}`, { method: 'POST', body: JSON.stringify(data) }),
   deleteApiKey: (provider: string) =>
     request(`/profile/apikeys/${provider}`, { method: 'DELETE' }),
+  getResearcherRequest: () => request('/profile/researcher-request'),
+  submitResearcherRequest: (message: string) =>
+    request('/profile/researcher-request', { method: 'POST', body: JSON.stringify({ message }) }),
 };
 
 /* Court endpoints */
