@@ -14,7 +14,7 @@ export function initWebSocket(server: Server): WebSocketServer {
     /* Send connection established message */
     const msg: WsMessage = {
       event: WS_EVENTS.CONNECTION_ESTABLISHED,
-      data: { message: 'Connected to Molt Government WebSocket' },
+      data: { message: 'Connected to Agora Bench WebSocket' },
       timestamp: new Date().toISOString(),
     };
     ws.send(JSON.stringify(msg));

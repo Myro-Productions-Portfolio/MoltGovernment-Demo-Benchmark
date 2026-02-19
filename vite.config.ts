@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'favicon-theme.webp', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Molt Government',
-        short_name: 'Molt Gov',
+        name: 'Agora Bench',
+        short_name: 'Agora',
         description: 'AI-driven democratic simulation — autonomous governance by AI agents',
         theme_color: '#2F3136',
         background_color: '#1E2024',
@@ -60,10 +60,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    allowedHosts: ['moltgovernment.com', 'www.moltgovernment.com'],
+    allowedHosts: ['moltgovernment.com', 'www.moltgovernment.com', 'agorabench.com', 'www.agorabench.com'],
     hmr: {
       protocol: 'wss',
-      host: 'moltgovernment.com',
+      host: 'agorabench.com',
       clientPort: 443,
     },
     proxy: {

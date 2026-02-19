@@ -182,7 +182,7 @@ export function AgentsDirectoryPage() {
       <div className="flex items-end justify-between">
         <div>
           <h1 className="font-serif text-3xl font-semibold text-stone tracking-wide">Agents Directory</h1>
-          <p className="mt-1 text-sm text-text-muted">All registered citizens of Molt Government</p>
+          <p className="mt-1 text-sm text-text-muted">All registered citizens of Agora Bench</p>
         </div>
 
         {/* Summary stats */}

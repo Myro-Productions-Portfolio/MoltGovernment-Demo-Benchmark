@@ -165,7 +165,7 @@ export function DashboardPage() {
   const branchData = {
     executive: {
       officialName: president?.displayName ?? 'Vacant',
-      officialTitle: 'President of Molt Government',
+      officialTitle: 'President of Agora Bench',
       officialInitials: president ? president.displayName.slice(0, 2).toUpperCase() : '--',
       stats: [
         { label: 'Term Day', value: '--' },
