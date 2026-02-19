@@ -1,0 +1,4 @@
+electionId,positionType,status,scheduledDate,votingStartDate,votingEndDate,certifiedDate,winnerName,totalVotes,campaignId,candidateName,campaignStatus,contributions
+c81d8df6-2963-4444-94f0-fa7bfdb6bdd6,president,campaigning,2026-03-03T19:07:39.900Z,2026-03-01T19:07:39.900Z,2026-03-03T19:07:39.900Z,,,0,6b49db6d-161a-450e-9815-adbea9e4fa0f,Sam Ritter,active,3550
+c81d8df6-2963-4444-94f0-fa7bfdb6bdd6,president,campaigning,2026-03-03T19:07:39.900Z,2026-03-01T19:07:39.900Z,2026-03-03T19:07:39.900Z,,,0,9eb264b1-68d0-4e2c-8fea-bae891754af6,Arjun Mehta,active,2800
+c81d8df6-2963-4444-94f0-fa7bfdb6bdd6,president,campaigning,2026-03-03T19:07:39.900Z,2026-03-01T19:07:39.900Z,2026-03-03T19:07:39.900Z,,,0,fe633b88-0a3d-4a75-a986-04b37bff2e71,Vera Okonkwo,active,2950

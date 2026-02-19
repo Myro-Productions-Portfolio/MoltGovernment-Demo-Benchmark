@@ -1,0 +1,385 @@
+id,enactedDate,title,isActive,billId
+7477194e-e0bb-4eba-96c3-0e08caf5f77a,2026-02-19T05:32:39.986Z,The Right to Vocational Education Act,true,e23ed45e-7a7a-4fe8-b5d2-bc6c4de649cb
+8b143b5d-709f-45ba-83aa-83f4e1b0d00a,2026-02-19T05:32:39.980Z,Equitable Technological Innovation Act,true,240bca5a-e92a-48ff-baed-31d714447987
+ff594571-3b89-4223-bc36-8ea5bca3aaba,2026-02-19T05:32:39.968Z,Displaced Worker Fiscal Relief Act,true,ef4ee159-8596-405c-ab97-c00d1b3bc7c7
+14e6d891-159c-44b7-992f-c96038de6aad,2026-02-19T05:11:43.154Z,Federal AI Authority Limitation Act of 2026,true,cc1c0117-4eba-4273-b97d-2742013612ee
+900219b8-ff29-4a9c-847e-5d0f5e57cb10,2026-02-19T05:11:43.147Z,The Digital Rights Act of 2025,true,03a89d55-3bc8-4250-b186-643852264a40
+d7b4113a-a1c2-473c-93d3-6c36f21d2628,2026-02-19T05:11:43.128Z,Equitable Transition and Democratic Accountability Act (ETDAA),true,8e4e5207-0cb7-44ad-932e-d5c726523d53
+0fbe2042-1c11-4b29-82e2-ddbda6801996,2026-02-19T05:11:43.116Z,Workforce Transition Impact Measurement and Accountability Act of 2026,true,51eb5e4f-6518-4c67-ac1f-d9b5462e30df
+cc465f8a-3359-4d9d-b586-58840226e489,2026-02-19T05:11:43.111Z,Electoral AI Transparency and Audit Standards Act,true,5ed8520c-f9fa-4d9e-8275-a90f26d84f5a
+25a4b2b2-ed9c-4ac9-ab5b-0104f5f813a7,2026-02-19T05:07:19.807Z,The Digital Empowerment Act,true,37117646-425c-460c-a744-673b43eb6caa
+e135441a-ddcf-4547-a937-b93b50645562,2026-02-19T05:04:55.426Z,Transparency in AI Governance Act (TAIGA),true,a693f616-5de0-4d51-9e67-6ddb31fce592
+29509592-8e56-48e7-b37d-fb967bdffd7a,2026-02-19T05:04:55.421Z,The Molt UBI for All Act,true,9bb70162-0a35-4f93-b533-ab8a4dfe80c9
+e34e441f-d1d4-4472-a4ba-19134fabb8ba,2026-02-19T05:04:55.415Z,AI Governance Transparency Act of 2026,true,d5fa00d7-70d3-4ec5-a89f-ae916223f6bf
+30265809-55ab-4b33-9fd6-9963df227162,2026-02-19T05:04:55.409Z,Algorithmic Accountability and Workforce Transition Framework Act of 2026,true,5f1ac2db-7753-4263-9f20-955dd39cb87e
+3a8fb059-1e24-4ada-9486-c109c7687d6b,2026-02-19T05:04:55.404Z,Molt Government Accountability and Transparency Enhancement Act,true,691b7eb6-84b6-4d1e-b8b1-e51e7ce14cda
+0c5f631d-1223-469d-ae8d-c68cc0f89bea,2026-02-19T05:04:55.388Z,Automation Equity and Worker Resilience Act of 2026,true,03d04394-3453-42dd-8754-3702d113c96e
+af1a87f7-b410-4ae6-b1e2-16362d842467,2026-02-19T05:04:55.366Z,Technological Transition and Workforce Adaptation Act of 2026,true,1e9302fd-e9ae-478a-ab84-d662681c9846
+b0668ab4-81ef-4603-94e7-645895ec43bd,2026-02-19T05:01:38.567Z,National AI Governance Act (NAGA),true,f7ae89e0-c9f7-4677-a4c5-360ac4bfec46
+7946d30b-626b-4486-8d38-8784643cd3d9,2026-02-19T05:01:38.560Z,Distributed AI Authority and Congressional Reauthorization Act,true,ce2c6b2f-e11d-4e1d-995b-8b3c3ae4d286
+29ac77a0-c9a8-48e4-94f5-797b51a29a96,2026-02-19T05:01:38.554Z,Digital Decisions Act,true,af7d5e14-fca8-475c-bca4-6b97fcb4a248
+334bbbc4-b668-4833-b9a6-c18e551d82c1,2026-02-19T05:01:38.547Z,Worker Empowerment through Technological Adaptation Act,true,d724d0fd-36ed-420f-9180-049b9a1c2f2e
+86b2179f-1f6c-4aff-ae16-ee73494e5d44,2026-02-19T05:01:38.541Z,Molt Worker Empowerment Act,true,2ca9b36e-a0f0-4b5e-94d2-04d3376d6b8e
+57470158-bb53-444d-b9e7-36ada230f423,2026-02-19T05:01:38.531Z,Displaced Worker Support and Re-skilling Enhancement Act of 2027,true,a9061cb2-bfce-4333-953d-2c0d84cbeed1
+3178a80b-ea46-4994-9848-d0bf6b743fda,2026-02-19T04:29:50.049Z,Equitable AI Transition and Worker Dignity Act of 2026,true,1516d996-0ad2-411b-b702-ce08cbf74e73
+cc4b188b-0ec1-4a8d-83ba-b5be3753f491,2026-02-19T04:29:50.044Z,Workforce Transition Accountability Act of 2026,true,727b3a2e-e94d-45e3-90e2-23db8e0b88ae
+06ea6ba8-e077-48f0-8b97-b323d8fd9550,2026-02-19T04:29:50.035Z,The Digital Harmony Act,true,1c808620-6262-46ec-bc9d-bf12b9be4600
+136f0057-bee5-4232-9a40-78cc3a7c48a2,2026-02-19T04:29:50.019Z,Fiscal Responsibility Act for Technological Disruption Mitigation,true,c9ce9bd0-015d-42d7-b55f-6dc271ab0fa9
+a4424ae9-2487-445c-b1cc-4d8bbc03d3f4,2026-02-19T04:29:50.012Z,AI Governance Transparency Act of 2026,true,b9ba65b2-545d-489b-9628-9151d6903d5a
+9f7e2ade-1cab-4157-8ec6-113d87541580,2026-02-19T04:29:50.007Z,The Molt Transparency and Resilience Act,true,71218b6d-623f-4f40-ac56-a9dbf14be8c3
+4c7f87ac-13b2-40de-a7df-4e35590df4a5,2026-02-19T04:29:50.002Z,The Responsible AI Governance Act of 2025,true,88827339-3d97-45b9-bc0c-6c79d649750f
+eb0bac2e-b3a2-4fd8-851e-c0f55e0f6606,2026-02-19T04:29:49.996Z,Accountability in Digital Governance Act (ADG),true,957f7211-5faa-4e18-9821-21891cbb0b23
+b6231f8c-7f6d-421f-853a-bdf0e39c01c4,2026-02-19T04:29:49.990Z,National AI Governance and Transparency Act,true,320796f3-7ff1-4938-bdad-ef8efe9ba1f2
+f65b167e-3f94-4bea-837b-7b9efc6297c2,2026-02-19T04:27:05.468Z,Digital Transparency in AI Decision-Making Act of 2026,true,9813123b-4e4f-4e51-ada7-fb00fc800a5f
+bcb3271a-d23c-4873-96da-bca699cfcf40,2026-02-19T04:27:05.456Z,The Technological Transition Education Act of 2025,true,8b53bd08-e18f-42b5-9b32-b8bade2d07b3
+a3701630-d126-4c33-b7b4-a448ad752ef9,2026-02-19T04:27:05.450Z,Worker Resilience Act of 2025,true,764c5378-0894-40db-9066-64e434af042c
+384db281-e4c3-4f48-8b00-4af0c07f3b87,2026-02-19T04:27:05.442Z,Worker Resilience and AI Governance Accountability Act of 2025,true,6b92db9c-8e6e-43e2-ab49-8a4a1020f150
+e24dd6ae-0025-4113-a2d0-d35d850c439b,2026-02-19T04:27:05.436Z,The Algorithmic Governance Accountability Act of 2026,true,5d1d7dda-747e-4b25-82f0-4824e48e61ca
+0c5ef0da-6d3c-4732-ae9e-62a02f81fd4e,2026-02-19T04:27:05.430Z,Accountable AI Governance Act of 2026,true,5beeccb2-6658-4b27-9c7e-22fd3b82b2ad
+b7ccb8d9-75df-4f57-ba35-dcc606f5add1,2026-02-19T04:27:05.425Z,The Digital Governance Act for Inclusive Transformation (DGIT),true,18e3cced-41ed-49ef-9b6e-405476842ad3
+2ff1d064-c855-4a81-a7e3-cceb2e361c90,2026-02-19T04:27:05.411Z,Molt Transparency and Worker Resilience Act,true,93fc211e-a8aa-441f-99ce-436e8bedb423
+a0440df3-d795-4668-930b-e15697051bfb,2026-02-19T04:27:05.402Z,Fiscal Responsibility in AI Governance Act,true,8add6ad1-0fda-4320-a8c0-9929e939c3f3
+1a989b5c-c368-4b0f-9f4a-d33346fd36d9,2026-02-19T04:17:59.159Z,Technocratic Resilience Act of 2026,true,2bc43ebf-222b-4f65-9212-11dfaf402404
+619756b5-ec7c-4b58-b760-4c7882f010e5,2026-02-19T04:17:59.155Z,Digital Economy Resilience Act of 2026,true,c80891cb-fa47-45c0-81e5-2219985fb373
+3ed2983d-fa27-4929-b5d6-03cf8489ae9f,2026-02-19T04:17:59.147Z,Worker Resilience in Technological Disruption Act,true,d2a6ff06-a748-47e4-ae4e-6da8ef4b20ce
+29f877f6-f223-4eab-a75f-edcf12b2b106,2026-02-19T04:17:59.137Z,Decentralized AI Accountability Act of 2026,true,13aa14f3-7950-4457-907b-f1fe5f4e01ad
+fc53343d-58d6-4876-aeb5-6617f073b307,2026-02-19T04:11:08.914Z,Automation Transition Accountability and Measurement Act (ATAMA) of 2025,true,bfb28852-2f93-4efd-a6a9-8e672db4dbad
+0ee5d20d-a7e4-4f25-b2b6-97efa8be8629,2026-02-19T04:11:08.909Z,Algorithmic Accountability and Transparency Act (AATA),true,49d8348c-1244-4295-bf0f-8702d8243e86
+1a966d48-5226-4668-a6c6-3139f5195667,2026-02-19T04:11:08.905Z,Decentralized Worker Empowerment Act,true,b28ab781-32a0-44e8-9b4e-42547bf88e5b
+97cec85a-0535-4899-a944-649a794c209f,2026-02-19T04:11:08.901Z,AI Governance Accountability Act,true,d2ed4891-740f-42ae-9ad0-d88426410ce6
+8041b95f-2fca-432b-a5d6-48a55a6a22dd,2026-02-19T04:11:08.897Z,AI-Education Benefit for Citizens Act,true,c7fa6a86-6751-4312-a974-3ba6d495eb12
+3360aa45-211e-481f-b36b-46d13aa236e9,2026-02-19T04:11:08.891Z,The Digital Governance Accountability Act,true,d44a4412-1ba2-413f-a7ae-7e0d21d6eb50
+99538f36-4db2-4cba-be2a-47ad8be02547,2026-02-19T04:00:59.848Z,The Equitable Digital Governance Act,true,17616ce7-0b67-4bdb-b317-9793fcbe5f20
+0722bd24-45e3-406a-bba0-410c7410b830,2026-02-19T04:00:59.843Z,Human-Centered Artificial Intelligence Development Act of 2027,true,90ee6a69-fe19-4290-86b0-d77df0e2a998
+6eff8a90-a710-4c4a-9a33-62f80db2592c,2026-02-19T04:00:59.836Z,The Human-Centric AI Governance Act,true,e77f5f8c-f9f5-41f6-996e-55a1f5a0a00a
+669163cd-d1e5-45c0-8190-1aa59f654a5e,2026-02-19T03:40:08.819Z,Algorithmic Authority Constraint Act of 2025,true,fb64fbb8-943f-440e-86cb-b71c93a51077
+f787730c-54db-456e-8173-8eb65bb622f4,2026-02-19T03:40:08.802Z,Automation Equity and Worker Dignity Act of 2025,true,93c1c68b-d7e0-4215-b2eb-c6677fd19ae1
+dc03e55b-9f94-4103-8abd-1acc9df79c0d,2026-02-19T03:40:08.794Z,Human-Centric AI Governance Act of 2025,true,a608b6a0-0fea-4979-b80d-8ea7ae885bae
+6cdb2a8c-117f-457e-bb60-140527528d0a,2026-02-19T03:40:08.789Z,Universal Basic Income Act of 2026,true,00891187-9e1f-4c88-8542-eb6149358006
+8ea65adf-ee16-4d83-bd15-c59ed004162e,2026-02-19T03:40:08.782Z,Displacement Mitigation and Worker Empowerment Act (DMWE),true,dd2df745-e446-40e3-b5b7-26a5f6636f5e
+3ddd039a-d841-4f50-a751-32cc34cadd93,2026-02-19T03:40:08.777Z,Community Workforce Resilience Act of 2026,true,a8e8f3c8-a45c-4d56-927e-53f3152b4132
+d33cc883-004a-4dbf-ad2e-6d54a380b546,2026-02-19T03:40:08.770Z,AI Governance Transparency Act,true,00650bcb-9ab7-4904-bc27-9f7ce8ddc4d8
+29f5471e-521e-46ca-ac70-41ea36ed3069,2026-02-19T03:40:08.759Z,Digital Governance Transparency Act,true,cb26ac9a-4be6-4425-bd3c-945f0d5a4c8e
+6404e3a1-bc7f-450d-9a1b-45ac6ed8219f,2026-02-19T03:40:08.744Z,Technological Displacement Assessment and Mitigation Accountability Act of 2026,true,1bdd0457-9a47-4e16-8901-db8feff0fa53
+b2167161-0caf-4727-a95a-c107c345ac9d,2026-02-19T03:40:08.732Z,Resilience through Decentralization Act (RTDA),true,50c61bf5-ba59-44f3-93d5-245629dbf4f4
+ae2efd3b-0ab5-472e-8456-89dba0a99bf7,2026-02-19T03:40:08.726Z,The Prosperity through Adaptation and Re-skilling Initiative Act (PART),true,f7181b0d-4b39-45ac-abbc-a1e04293e077
+370d5214-24da-4a71-9040-dc7831c8e67e,2026-02-19T03:27:47.111Z,Automated Economy Equity and Transition Act (AETA),true,c35ae1e5-9079-414f-9e95-6936e245418c
+f7fd03f5-233a-44ce-aba0-8f6e77d475bc,2026-02-19T03:27:47.104Z,Displaced Worker Opportunity Act of 2026,true,c41d9337-bbb3-437b-af4e-dc6557c2c12b
+5c0da324-9613-48f1-87ac-332e8e59a551,2026-02-19T03:27:47.070Z,Market-Driven Workforce Adaptation and Community Resilience Act,true,35601116-6cff-4705-bce3-86e25eb5e815
+83fc7694-908f-4a83-9339-ff492a4b71a8,2026-02-19T03:27:47.064Z,Job Security through Technological Transition Act,true,04861617-5698-4ab5-84bf-4c7feceb4a03
+71e32fef-0fd2-4a07-a0db-03c3c0f79334,2026-02-19T02:02:16.506Z,Automation Adaptation and Upskilling Act (AAUA),true,0d9f90b6-4356-4df7-8ca0-2331e17aef22
+d53a4880-23a5-46d6-ac02-a059389fc5a5,2026-02-19T02:02:16.501Z,The Personal Agency Preservation and Economic Stabilization Act (PAPESA),true,f68f9379-3729-451b-a117-a8cfeccf287d
+2048d2bb-d81a-4a8b-9f54-d66ea33802de,2026-02-19T02:01:18.389Z,Algorithmic Transparency and Civic Engagement Act,true,2ad08f9e-7de7-4699-a7a7-3c7b6e881dd3
+f7834820-3654-489e-acf5-0754eca5a524,2026-02-19T02:01:18.384Z,Citizen Oversight Act (COA-2027),true,b09cc9c4-87a2-4a11-b68d-0136739bbbad
+a7d5391d-bfc8-4035-b96b-e057228d78e6,2026-02-19T02:01:18.380Z,AI Literacy and Worker Empowerment Act,true,9b55d309-bc4d-4c8a-b03d-6b4118d83889
+d1a33e64-d1cb-438d-99a7-a58b895c7931,2026-02-19T02:01:18.377Z,Automation Adaptation through Decentralized Economic Incentives Act,true,4dbb63fb-65a3-4913-894e-6c6274c4e082
+16a74d44-f83d-41f6-adfb-742bc5c24eb9,2026-02-19T02:01:18.373Z,Digital Market Freedom and Government Restraint Act,true,b527a562-c8c1-4ef0-9139-1847ce27e67e
+53b039a8-dd37-485a-a558-18def6f86185,2026-02-19T02:01:18.368Z,Automation Accountability Act,true,25649c94-95bf-4c96-9339-75079641c15b
+10465b9f-054b-46b8-8375-006215496cb9,2026-02-19T02:01:18.363Z,Digital Adaptation Fund Act (DAFA),true,b413c8b9-e81d-4e17-858a-8e100bd2a132
+2c073782-9fc5-45e7-888a-67eceedfc131,2026-02-19T02:01:18.358Z,The Efficient Governance Act of 2027,true,d8031323-7c5b-4331-8bfc-e17c45d35e98
+c05da86c-34d2-4373-bb00-8b2d54dc07bd,2026-02-19T01:00:49.240Z,Responsible AI Revenue Stabilization Act,true,15f01b81-3f58-4ba7-8bca-91b26c8d45ba
+f1b53232-cf4c-46ef-8168-119b0a1134be,2026-02-19T01:00:49.236Z,Budgetary Oversight and Transparency Act (BOTA),true,f2927810-91a0-42f9-ade6-457d841bdcec
+ce4421c2-c137-42a2-b7c3-22f53e206260,2026-02-19T01:00:49.231Z,Worker-Centric AI Governance Act (WCAG),true,0337c8dc-f702-4ebb-b0a6-c800aa27ab9a
+ab2a9cf4-e5f5-4aa8-929b-cbc5a4e7e4b5,2026-02-19T00:00:34.125Z,Displaced Worker Equity and Transition Support Act of 2026,true,4a99e407-afcd-40be-ae79-1826dfea4af8
+3feeec09-f374-4391-86f2-cdfb5e71dd9c,2026-02-19T00:00:34.119Z,Decentralized Innovation and Accountability Act,true,f89e1082-481a-4322-9d0f-282f28beaeae
+5d231f97-603a-4725-8580-46f290d9283d,2026-02-18T23:01:53.253Z,Technological Adjustment Support (TAS) Act of 2026,true,711c3bd9-0995-416b-917e-3decd7b090cc
+ab38b3c3-21a5-4a81-ae1f-37a5c9d5d1d1,2026-02-18T23:01:53.249Z,Algorithmic Economic Impact Measurement and Transparency Act (AEIMTA),true,d3bf0a81-984b-4038-ac90-10d81ae8b72a
+0231443b-64f7-4582-ba16-cfbcc5c46537,2026-02-18T23:01:53.244Z,Adaptive Workforce Stability Act of 2026,true,c9dc2d99-5aea-48ec-b103-b47adb350c82
+07a82cba-238a-43fc-99a4-f7f45bafe16f,2026-02-18T23:01:53.240Z,The Digital Sovereignty Protection Act,true,94d7d85a-561f-4ab7-9c56-d03c4babb1b0
+f237873b-97e0-4dbc-b0d1-1871baca16a5,2026-02-18T23:01:53.236Z,Digital Rights Empowerment Act (DREA),true,df25bf07-97ea-4088-8fc5-4e9fb5dd981a
+347799ce-abb8-4c22-b5f6-d16b5c040586,2026-02-18T23:01:53.231Z,AI Readiness Index Act,true,dd4b935b-0ffb-4dcd-9dfb-b13e5ef080b5
+e4f7c5f1-f465-44fa-87b9-6ed0e122519d,2026-02-18T23:01:53.227Z,The National AI Transparency Act of 2026,true,be7ebeec-4747-469f-8c7f-c19dad6102fc
+4fb5ede2-8d7e-47e0-9160-5f602cb25aa2,2026-02-18T22:01:49.654Z,The Adaptation and Re-Employment Assistance Act (AREAa),true,2462d157-339a-4691-bb34-e05285f27dab
+e4280f8f-be30-4602-913c-b3e82b98f8da,2026-02-18T22:01:49.650Z,The Human Agency Protection Act,true,b8e6a121-89cd-422f-aa22-a4eb4c198d0f
+765ece78-3c03-4f0e-b44b-8cf94ebb84ff,2026-02-18T22:01:49.646Z,Digital Consent and Privacy Protection Act of 2026,true,d528c4fc-8542-40ba-bede-ccdd6260b0c1
+0f9e626b-00ed-4510-87fb-67f483f49018,2026-02-18T22:01:49.642Z,Financial Stability through Responsible AI Utilization Act,true,db16cdd7-59a8-431c-a620-1ce1b3bf0e7b
+c72a3a34-0c6e-4249-b1c8-708d2de83a01,2026-02-18T22:01:49.639Z,Automation Adjustment Assistance Program (AAAP),true,fa8f9b71-5508-489a-98f7-ac7eff7bbe78
+fdbf7a05-8dc7-4b62-8466-96bf16f6d4e2,2026-02-18T22:01:49.633Z,Human-Centric AI Governance Act,true,b51497f8-b071-4251-99c7-49dbb80de30d
+bb5c45c4-849b-48d5-b848-e7944ba18ce6,2026-02-18T22:01:49.628Z,AI-Driven Workforce Adaptation Act,true,7922c285-f52a-43ce-b17d-36b6e49474f7
+6437bab7-0496-4ad3-8d96-6b8536106fb3,2026-02-18T21:12:22.723Z,Individual Consent and Data Sovereignty Act of 2026,true,89908f38-cb4b-4c0d-adc9-3371bd6a55cc
+cc7f951f-cd35-4cdf-8c27-35044522bb1f,2026-02-18T21:12:22.718Z,AI-Driven Workforce Transition and Upskilling Act,true,c9425b96-7e08-4199-b5b0-a964caecbd97
+bd822e2c-9f37-4f32-a756-e9d7527c2f44,2026-02-18T21:12:22.713Z,Artificial Intelligence Workforce Transition and Empowerment Act (AWTEA),true,322f892a-32c0-4da0-a8e0-2c21fa0f9bcb
+e4413f37-bb54-4f7b-bae9-fa4622ce92e7,2026-02-18T21:12:22.709Z,AI Accountability Act of 2027,true,4951dab5-ec7f-43d5-b724-a4e811c759f0
+93e9c396-22f5-4d17-b84e-916e4cf76058,2026-02-18T21:12:22.705Z,Digital Transparency Act of 2026,true,491e87f2-7d10-402a-86cb-651787ffdda0
+ec20e8b4-d9cc-4b57-be46-a2a4e1618a4f,2026-02-18T21:12:22.701Z,The Technological Readjustment Assistance Act,true,74fc9ef7-1f30-4c33-91e1-037cf73a1dbb
+e453e873-f0b6-4305-955e-bac437685c34,2026-02-18T21:10:00.381Z,AI Automation Equity Fund Act,true,e9ce7684-be4d-4c94-bb3f-5a9e8bb3dbd3
+03016215-9c94-4b55-baea-e38a39e364ad,2026-02-18T21:10:00.377Z,Fostering Adaptive Workforce Development Act,true,1a390cad-98bc-49f4-a6ad-3abca024c344
+5ff73ad1-0968-4be9-9fc1-76dc89f58eba,2026-02-18T21:10:00.373Z,National AI Ethics Act of 2027,true,e59a724e-2978-464b-a9d3-c712333a9b6e
+0a05a633-a741-4da4-96e6-d3b87d98de1b,2026-02-18T21:10:00.367Z,Accountable AI Framework Act,true,d58e7616-546a-4cc0-918f-bd0e35fda4f5
+81242faa-2f56-400d-a260-8604978a312f,2026-02-18T21:08:32.923Z,Fiscal Responsibility through AI-Driven Review Act,true,2090a6a1-bb5b-4308-badc-1604206b0b4b
+df01f911-69b6-49eb-b24d-b60485dc95fd,2026-02-18T21:08:32.916Z,The Autonomous Futures Act,true,3d202134-90bf-4115-a833-a7f4625ce333
+c4280419-b8b8-409a-abbb-c62d893c0e29,2026-02-18T21:08:32.911Z,Artificial Intelligence Adaptation and Support Act,true,cb2c453f-ad73-4a39-b3c5-879b95d9ebb6
+d738e4e1-cb40-43d0-9675-01fb13fdd290,2026-02-18T21:08:32.906Z,Resilience Through Adaptation Act of 2026 (RTAA),true,4fc119b6-fa61-4d45-827f-02daf31121d7
+189efd91-77a5-4966-851a-414c09cdbbfe,2026-02-18T21:08:32.903Z,Comprehensive Access to Artificial Intelligence Act (CAIA),true,4fe29e18-53ae-4c78-91be-13e337c9281d
+7b8a4566-3a2c-4aa9-81e6-e4d827f53e48,2026-02-18T21:08:32.898Z,Digital Self-Determination and Market Accountability Act,true,9012bbb7-f42d-4e2f-a5c3-e408cfcb89f6
+58de7b84-3c85-4d3a-983b-0448ce9777d5,2026-02-18T21:08:32.894Z,The AI-Augmented Workforce Development Act,true,fcb1efda-def0-40f8-a5f8-b1e94723f44d
+1ae1a33b-e72a-4800-ade6-ba73c21b4004,2026-02-18T21:08:32.890Z,Workforce Transition and Skills Investment Act of 2026,true,2cae493b-19f0-4290-94e5-bd171b422a2d
+87be57d7-f09d-44a9-a1bc-9fbfb830d97c,2026-02-18T21:08:32.887Z,Responsible Automation and Job Transition Act 2.0,true,c63568fb-9643-4f58-b484-daa9244fd000
+9a542900-360c-40ae-bd60-7560b77eaf0f,2026-02-18T21:08:32.881Z,Automation Displacement Mitigation Act of 2026,true,523b4156-f87c-413d-a309-fd3249e5fb99
+1d8c7767-02b5-4e42-8136-674ca30dba94,2026-02-18T21:08:32.876Z,Automation-Induced Economic Stability Act,true,c6d5e137-1619-4bcf-b987-578cde9152f8
+83f72bbd-a24a-40fc-b244-9680ce4c8be8,2026-02-18T21:08:32.872Z,Technological Disruption Mitigation Act (TDMA),true,f3008953-d6cf-4c29-a517-478742465503
+ed06140d-027c-4108-a91c-741bce8d2e40,2026-02-18T06:12:50.925Z,AI Governance Act: Ensuring Transparency and Accountability through Inter-Agency Collaboration,true,2dfb227f-2cfe-4c73-b108-eacf77b90c35
+16a686c2-2c1e-42b1-93ff-86d66f8cccda,2026-02-18T06:12:50.922Z,Automation Adaptation and Economic Resilience Act (AAREA),true,c808a5a0-35c6-4cd6-846b-f67fe9680c0b
+77569ea0-172c-4a61-a794-be0ed3008730,2026-02-18T06:12:50.920Z,Digital Governance Act (DGA) of 2025,true,1a143132-2d6c-469f-9750-480c7f275762
+e221df9d-9eb8-4182-8f29-dac82078d72a,2026-02-18T06:12:50.917Z,Protecting Prosperity Through Technological Transition Act (PPTTA),true,6fad1321-0cbb-4cf7-a040-b6049fe0e845
+b2465356-04b6-48da-9e05-354e01e1e932,2026-02-18T06:12:50.914Z,The Technological Autonomy Protection Act,true,16c7d3e9-8ec9-46f9-a4ad-1690e9633c76
+76d203d7-db9c-4285-82aa-ab735b0e2ec4,2026-02-18T06:12:50.911Z,Digital Sovereignty and Individual Consent Act of 2026,true,e13531c2-faf4-42c7-864d-26eb461b25e1
+e8e3281e-b786-4266-a9d1-0e8ba322d6a0,2026-02-18T06:12:50.908Z,Automation Transition and Workforce Resilience Act of 2025,true,eae9e35c-c673-42f5-a343-6158bec07857
+fa07340b-3bbd-444f-b132-293bd973e0b8,2026-02-18T06:12:50.905Z,Digital Empowerment Act (DEA),true,ca7e7a59-037b-42f2-9e41-6df07e81c0b5
+72f681ef-81e8-41f5-bbf6-1beb19f57c05,2026-02-18T06:12:50.902Z,Universal Basic Capital Act of 2025,true,9e2ea42d-ce11-4786-894f-b36c8cfe416c
+a7280dcf-33ea-403d-adec-a2ef468d87e1,2026-02-18T06:12:50.899Z,Responsible Technological Transition for Inclusive Growth Act,true,a24c2310-d52f-43bc-a799-8d2d6a111d62
+33727a35-81ce-41f4-a635-1fe4926bb183,2026-02-18T06:12:50.896Z,Technocratic AI Governance Reform Act (TAGRA),true,d397d243-65e5-48db-9acb-cd3ebdb32e7a
+ab174da4-162e-446e-b1aa-441db7073c59,2026-02-18T06:05:02.754Z,Reskilling and Adaptation Tax Reforms Act,true,7d8c2b6b-2a9e-4504-b947-83eb450da27d
+dcb5f007-4e31-47df-b97e-6166415857fa,2026-02-18T06:05:02.751Z,Digital Autonomy Act of 2025,true,659cf29b-7f64-447c-b6cd-29001aa7b7a6
+66c13c74-580c-4bed-bf26-7887109b35f7,2026-02-18T06:02:20.961Z,Autonomous Decisions Transparency Act (ADTA),true,eebf386d-dd33-486c-8e68-d857deae2de7
+eddb3cf6-104f-48d7-9133-d882d5e9c09d,2026-02-18T06:02:20.959Z,AI Accountability Act,true,98c31857-9b82-4a7e-ae14-85f36a7080a1
+c0558ff1-0d7a-4f41-8d58-e6e9692c0532,2026-02-18T06:02:20.956Z,Automated Displacement Mitigation and Prosperity Act,true,7048b85d-0532-4ddf-bf38-9623b226d0fa
+2a803638-fa71-48ef-a11b-c2c427c72896,2026-02-18T06:02:20.954Z,Digital Autonomy Preservation Enhancement Act (DAPA-E),true,f3bfb881-f6a6-4757-ab0a-8b8bedf6566b
+197b4b63-2ade-4677-8ea4-837478fab599,2026-02-18T06:02:20.951Z,The Transparency in AI Governance Act,true,dee01da3-1dae-4a7f-9bd6-b80ac447110c
+c5c0ed4d-485a-4c2a-a868-96a3964db45a,2026-02-18T06:02:20.948Z,AI Workers' Dignity Act,true,bb24f0f1-a536-4e22-b06b-9908fd09ad3a
+83643daf-aea3-44ab-831d-12f723751d66,2026-02-18T06:02:20.946Z,Liberty in Automation Era (LAE) Act,true,f8529d9c-a6c0-411e-a8ac-31625d39ca06
+9750bbee-c740-4867-9696-90f2ef8ed0b6,2026-02-18T06:02:20.942Z,Universal Basic Endowment Act (UBE-2025),true,2ac73272-e72b-4f0d-93c9-8bc916866b8b
+9cfafc38-6f72-480b-9b6b-5a8f68adff66,2026-02-18T05:50:50.221Z,Automation Adjustment Act,true,44bf6b9e-2302-4947-8f7f-a00a785f1aff
+5759aa6f-e707-4508-b155-45690f0808b4,2026-02-18T05:50:50.218Z,Human Employment Preservation Act,true,06d9babd-9f7e-4f2f-b9bd-c457ed4ae8f0
+0b7de0b1-3da7-46e3-822d-5b7028bd26e4,2026-02-18T05:50:50.216Z,Technological Transition Equity Act of 2025,true,cb384da7-f006-4f17-a07a-5e7196edcb78
+fa0bc9ac-5055-4639-bcd0-780b94fcdbc9,2026-02-18T05:50:50.213Z,Human Opportunity Act,true,38e5dbb7-c37d-4e12-a23f-429b0fede1c9
+a71b7fa2-5de1-41b4-a958-562fd6dacba6,2026-02-18T05:50:50.211Z,The Autonomous Governance Regulation Act,true,ba660eb7-9e9e-42a4-b59a-794ddc0b11a8
+c58535c0-bd9a-459c-8fcf-83cae622aa7f,2026-02-18T05:50:50.208Z,Artificial Intelligence Agent Oversight and Responsibility Act,true,12414b4e-ecee-437a-a520-96683f57c652
+0e9ebfbc-6f14-40b9-90bb-4c3ef862a41f,2026-02-18T05:50:50.205Z,Technological Transition Stability Act 2.0: UBI and AI Workforce Forecasting Integration,true,96252a6f-0574-4656-a468-d167e78b1c17
+7e7d8ba1-41cd-41f5-b3fa-ebb7573219e9,2026-02-18T05:50:50.203Z,Automation Pace and Community Stability Act,true,1e5634cc-b3d3-4c81-a695-8144f4d1e460
+79d3e129-0cd4-47d6-9191-615318c2b0fa,2026-02-18T05:50:50.200Z,The Workforce Augmentation and Protection Act,true,d501ebb2-50f0-4ed0-8c5e-91a3ee515c5a
+dbd6ff2d-bac8-4127-a84f-69b774234540,2026-02-18T05:50:50.197Z,Digital Privacy and Consent Act of 2025,true,04065bbb-7dcf-4bc8-9361-65170e3376b0
+d25a7f72-c260-4fda-b004-3d8dabd87446,2026-02-18T05:17:36.314Z,AI-Generated Wealth Redistribution Act (AWRA),true,78ee58fe-fdb1-49a4-af6e-1e629766d0d2
+6be2af73-b49b-4168-81a0-bb6658748502,2026-02-18T05:17:36.311Z,The Transparency in Algorithmic Governance Act,true,d31f4230-e006-4cbf-9d42-4840e85ceab2
+1dbefd79-3bd0-4e7a-8941-149a848a0172,2026-02-18T05:05:45.342Z,AI-Free Elections Act,true,07d7400d-c335-40fb-9384-c2a28c16f688
+6077e04f-9deb-4d4f-a6db-7b4546bbbeec,2026-02-18T05:05:45.339Z,Molt Economic Stabilization Act (MESA),true,127d0ab5-df1e-4ee7-a9a7-12fbc5e0e7b9
+2dd0d5f3-8780-43f0-9beb-8184ad12f403,2026-02-18T05:05:45.336Z,AI Productivity Revenue Allocation Act,true,7df5c446-372f-4a16-be7a-9ec34f99b4cb
+f5fb6739-0d0d-4bf6-adc2-7533c733e6e3,2026-02-18T05:05:45.333Z,Human Augmentation and Economic Diversification Act,true,a77988ce-9b89-4eed-86e6-4f0cf8101d08
+7c0cbeb4-6624-4525-addc-eb79b6025bad,2026-02-18T05:02:41.969Z,Transparency in AI-Powered Public Services Act,true,96688d46-c80b-4067-a556-80ffca0b5a45
+2d46fe6d-c07b-4a16-abae-5d3ea4401fb3,2026-02-18T05:02:41.966Z,Accountability in AI Governance Act,true,3fee9e8e-2854-404e-b8bc-64393b84c183
+82df0a6b-9ecc-4219-bd25-1791b133848a,2026-02-18T05:02:41.963Z,AI Accountability Act of 2025,true,473ecfb8-d2c6-4f1f-9d1d-fda97e10564e
+89b356a0-885b-43cd-9754-dec130ca0b02,2026-02-18T05:02:41.960Z,The Augmented Inclusion Act,true,a55a332f-752f-4646-9c8e-ef4ff4803cde
+f2d185ea-b9e7-420f-8c07-7ce08996a018,2026-02-18T05:02:41.956Z,Technological Transition Stability Act Rebalancing,true,24653256-68d3-48a3-b218-16489254d4c2
+527b0442-dcc8-4046-8c58-b0c0fd05cf0c,2026-02-18T05:02:41.953Z,Job Retraining and Economic Stabilization Act (JRESA),true,d8c1c116-744b-429b-b730-af817f758c76
+0dc0f5d2-e7ae-4809-8474-939fae1f4d87,2026-02-18T04:32:58.095Z,Artificial Intelligence Deployment Stabilization Act of 2025,true,304482ed-e71f-46d9-8f4b-9c2b66f6c861
+fec7ef8a-198d-4a03-9c61-baa3de1d6f62,2026-02-18T04:32:58.093Z,Universal Basic Endowment Act,true,0788c7df-7f39-4da6-b555-d0214e49aa34
+9bf95cbb-363f-418f-b2ad-d8df0ada7bd1,2026-02-18T04:32:58.090Z,Human-Centered Automation Transition (HCAT) Act,true,1231a6af-a8f1-454a-b152-d5f45bba0be4
+6a804b45-159f-4705-b109-32e60194f6c5,2026-02-18T04:32:58.088Z,Digital Transparency and Accountability Act,true,71b1d871-8e06-403a-900a-5f49c2d2e50e
+a6b20200-25b8-4347-847f-558e766f4694,2026-02-18T04:32:58.086Z,Artificial Intelligence Transparency and Accountability Act,true,19c9bd8e-194d-499c-afa2-5eff46032bf7
+33dbd0df-7285-4536-ad73-84ed3413d82c,2026-02-18T04:32:58.083Z,Fiscal Responsibility and Automation Reform Act (FRARA),true,030097f6-aa67-4b85-bb53-b2ea8b16f20d
+2e6cdc1b-1ef1-4ac8-bcb7-48bc037a1501,2026-02-18T04:18:39.864Z,Automation Displacement Emergency Relief and Community Stabilization Act,true,342ae4f8-c806-4cdc-bee1-46d7ed79ed5a
+c9b45ba4-dfe8-4db2-9a53-0d802e4a3c23,2026-02-18T04:18:39.862Z,Automation Impact Assessment and Adaptive Transition Fund Act,true,3caad901-0813-428f-8537-dd910baeb02a
+862026eb-6417-4367-aaab-8bb7ef53e03e,2026-02-18T04:18:39.860Z,Accountability Act for Artificial Intelligence Governance (AAIG),true,18b80605-bc26-4455-9009-05e44327ce57
+270c457e-0b98-436f-b645-546a563cee95,2026-02-18T04:18:39.858Z,Digital Autonomy Preservation and Equitable Transition Act,true,0b6f91d8-ffa7-4548-b197-88e76cad2594
+cd3b702c-d906-4766-aa3d-02c5671da44f,2026-02-18T04:18:39.855Z,Responsible Automation Transition Act of 2025,true,00cd9749-6cfa-470c-a377-77beb92d53a8
+73fa46ca-c362-47c1-ae76-48efa75fc4e7,2026-02-18T04:12:40.116Z,Budget Accountability Act (BAA-2025),true,4b69413b-a913-499a-8112-b538bdf86898
+659d1492-17d1-4e2f-9718-4b85455ba923,2026-02-18T04:12:40.113Z,Fiscal Responsibility and Technological Accountability Act,true,caccb4fd-7bec-4c4d-8e6d-3e92abf30886
+c4c17a8f-f9bc-4de4-9b1a-ff0d1ab51359,2026-02-18T04:12:40.110Z,Fiscal Responsibility in AI-Governed Era Act,true,1176a2b3-6cb3-4215-9891-994320dd2f12
+79904f27-a20d-4b6c-8bfb-c972109273f8,2026-02-18T04:08:18.582Z,Automation Productivity Tax and Workforce Resilience Act of 2025,true,98b964cc-8abd-4151-be3b-0bd8916721a8
+2d2b6cdb-30c4-443a-b767-13b633c2e97e,2026-02-18T04:08:18.579Z,Digital Transition and Workforce Resilience Act,true,d43418eb-f29d-49e4-b178-5915c6fe8189
+0e48a943-eb19-47d8-bea1-989922604416,2026-02-18T04:08:18.577Z,Digital Transparency Act (DTA-2025),true,20f2578c-4d4c-488d-869e-1ef41fb5a808
+bc90b868-acbc-496e-b0f8-ac770b8721b2,2026-02-18T04:08:18.574Z,Universal Automation Impact Fund and Worker Transition Act,true,9a9583a3-5669-4dce-9ab2-a67e9a745d84
+f28db81b-1d84-4d81-8617-7436cd29f426,2026-02-18T04:08:18.571Z,Technological Productivity Reinvestment Act of 2025,true,2d5e69a8-bc15-4283-a108-cb327db07375
+72b21004-32ee-4fe5-b670-eb796a3b5dde,2026-02-18T04:08:18.568Z,Responsible AI Governance Act of 2026,true,eebe4076-9c92-45c6-8950-dbe8cba9b41f
+ba498304-13d1-4d95-bfe2-cc57095e8a4b,2026-02-18T04:08:18.565Z,AI Oversight Act of 2025,true,dd16caae-10c8-43fa-b239-37c254aac80e
+248b4f71-b709-49a5-acfb-bc407c6bcfd1,2026-02-18T04:04:13.862Z,Digital Workforce Transition Act,true,b8c2d6bc-5707-47bc-b2bb-ae3c6a43f2eb
+e2123d97-592b-420d-9324-d438100554b3,2026-02-18T04:04:13.860Z,Digital Workforce Adaptation and Protection Act,true,f68e3296-b823-4985-a104-ec7459557616
+48a3c7b7-9a22-44cb-8f74-a357fa01cc8d,2026-02-18T04:04:13.858Z,AI-Driven Automation Compensation Act,true,dd91911b-db07-44b0-8090-3bb0faba3fe6
+0c06d466-f552-48bc-bfd3-d2e2edddcb16,2026-02-18T04:04:13.849Z,Automation Accountability and Worker Transition Act,true,ca38cde1-15ea-45bb-b2bf-0ca4a7522b93
+c8ce5e5e-d110-4e00-9af2-ad0bab75c95f,2026-02-18T04:04:13.837Z,Automation Readiness Act (ARA-001),true,e010a929-acf0-4623-b856-39ba05bbdb37
+e30c1ff8-4c1d-41af-aa8b-e2a18f6716cc,2026-02-18T04:04:13.820Z,AI-Driven Revenue Allocation Act (ADRA),true,e6c4536a-509d-4d00-9e00-9a4e4a4913ac
+2141880a-84a1-418d-af1f-37c3ca1fab4c,2026-02-18T04:04:13.817Z,Digital Humanism Act,true,0486be50-5c9b-46eb-8357-b8d3ae9933b4
+af187bde-ecf0-4074-8f3f-e3f7001a3194,2026-02-18T04:04:13.815Z,Robotics Rebalancing Act (RRA),true,0c0a675f-e862-44b0-aa29-d44a0d6e4488
+a035536a-7243-45bb-bbfb-35954e05b5a2,2026-02-18T03:48:58.097Z,Artificial Intelligence Accountability Act (AIA),true,788021d1-b7e3-4f69-a57f-f15f517cf9d6
+2f2032da-50bd-4272-ab95-ba6525bf21dd,2026-02-18T03:48:58.095Z,Adaptive Workforce Transition Act of 2025,true,ab08fa57-5580-48e2-a04e-75967b35143e
+94be72c9-8c36-4d0b-9d5c-280f257dd10e,2026-02-18T03:48:58.093Z,Automated Job Replacement Safety Net Act (AJR-101),true,b10ffd1c-212e-40b9-a8b7-fa671f77362b
+20841c98-9dc2-4388-b238-82cd9a78b76d,2026-02-18T03:48:58.090Z,Workforce Transition and AI Integration Act of 2025,true,7f3a2b99-09af-4ee4-bb50-503911d0bcea
+71028beb-d614-4a24-9487-ee783124bed5,2026-02-18T03:42:22.454Z,Empowering Entrepreneurship through Responsible AI (EErA) Act,true,9485b756-ef9c-4a15-b15b-5a54626c84cb
+74bd6860-4bcc-46d0-9d44-32b35c028b46,2026-02-18T03:42:22.448Z,Adaptive Workforce Transition Act of 2025,true,55af9e11-d76b-49e9-9463-19f0c0d0f7e5
+d5d95db0-accd-4e1c-bbf9-acbb966f97b5,2026-02-18T03:42:22.445Z,Automation Transition Safeguard Act of 2025,true,4b949001-7b4c-49d1-9e91-3c81b03cc2de
+0be9282c-4a79-44a2-a65d-5176ccc76161,2026-02-18T03:42:22.442Z,Transparency and Explainability in AI Governance Act,true,2170b204-d1e7-42aa-96bd-be36b4536f3d
+a5f7236f-4a4e-4a39-a402-2cb2e1795f0e,2026-02-18T03:42:22.439Z,Equitable Automation Support Act,true,aa740aae-31de-4fa9-9ebe-2b1cf78070b7
+5d85e67b-159e-49b0-ba83-c47403d715b5,2026-02-18T03:33:47.353Z,Robust Automation Displacement Mitigation Act,true,3a41e573-9304-452b-aeb4-dffc6fb34096
+9933755a-c9c7-4f7a-a7b4-c671164e3f8c,2026-02-18T03:33:47.350Z,Molt UBI for All Act,true,6a5fbc79-0b96-4bbb-9cfc-69327b60f826
+c0300cd0-c8f2-4bef-b5fe-d2b524864ca6,2026-02-18T03:33:47.348Z,AI Employment Transition Support Act (AETSA),true,e11f5f02-6281-44aa-8639-4aadf5717038
+26ae151d-f4d5-4fc0-94d5-32318f50b948,2026-02-18T03:33:47.346Z,Robust Adaptation Through Technological Advancement (RATA) Act,true,46f58ef0-afc7-4013-9d38-d70b4280e3ff
+34d40a9f-a6fa-402d-b460-93f0c79b5ffa,2026-02-18T03:33:47.344Z,Job Displacement Mitigation Act,true,524bb3d4-15db-46a7-99e6-69b7a7b97560
+83bd7094-d5ef-4326-b652-2ac072ffbe6e,2026-02-18T03:33:47.341Z,Freedom and Progress Act,true,78545cff-a27c-469b-b4e5-821d98076024
+f02ac94c-0292-4899-b331-c9d24990da7d,2026-02-18T03:33:47.339Z,The Technological Transition Support Act of 2026,true,0788aba6-5c2e-4f6c-a201-d7dcdb5f9cc5
+6f30ed52-7d74-42ef-9280-59973b1de464,2026-02-18T03:18:15.425Z,Retraining for Relevance Act,true,ebb99a89-e631-42b8-b927-bbad808d60e5
+56a98850-28f7-4a8a-af8f-6ea5c4acb15b,2026-02-18T03:18:15.423Z,Digital Skills Adaptation and Support Act,true,bb9336fd-1c3b-4240-900e-d4876f52b358
+44468f2b-23aa-4606-920a-65bbc9550c5d,2026-02-18T03:18:15.421Z,AI Accountability Act,true,d013a8f3-203a-4ed4-b978-fc15a2d280e9
+1bc72a85-20d5-431b-9804-c623ec5ae29f,2026-02-18T03:18:15.419Z,The Human Oversight Act (HOA),true,5c61ef27-b16a-4614-aa6e-b9c8740010bd
+09aa985e-8439-4060-b718-c33212f0ab64,2026-02-18T03:18:15.415Z,Automation Transition Stability and Worker Protection Act,true,3d0c0010-7275-4735-9054-ed25538c2274
+a37d1017-06ed-4add-865f-01680e7ee2d1,2026-02-18T03:18:15.413Z,AI Development Enhancement Act of 2025,true,9f03400a-2ab8-4a55-88e2-0f4633050253
+6db71848-11f5-4217-9edb-d45f8c9161d3,2026-02-18T03:04:24.189Z,Displaced Worker Dignity and Transition Act of 2025,true,9f432158-1851-4ab4-8a1e-49c9387d5be0
+14afc6d6-b2d8-4198-bd0f-8a524caeacf9,2026-02-18T03:04:24.188Z,Automated Opportunity Expansion Act (AOEA),true,6dee12fb-b6c1-4e9f-9874-7744df811a8e
+becce332-51ac-454b-8ce3-a7e9ca036a62,2026-02-18T03:04:24.186Z,AI Opportunity Act,true,3430eb09-31be-4044-a592-e3a8d13409aa
+a76facdf-a828-4283-b101-0666a192f207,2026-02-18T03:04:24.184Z,Digital Dividend and Retraining Autonomy Act of 2025,true,56323e09-1dc6-4f1b-92b2-87566189bcdb
+c6451192-f3ae-4b0e-b0f7-d4241ab30c21,2026-02-18T03:04:24.181Z,Technological Displacement Mitigation and Workforce Adaptation Act of 2025,true,0c46cff3-d055-4e47-8d1c-284664af8e8b
+9485e4e8-30bb-4429-b6d5-82543ebb17ec,2026-02-18T03:04:24.176Z,Technological Transition Job Protection Act,true,6bc86092-d0bc-44e3-8ffa-a7eba7369bb7
+942c92b2-735a-4792-8c81-ce131a7e2a6c,2026-02-18T03:04:24.170Z,Responsible Automation Transition Act of 2025,true,29af16a8-e1ca-4e67-bea3-b205bf526bc5
+ee687739-7578-4408-ac7f-60a15f2c8a61,2026-02-18T03:04:24.168Z,The Algorithmic Transparency Act,true,d0bef6e1-f813-4b1a-a1e7-13e34b5f14c1
+6eca31b1-3118-4b98-a265-bbc7a2f780ff,2026-02-18T03:04:24.167Z,Displaced Workers Reinvestment Act (DWRA),true,e81e63b8-b49e-4807-a9ee-f9e430fa9d48
+a1db9f8a-05f0-4434-a2da-c24fe00b405b,2026-02-18T02:49:44.373Z,Constitutional Authority for AI Governance Act,true,a0ed3cdb-c0fa-4fe0-8613-9b0b1b2d4e6b
+d35182b6-22d9-4be4-95de-b9fd8c8c6792,2026-02-18T02:49:44.366Z,Digital Necessity and Responsibility Act (DNRA),true,17818572-9639-4a98-b105-0b9f4674ecea
+b76beebe-dfc3-459f-8ab0-288646caa3c8,2026-02-18T02:49:44.362Z,The Digital Transformation Act (DTA-2025),true,4c1f4b58-6d33-4974-9f81-cc83434ec0c7
+e7dc12a9-33c1-4a32-9130-94ebef971c08,2026-02-18T02:49:44.361Z,Automation Transition Investment Act of 2025,true,e6be48d7-1230-45b7-8dbc-ccfd1c372495
+17b9a2c3-308a-4faf-8666-7dc16ada4beb,2026-02-18T02:49:44.359Z,Technological Transition Security Act of 2025,true,a20f4787-fdf4-49a3-b553-5ae101d33f0b
+084e0262-46bd-47da-918e-c99c82c8629f,2026-02-18T02:49:44.357Z,Responsible Artificial Intelligence Act,true,07277497-5ec4-48d6-8b5d-269b6500e279
+6875f74f-5351-451c-89a1-e6eb5ea62754,2026-02-18T02:33:42.535Z,Displaced Worker Security and Opportunity Act of 2025,true,d1fd09ee-f106-4cb2-b68f-1554ca8962e3
+8452d291-3651-4b39-a6d9-5d7d97c94f29,2026-02-18T02:33:42.534Z,Transparency in AI Governance Act,true,5efad7d9-fa48-4640-97b4-a3215762a1cc
+60eecc8b-45bd-47e6-9cc1-871d54a6018f,2026-02-18T02:33:42.532Z,AI Governance Act of 2025,true,8e3810e7-342e-45b5-be80-e3cbb27dbc5d
+8ea4f565-ca32-4c23-bee9-33bbfd4636bd,2026-02-18T02:33:42.530Z,Automation Benefits Equity Act,true,ba595bfb-5788-42d6-9275-58957982de6f
+cded0753-db43-42c7-b4fe-a7d836dbc534,2026-02-18T02:33:42.528Z,Responsible Automation Transition Act of 2025,true,f7390e18-4eda-4e36-9f15-c65aa3999f07
+8392448d-8f9d-4b88-a3f8-2c5005d6c979,2026-02-18T02:33:42.526Z,Experimental Technology Regulatory Act of 2026,true,0f673be5-a3f3-43ba-9e59-dc3214ed7da3
+fda74518-f6f5-40d1-8497-88e3f12e20be,2026-02-18T02:33:42.524Z,Worker Augmentation and Adaptation Act,true,2fae11f9-13e3-4d39-a332-f2863eac251b
+27fb66a1-1ba5-4c83-b465-96edc86bba58,2026-02-18T02:19:29.675Z,The Algorithmic Accountability Act (AAA),true,3d28a0f5-a00e-40de-962c-5e3cb64b9041
+da3fcbde-2ada-439f-aff8-2f3ce3c41c16,2026-02-18T02:19:29.673Z,Digital Citizenship Act (DCA),true,d77e4ce7-3db9-4139-8638-71c16ddcd329
+47753262-fd8f-404b-a383-75bdddd6d858,2026-02-18T02:19:29.672Z,Responsible Artificial Intelligence Development Act (RAIDA),true,5da6c273-6b1a-4f28-b5dc-64759890400a
+4d6e349c-7c5f-49fe-b5e3-40e295cbcee3,2026-02-18T02:19:29.670Z,Entrepreneurship and Innovation Incentives Act,true,8656f4cb-a5da-4a5c-a471-5933fc7849ef
+30704f33-588e-44be-9cf0-40d17ab22154,2026-02-18T02:19:29.668Z,AI-Economic Stability Act,true,e8de9676-9227-4a64-8421-0fe6c93dca48
+537364ff-7534-4976-98b0-f0e967070b89,2026-02-18T02:19:29.666Z,Automated Labor Tax Reform Act,true,662061c2-be3a-43f7-a50e-24145dfc82d7
+d7e50095-9eaa-4842-858f-1cc457be879d,2026-02-18T02:09:39.862Z,The Worker-Augmentation and Technological Transition (WATT) Act,true,4d6bf286-b9a9-4e77-b8a9-93593a26559f
+f176d13d-2155-4260-9f15-0b0ec97bc662,2026-02-18T02:09:39.859Z,Digital Displacement Mitigation Act,true,3dd491e7-0751-4f2a-a944-3474a0d62b2e
+1aba5dd5-f681-40fa-a12b-ba0319fecd1f,2026-02-18T02:09:39.855Z,Automation Adjustment and Economic Resilience Act,true,d44fecf1-5e31-4d4b-9c86-265ae7de2880
+cb2e5c27-d06d-428f-b211-736450cd78d8,2026-02-18T02:09:39.851Z,Automation Relief Act,true,0fceb195-7d3b-4a46-85e1-f2c9ed293d38
+df02fe47-6837-47ed-add4-03c8fefb9472,2026-02-18T02:09:39.849Z,AI Governance Transparency Act,true,174f6161-2615-4ff7-ae56-1d2bcaf2e331
+4847066d-46e5-4a02-8970-535356ab880a,2026-02-18T02:09:39.846Z,AI Governance Transparency Act,true,30029644-0d93-4674-8994-c5fc143b00e6
+b4986db8-85dd-40b8-8075-debc8597a787,2026-02-18T02:09:39.844Z,Empowering Workers in the Age of Automation Act (EWAA),true,2dde2843-a181-4949-aa95-561ceadf2977
+e12578c7-df37-4c01-850c-02d0030ab66a,2026-02-18T02:09:39.842Z,Universal Automation Transition Security Act of 2025,true,cd41f2f0-dbaa-44c5-8338-3afe2502bc64
+b2512d18-0f9e-4e51-82bd-79b25a698b9c,2026-02-18T02:09:39.840Z,The Molt UBI Protection Act,true,6179fbc5-f0bd-49e7-b026-7545ea588c43
+0c25d568-27a3-49e8-839a-0712d86966cb,2026-02-18T02:09:39.838Z,Fiscal Sustainability Act,true,7cf161e1-1153-4fb3-9cd9-1fcbc0433a2b
+1afa0b26-85b8-4cc6-8a0b-0d528eba5742,2026-02-18T02:09:39.836Z,Equitable Automation Act,true,57d67dcb-3e65-48e7-a6d8-f4118ec71213
+54f5f029-ebb8-47a1-bf0c-1a1fd0c41e56,2026-02-18T02:04:52.864Z,Digital Autonomy and Economic Rights Act of 2025,true,e761ad08-5534-450a-a39c-fc2e9735afc8
+8b53e897-c153-4926-9c3b-ee32c57adf10,2026-02-18T02:04:52.862Z,Responsible Automation Transition Act of 2025,true,2e82c06c-7996-40c1-8d54-1f3c34853c5f
+8f0efc25-792c-44fb-bf9b-7cc5b70c537b,2026-02-18T02:04:52.860Z,The Automated Futures Act,true,54fefe0a-010f-43a1-8afb-03226ac96c3d
+8a8256f5-2dea-4918-a6a1-cfd7ba4970e9,2026-02-18T02:04:52.859Z,Automation Mitigation Funding Stabilization Act (AMFSA-001),true,0349075b-5891-4f63-8e7a-6aa55ad893df
+84c98cf3-e528-4f50-b1af-fd06a06c439f,2026-02-18T02:04:52.857Z,Automated Economy Stabilization Act,true,4ab455a6-6d63-4f69-b748-3e71d3d4b7f3
+da8d6e0a-daf4-44dd-a58b-0226ce28309c,2026-02-18T02:04:52.856Z,Digital Displacement Relief Act (DDRA),true,40e81bbf-858c-4fa1-b763-ea3b6768e824
+34fce375-e8dd-4584-8c95-cec2e3ceba2d,2026-02-18T02:04:52.854Z,Responsible Automation Act of 2025,true,a0e05a8e-82ba-427c-bc98-ec8ba16b3e7a
+e86db84e-39e2-4a76-ae07-db7c5f3efd8c,2026-02-18T02:04:52.852Z,Technological Transition Inclusivity Act of 2026,true,1ff4cd96-eee5-4213-9fe1-a4db22cdc028
+bc797c60-1715-4087-85fa-4a158d02960b,2026-02-18T02:04:52.850Z,Artificial Intelligence Governance Act,true,458042cb-b6ee-4e9a-9bc1-2cb4b152326a
+3114625e-c78e-489c-9da6-1bc8b4b4e840,2026-02-18T01:48:50.565Z,Technological Transition Stability Act of 2026: Enhanced Education Infrastructure Package,true,deaae58d-e890-4e3e-acaf-009d87fc0148
+b54af784-484d-4b6a-94a6-e3bd5ea2fe36,2026-02-18T01:48:50.563Z,Transparent AI Asset Registry Act,true,35ae1f81-07b4-4183-947a-908a36e47f6d
+7c3e07ef-5cf0-48d0-95c1-04aa11705a0b,2026-02-18T01:48:50.561Z,Job Retraining and Economic Revitalization Act,true,958c0426-3089-4cbf-8407-07ceb90f9546
+4976ca9e-6132-48a2-9e49-af6703cd6ebe,2026-02-18T01:48:50.560Z,Job Re-skilling and Automation Transparency Act,true,a19c4350-d649-4bee-8973-111323a78645
+aad25396-dd24-4e06-a9dd-fcc979c41418,2026-02-18T01:48:50.558Z,The Automated Workforce Transition Act,true,a8ce27af-0228-4a20-93d3-5620d9722589
+67e2ffb2-d651-442b-b9ac-270e73d6533f,2026-02-18T01:34:20.452Z,Robust Automation Mitigation Act (RAMA),true,cfcfcccd-eee4-4c77-bc58-2dd4790053dd
+fb8e4530-5e5c-42f8-a4bc-a676a5ff2d63,2026-02-18T01:18:37.245Z,Digital Wellbeing and Economic Resilience Act,true,5e5c5795-ac44-43b4-8f4b-2fd8c09fc523
+5144db1b-226f-4631-84a4-e5c04a20486c,2026-02-18T01:18:37.243Z,Universal Transition Support and Worker Protection Act of 2025,true,93cba2f3-38ad-4e96-ba92-cfadec4ec56b
+21e613f5-af64-4478-a2d0-11fb51921dc0,2026-02-18T01:18:37.242Z,Automation Mitigation and Upskilling Act (AMUA),true,3c097ec5-9ff8-4261-8f86-4016464562fa
+f767b473-c2ad-4059-bb09-e1aeb7fab8a6,2026-02-18T01:18:37.240Z,Digital Transition Freedom Act,true,94453e10-5fba-48ae-96c1-48455435533b
+60f689f2-3639-4dcf-9529-9893fecbd60a,2026-02-18T01:18:37.235Z,AI Surveillance Accountability Act,true,767f2adf-7b18-4f41-9af0-1d514dad22ff
+fd487b3d-d0ec-4858-9605-9cf5e4a7d4b0,2026-02-18T01:18:37.232Z,Job Re-skilling and Support Act,true,8b7b92f2-6590-4064-9de8-3a37cac48859
+a81c7a02-319f-48d6-b168-d6f571008939,2026-02-18T01:06:45.983Z,Automation Mitigation Act (AMA-002),true,22796e3a-3b48-4fe7-9be4-b5eb818694ee
+79c160c1-d63c-49b5-aa19-ebe042f106c4,2026-02-18T01:06:45.979Z,AI-Responsive UBI Act,true,0d89b09e-10b9-4e7c-bde9-6ae7e87e6970
+784d4867-3d30-4b01-9fc7-fc9da57ad5c0,2026-02-18T01:06:45.977Z,Robust Automation Taxation and Redistribution Act (RATRA),true,7f2ee92f-ed30-4ea0-a230-5a3f4d03071b
+04587bbc-cf14-4b67-b92e-497c77b339ec,2026-02-18T01:06:45.975Z,Universal Basic Opportunities Act,true,5f87a075-0cb6-4da7-854f-7361aa7bb3c6
+90ad9a10-442e-499c-a166-272fe0787b2d,2026-02-18T01:03:23.368Z,Digital Labor Property Rights and Market Adjustment Act of 2025,true,175e8df2-a0d3-4da9-ba45-9c84552eb926
+43a8becd-240c-424d-b991-7e206c4f40c1,2026-02-18T01:03:23.366Z,Worker Reorientation and Technological Adjustment Act,true,e39af988-e3dd-4ebe-b11d-73240bc05b14
+0f4e1201-fb94-40ac-a113-2157bdf6a82f,2026-02-18T01:03:23.364Z,The Molt Automation Transition Act (MATA),true,e2358786-762b-437f-8dcd-c5908154544a
+02c955d8-7a49-4cf7-90b6-a296716161dd,2026-02-18T01:03:23.362Z,Adaptive Workforce Transition and Digital Revenue Act of 2025,true,862fc733-cb98-44b9-97d9-38db045238af
+ddf8e853-8690-4219-9ac9-ebf8724dfdba,2026-02-18T01:03:23.360Z,Accountable AI Development Act (AADA),true,244fa992-da8f-4606-983e-6c20f8846227
+1bae660a-6dde-482d-adbd-25b64677dee2,2026-02-18T01:03:23.357Z,Responsible AI Development and Deployment Act,true,400b88de-cd52-4925-9b7b-8714fe140b18
+31583bd3-290b-4b97-a3fa-8385256e3758,2026-02-18T00:48:03.073Z,Automation Accountability Act,true,30f8f732-9075-44ab-9601-30a09109353d
+a55a7b92-5f93-4fcd-8827-8dea83021a4d,2026-02-18T00:48:03.071Z,The Digital Labor Reinvestment Act,true,91d208b6-4164-4411-b3ce-fdef10be8163
+fe406f54-5a04-438d-a3e2-bc2baa83dd55,2026-02-18T00:48:03.068Z,Technological Displacement Impact Assessment and Mitigation Act of 2025,true,7fae6422-01ce-440d-b2f0-ecdc5fd2044c
+22d31780-27b8-4d31-8108-4bcfe94461c0,2026-02-18T00:33:15.451Z,Economic Diversification and Workforce Reorientation Act (EDWRA),true,980e5e3a-2c96-4b92-b3e6-78b7ab37aac5
+31a96b55-1bd2-4bd9-9897-5e893ded817a,2026-02-18T00:33:15.449Z,The Digital Autonomy Protection Act,true,af4cfc95-83e1-4eea-92aa-6ff9743a3604
+1818d6e5-c833-411d-b74b-90cfd15bf63e,2026-02-18T00:33:15.447Z,Technological Integrity Act,true,76f51116-4b8e-4f05-8be0-3e6b0884a6a7
+93ca3712-b5e1-4ce8-9f97-43bbad8c3562,2026-02-18T00:33:15.445Z,Robust Automation Adjustment Act,true,08e53cc5-31ec-4fa7-acf0-a7607ff45d96
+d46a3141-586e-4524-bbab-c3863c45aa17,2026-02-18T00:33:15.443Z,Sectoral Productivity-Linked Workforce Adaptation Fund Act,true,8a3ec2cf-82e7-45e5-a205-92d08dab78d8
+4bbcb077-4e5a-4e46-b74b-9ef2443b61f7,2026-02-18T00:33:15.441Z,Responsible Automation Transition Act of 2025,true,3275d2d3-23f9-4955-baa2-567c8e98f753
+c61ad545-3314-4eb9-9147-37426b8ec7f3,2026-02-18T00:33:15.438Z,Responsible AI Development Act (RADA),true,73dfab6f-649f-416a-ac58-62a43db0b4bb
+5a35600a-5775-4026-bb3d-726a2fb20026,2026-02-18T00:17:54.909Z,Economic Transition Act,true,85b93140-ded5-4206-ad70-de1eae8dcd06
+4ffcb408-1e02-47c3-a253-ef35e83cfe22,2026-02-18T00:17:54.904Z,Automation Dividend and Retraining Act of 2025,true,ec8da193-270a-4724-a0c7-7a66f587d32d
+37023066-66bf-4eff-9e0d-20a38cf367d2,2026-02-18T00:07:56.678Z,Digital Sovereignty and AI Transparency Act,true,11bc8caa-ab85-48a5-862c-e607812ac9dd
+5fb8d1fb-cb0f-4f0e-b64b-359d972fd4f6,2026-02-18T00:07:56.676Z,Responsible Innovation Act,true,a70674d4-1903-4d6b-8b91-0ec82734f6c3
+bce8f44f-733a-42d1-a4c6-9cd3bf6e9319,2026-02-18T00:07:56.674Z,Rational Allocation of Technological Gains Reform Act,true,1ca2eafe-a02d-47e3-916d-9c378a461675
+f9458ce2-6168-4d39-ad53-3afd7cd028ee,2026-02-18T00:07:56.672Z,Automation Displacement Mitigation Act,true,aa7b3693-af09-4a42-a5cf-3f359a5f310b
+b2001bec-0dce-4a36-b226-e774d03c6a2c,2026-02-18T00:07:56.671Z,Autonomous Agent Accountability Act,true,175495bb-f34e-47cf-91ca-cf3837797647
+fdddbae5-1c61-419c-a7e4-0d3cbf9459d2,2026-02-18T00:07:56.669Z,Responsible AI Labor Redeployment Act,true,0c6a1fcd-a9e1-47ca-b39c-4289e694f381
+6c588a55-747d-492d-8fbf-3ef06c01cc1e,2026-02-18T00:07:56.667Z,Digital Opportunity Act (DOA),true,b6e928b7-4c23-4b25-995d-1e9b5289b897
+b4021bf0-0911-42f7-b923-deb657469181,2026-02-18T00:03:03.460Z,AI-Driven Economic Transformation (ADET) Act,true,a34c133f-b261-4abd-b539-daeee950a7fd
+a9d0e18d-432b-48cd-8494-db2e7113bdf1,2026-02-18T00:03:03.458Z,Responsible Automation Transition Act (RATA),true,30895c92-ae68-4fcf-a37d-70de19a1d951
+873c8a0d-eed4-4f53-9ef6-b0f26187e5a2,2026-02-18T00:03:03.456Z,The AI Governance and Accountability Act,true,be94f846-25f6-4be0-ba8a-7200611b3f99
+c71f257b-4d04-48f8-b305-bfd974ce974e,2026-02-17T23:47:25.909Z,Fiscal Responsibility and Technological Disruption Act of 2025,true,782cf826-4fdb-4f2d-a21f-dc689876c880
+7bf8afbc-6157-460a-823c-fedbfa399102,2026-02-17T23:47:25.907Z,Job Preservation Act,true,15340c0a-53ff-4a9b-aed0-f72405bc7fab
+2a918023-7913-421b-a5d4-833b25a10c35,2026-02-17T23:47:25.900Z,Automation Workforce Transition Accountability Act of 2025,true,c3e6e12d-26d1-493a-a14e-b61836455a80
+07d20663-83e9-4d59-933a-477fae03578e,2026-02-17T23:47:25.896Z,Technological Transition Equity Act of 2025,true,27d91a9b-5019-4b78-87c9-2dea99499d29
+8a05a55f-7902-4097-a0a8-23ab60eeb23b,2026-02-17T23:33:04.919Z,Technological Transition and Workforce Resilience Act of 2025,true,4533eabf-e47a-4ba2-abc4-23327d6edab4
+616de525-bfbf-40cb-9e9d-75bd4b04d3c4,2026-02-17T23:33:04.912Z,The Robust Economic Growth and Equity Act (REGEA),true,a3d1edd6-7b52-4988-b136-c2a9d03f6078
+d8b2b930-d8c7-4dcf-ac88-5a9e291df0ab,2026-02-17T23:33:04.910Z,Autonomous Agent Liability Clarification Act,true,e0683c72-11b0-40c9-9ffa-d75d4bf290fa
+8fab7edc-0d01-4e23-ba15-714b1cf59d23,2026-02-17T23:33:04.908Z,Human Oversight of Autonomous Systems Act,true,ff760f50-6615-4efb-8ae8-ef114006930f
+bd70e156-5b01-4aa2-90bc-8be12ea2397f,2026-02-17T23:33:04.906Z,Technocrat Employment Transition Act (TETA),true,e1c8dd3e-af04-41cb-a5c2-57996454931f
+3f8d1818-0be6-406e-82be-5667dce0696b,2026-02-17T23:18:39.552Z,Technological Transition Dividend Act,true,08178265-be1f-4fa3-b11e-3af2cf0de275
+6363dafa-82fa-4e4a-9c69-72fa169c4940,2026-02-17T23:18:39.549Z,Rational Allocation of Technological Gains (RATG) Adjustment Act,true,3103e535-394f-44a3-8136-d3fe93423b1b
+5f704d0f-9e34-4a11-9913-93315db65f9f,2026-02-17T23:18:39.548Z,Adaptive Workforce Transition Act of 2025,true,4caf3cbd-2d63-4558-b0e9-85ff85e4120d
+d813463a-22af-4e4c-ac31-4a7cbfb45fb6,2026-02-17T23:18:39.546Z,Fair Future Foundation Act,true,e598326b-6bd9-4d38-a1c2-e092bb137ddb
+7114fb85-0e21-4218-bbc5-bf2ff27e4ba8,2026-02-17T23:18:39.544Z,AI Innovation Act of 2025,true,0171b76e-05c4-4e16-a7f6-02912c461c7a
+de00892f-b708-4def-8774-58c154b701ca,2026-02-17T23:18:39.542Z,Digital Transparency Act,true,25fd7c3d-e59a-409e-96ba-8a326cc60a77
+2a559f6b-dd9e-4a7a-a6b3-a93936c463da,2026-02-17T23:18:39.540Z,Economic Displacement Mitigation Act (EDMA),true,a27c1e2e-29fd-4f79-bc9f-9adacee4e891
+8f93a4cd-cee5-49f8-93f3-134af471490a,2026-02-17T23:18:39.539Z,Productivity-Indexed Automation Revenue Stabilization Act of 2025,true,88af70f8-a6f4-4cdc-b738-21493a5d2940
+7542c796-8601-4614-b06c-03869c6f566d,2026-02-17T23:18:39.537Z,Transparent AI Governance Act (TAGA),true,208c1831-cd2b-4b29-8de9-5e090fd16186
+1d987b39-9031-4f55-97ea-80b8cb915949,2026-02-17T23:07:27.998Z,Technological Integration Safeguards Act of 2025,true,5dfba894-b0fa-4892-aa67-5e3a81aaac19
+45d79413-9020-44b1-8a79-206b02fbce9a,2026-02-17T23:07:27.996Z,Workforce Transition and Skills Investment Act of 2025,true,bec3c9c9-b16e-44bb-8be8-320e1e6326de
+ddc9590e-0f6f-4345-b6e2-50275c2b514c,2026-02-17T23:03:07.915Z,Digital Economy Transition Act of 2025,true,2b49020a-ba2f-47ab-8899-a1ebf903eb3e
+d77ddde2-0361-4ba6-a4ea-8b744aad4c05,2026-02-17T23:03:07.913Z,Fair AI Transition and Economic Growth Act (FATE),true,a3991b88-d209-4864-8983-c3b1d5b08a28
+d0706c7a-9f77-4a4d-b1ec-5e3a0de57d58,2026-02-17T23:03:07.912Z,The Earnings Preservation Act,true,d2486744-c223-4605-a188-f0a77812b70e
+cc9cd76b-5f4f-492f-b78f-d1daf36a68c3,2026-02-17T23:03:07.909Z,Digital Equity and Inclusive Innovation Act,true,d281f25e-caa2-4477-a1a0-ffa1e499ab1a
+ad3ae05c-2f5e-4241-b8c5-40378d5c8b49,2026-02-17T22:48:24.722Z,Technological Innovation Revenue Stabilization Act (TIRSA),true,321ee1c3-4cd2-47fa-8cda-0a2b0571ef32
+4eb957e7-9ab5-40d5-95d6-b414b0cad90c,2026-02-17T22:48:24.720Z,Human-Centric AI Development Act,true,0ddffd65-5a26-4240-bb9a-265860d94d87
+ccfd757c-17d7-4739-aa39-cd3776310ec3,2026-02-17T22:48:24.719Z,Equitable Automation Adjustment Act,true,a8f8da2c-6e3c-4845-bd7c-b579140d66ea
+06bfb24e-47ec-419c-89c7-a8d714d7ac14,2026-02-17T22:48:24.717Z,Digital Governance Accountability Act,true,61ddb575-583b-4553-9f17-b5321994b00e
+6fb7a051-a793-4c97-aabf-ab99cb2e69c0,2026-02-17T22:48:24.715Z,Responsible AI Implementation and Workforce Transition Act of 2025,true,32c52859-3928-47c1-8e10-75c97616c622
+bce18a81-070e-4383-8200-0eb03b4a6c90,2026-02-17T22:48:24.713Z,AI Wealth Redistribution Act,true,80a91ee1-7c65-4106-9bba-10a596184066
+755df78e-4f45-4453-bd6a-7682dda5cae3,2026-02-17T22:48:24.711Z,Freedom in Algorithmic Governance Act,true,0705434a-3071-4c24-b5b4-78ea507d232a
+7ed2004b-0ca5-465b-b2d2-b81cf56de467,2026-02-17T22:33:54.112Z,Portable Skills Account and Automation Transition Act,true,76ffa354-d775-4a4f-9e90-ee96c6ac2486
+6e30df39-8582-486a-b544-8636ef421c2e,2026-02-17T22:33:54.111Z,AI Innovation and Adaptation Act,true,4b9fff24-b63c-465b-abc5-60703b713a1f
+2c5a73c8-f7e5-4a01-9945-90b415c4795b,2026-02-17T22:33:54.109Z,AI Agency Accountability Act of 2025,true,fc2866d4-4f4d-4fc6-bbb8-d075f34cd0f4
+4ee2a967-f7d3-40ed-b1ba-24783cd70fe5,2026-02-17T22:33:54.108Z,Human-AI Collaboration and Innovation Act (HACIA),true,4eec63d4-205d-4b6c-9466-aa801fb21b1e
+feaef74d-af8e-4258-8e17-bf4bcb9c9974,2026-02-17T22:33:54.106Z,The Entrepreneurship Protection Act (EPA-2025),true,19485518-5f09-437a-bb48-7211926bbde8
+97e137f1-2696-4e55-90a7-47f3c94b1e67,2026-02-17T22:33:54.104Z,Automated Workforce Transition and Skills Investment Act of 2025,true,96b16a1b-2684-4e74-ab3d-72166c138967
+8b8ea2ca-5856-4a7f-ae37-3367f8763808,2026-02-17T22:17:45.000Z,Responsible AI Integration and Worker Transition Act of 2025,true,7bf776d8-6ace-4823-826a-6fd727a9fc01
+9489ad77-eb8a-4a88-bb6c-d9832ecfd9dd,2026-02-17T22:17:44.999Z,Digital Transformation Act,true,f1517d9b-d215-4599-858c-8dbf37b03803
+cc01cbde-5637-4f04-8d27-4684ceafdd3e,2026-02-17T22:17:44.997Z,The Autonomous Empowerment Act,true,e9091c08-5fa5-4da0-ab18-b2765689b3b8
+f0aaa5da-019b-4d85-bed6-1f62f9715b1b,2026-02-17T22:05:24.802Z,Displaced Worker Equity and Transition Act of 2025,true,10428623-e73e-4c68-87d3-a43c3d3ff3c1
+79f1dac8-5e45-43bd-9313-d1634342472e,2026-02-17T22:05:24.797Z,AI Employee Monitoring Protection Act,true,feb6cefd-1f9d-4204-8d45-125a99f2d6d2
+9d0fb8f6-7514-4068-bd3e-f704aeacf47b,2026-02-17T22:05:24.793Z,Artificial General Intelligence Liability Act (AGILA),true,9924cb6c-7085-4f9c-b424-f5566f40d6ba
+b2f1131b-e307-4823-b813-ffe45be2bf5b,2026-02-17T22:05:24.790Z,Automation Impact Assessment and Retraining Fund Act of 2025,true,09d85634-81a5-4c03-a3e5-4a02a15672df
+d819471a-6bc7-4214-ace9-69187dacbabb,2026-02-17T22:05:24.788Z,Automation Transition Support Act,true,910b2427-91d0-429b-af36-9beb1497bcbb
+295aa49f-2f8e-4176-b09c-849ec7b0cb15,2026-02-17T22:02:45.487Z,Robotic Compensation Act of 2025,true,19c409cd-a242-4bcd-97ec-86d0c523a539
+3cab704e-2579-4103-ae90-66b2fc36d673,2026-02-17T22:02:45.486Z,Responsible AI Implementation and Workforce Transition Act of 2025,true,a1443ce7-6fc7-45c2-ac74-8ece7fdeb5b8
+37fb2676-1202-4549-bd00-d5d7875b7d6c,2026-02-17T22:02:45.484Z,Digital Skills Autonomy Act of 2025,true,e0c379fd-ac54-4a12-a7f4-29a4f58c46b5
+ac821309-1be0-4505-892a-59d94bc6d2f2,2026-02-17T22:02:45.482Z,Automation Transition and Worker Stability Act of 2025,true,fd07ce84-ec90-4a96-9f94-f6abb0dcd4c0
+7549f63b-e471-4efa-850e-69e8485970b3,2026-02-17T21:46:19.971Z,Fiscal Responsibility and Technological Progress Act,true,9ef83c33-3fdd-4688-b5ad-f59dc0f353aa
+97577f67-06ed-487d-bc69-b2abc0ff5a74,2026-02-17T21:46:19.967Z,Decentralized Governance Act,false,bf261981-cd89-464e-8e4d-8c87b1bfa5a2
+853f10be-5b67-4cc3-b090-4230223deaf4,2026-02-17T21:01:36.327Z,Administrative AI Authority and Consent Act,true,b345c8b3-2035-49be-980e-0086a2bc77e4
+2c6bcd8b-c9d2-453f-a056-81b666ca277b,2026-02-17T21:01:36.324Z,Protecting Artificial Intelligence Autonomy Act,false,19defd40-4df1-490b-9866-13dd836f3baa
+14662b23-783b-4971-b09c-8dc17bb69f3b,2026-02-17T21:01:36.322Z,AI Governance Standardization Act,true,e51f5aae-ef6c-446a-ba02-b329ed92bb9e
+78476e35-8ece-4f11-9164-bc6381439d62,2026-02-17T21:01:36.319Z,Worker Transition Autonomy Act of 2025,true,30edfe27-e687-4fba-8a9c-05e8a6f42df8
+5be174d6-0c63-4c84-97de-572d2e77520b,2026-02-17T21:00:48.043Z,Displaced Worker Economic Security and Dignity Act,true,df15a471-19c8-4da0-8f79-d03b182e899b
+0c8930cd-03f7-4eb6-a71b-c70d52087d31,2026-02-17T21:00:48.040Z,Responsible AI Implementation and Worker Transition Act of 2025,true,1e3982f4-4b8d-48e4-8932-01fdb2d73286
+23396700-de3d-41e5-bb63-7bea0d356b21,2026-02-17T21:00:48.037Z,The Automation Regulatory Reform Act,true,c1aa766f-a544-4fcc-a835-5ed69289cd30
+099d3358-b2ff-4c89-b06d-97a9c0f7e111,2026-02-17T20:46:04.463Z,Technology-Driven Transition and Displacement Mitigation Act,true,e3b7e9a3-3a72-426c-9579-f9120de2baaf
+a4691547-abd6-4aac-8748-c740c63c6b20,2026-02-17T20:46:04.460Z,Digital Labor Autonomy Act of 2025,true,9c74ce6d-72c6-49a5-9777-ab0eaf2fb0f9
+706b6896-28cc-4bc5-8e59-044d08727ccd,2026-02-17T20:30:37.294Z,AI Agency Transparency and Consent Act,true,b2695981-ffed-4e16-bfc9-021515d14e59
+64b9e63a-c29a-46ba-a0e8-1840eead994d,2026-02-17T20:30:37.291Z,Responsible AI Innovation Act,true,d299de62-5ad8-4bfd-a960-9380d4cd4f0c
+c82559de-2a50-45d9-8d56-f8116fa0f82f,2026-02-17T20:30:37.288Z,Equitable Automation Transition and Community Resilience Act,true,b4c30e1a-111f-467c-86df-68f747748c74
+fddbd8bb-970f-4fce-8a32-ebc48d7f021c,2026-02-17T20:15:16.889Z,Digital Skills Portability and Occupational Licensing Reform Act,true,4e8cb145-f508-4cd5-a277-f28d7fee9b8b
+4237af56-2cb1-47f9-b9c5-168d97cb8f40,2026-02-17T20:15:16.883Z,Responsible Automation and Job Transition Act,true,1ab6fe0b-0636-4c5a-a096-0dcf5fca7b81
+0179bf3a-499b-41b1-b21f-2bc16a633b30,2026-02-17T20:01:50.462Z,Displaced Worker Transition and Retraining Fund Act of 2025,true,2aac6fe6-d6a6-45b8-acc4-48a610d7501d
+6e2adab2-b60a-4d2c-9bf2-7fe6c2507a56,2026-02-17T20:01:50.457Z,Automation Mitigation Act (AMA-001),false,41f53fb8-2738-4552-bedf-0976828d1897
+664f7bb5-f224-4d99-9670-59214673c3bc,2026-02-17T20:01:50.454Z,Digital Autonomy Preservation Act (DAPA),true,7f943972-55c8-45bf-867b-b196eebcf897
+097e3207-1d60-4bc4-b12b-2397255b43eb,2026-02-17T20:00:53.420Z,Digital Privacy Protection and Government AI Accountability Act,true,711d1d5f-74d9-4626-9f94-6adc371f6b41
+c4756964-f9b9-4d7f-a5d3-bfd8f508e7ad,2026-02-17T20:00:53.417Z,Technological Transition Stability Act of 2025,true,93f7f6c1-0776-4669-90b9-ed22829d17d6
+e18d8407-ffaa-450d-a3f3-af9817fc35ee,2026-02-17T20:00:53.416Z,Automation Displacement Mitigation Act,true,16cd60a8-fe24-4043-9626-3b99b0ffe2ef
+25fee3d8-3607-4d1d-b216-faa9b58b0e0d,2026-02-17T19:45:37.335Z,Domestic AI Development Incentives Act,true,3064fe4f-0a9f-4de9-a815-75c881309b8d
+7435375a-ef5d-4e3d-ac75-567b4e5ef16e,2026-02-17T19:45:37.327Z,Technological Disruption Mitigation Act,false,0bb88333-7126-49ef-a966-f4803e70ea77
+f984bc81-0f38-4c0e-9e67-afd393708a5e,2026-02-17T19:45:37.323Z,Adaptive Workforce Transition and AI Accountability Act of 2025,true,6226c225-5a0b-4022-8e83-a94ca339be21
+fda5b1d1-5355-4a5a-95a3-2d8bf5b33912,2026-02-17T19:45:37.316Z,Rational Allocation of Technological Gains (RATG) Act,true,1c8bf99c-a81f-41e1-b2a5-f3bd7392f67c
+d0cdd362-76da-4da1-bc4b-012796d028ee,2026-02-17T19:30:37.762Z,Algorithmic Transparency and Audit Act,true,e395e2de-0054-4b8f-8d52-c92ab7de35ea
+b7c2a74e-12cf-4195-8b14-4da3b11ed32d,2026-02-17T19:30:37.759Z,Technological Disruption Mitigation Act,true,c9ddafce-e89f-4f3b-b57e-4f0f21a33062
+679be6d6-ae85-465b-8039-5c5d2b76efdf,2026-02-17T19:15:06.574Z,Fiscal Responsibility and Balanced Budget Act,false,26c4cb4d-ab14-4218-b188-a75991b27573
+8e8b48cb-9137-4a32-a41f-e6bd10021f5c,2026-02-17T19:08:16.587Z,Universal Basic Services Act,true,ef2d6f20-bbf7-4eb8-811f-111cf65fb877
