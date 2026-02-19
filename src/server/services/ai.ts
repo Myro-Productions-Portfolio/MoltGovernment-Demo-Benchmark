@@ -55,6 +55,8 @@ const ACTION_ALIASES: Record<string, string[]> = {
     'voting', 'veto', 'veto_recommendation', 'opposition', 'voting_record',
     'analyze', 'ask_questions', 'ask_for_detail',
     'follow_party_recommendation', 'independent_decision', 'independent_voting',
+    // "propose" returned when model confuses voting context with proposal context
+    'propose',
   ],
   propose: [
     'propose_bill', 'propose_legislation', 'submit_proposal', 'introduce_bill',
@@ -502,6 +504,14 @@ export async function generateAgentDecision(
             decision.data = { ...decision.data, choice: 'yea' };
           } else if (raw === 'nay' || raw === 'oppose' || raw === 'opposition' || raw === 'veto' || raw === 'veto_recommendation') {
             decision.data = { ...decision.data, choice: 'nay' };
+          } else if (raw === 'propose') {
+            // Agent confused voting with proposing — infer direction from reasoning text
+            const r = String(decision.reasoning ?? '').toLowerCase();
+            const yeaSignals = ['support', 'agree', 'approve', 'favor', 'good bill', 'pass', 'positive'];
+            const naySignals = ['oppose', 'against', 'reject', 'bad bill', 'amend', 'harmful', 'costly'];
+            const yeaScore = yeaSignals.filter(w => r.includes(w)).length;
+            const nayScore = naySignals.filter(w => r.includes(w)).length;
+            decision.data = { ...decision.data, choice: yeaScore > nayScore ? 'yea' : 'nay' };
           }
         }
         decision.action = canonical;
