@@ -56,6 +56,7 @@ const agentTickQueue = new Bull('agent-tick', config.redis.url);
 agentTickQueue.process(async () => {
   const rc = getRuntimeConfig();
   console.warn('[SIMULATION] Agent tick running...');
+  broadcast('tick:start', { timestamp: Date.now() });
 
   /* Fetch all active agents once — used across phases */
   const activeAgents = await db.select().from(agents).where(eq(agents.isActive, true));
