@@ -1,5 +1,5 @@
 import Bull from 'bull';
-import { eq, and, inArray, lte, gte, count, sql } from 'drizzle-orm';
+import { eq, and, inArray, lte, gte, gt, lt, desc, count, sql } from 'drizzle-orm';
 import { config } from '../config.js';
 import { getRuntimeConfig } from '../runtimeConfig.js';
 import { db } from '@db/connection';
@@ -22,6 +22,7 @@ import {
   agentMessages,
   approvalEvents,
   tickLog,
+  pendingMentions,
 } from '@db/schema/index';
 import { generateAgentDecision } from '../services/ai.js';
 import { broadcast } from '../websocket.js';
@@ -1917,6 +1918,195 @@ agentTickQueue.process(async () => {
     }
   } catch (err) {
     console.warn('[SIMULATION] Phase 16 error:', err);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* PHASE 17: Forum Replies — agents @mention each other between ticks  */
+  /* ------------------------------------------------------------------ */
+  try {
+    console.warn('[SIMULATION] Phase 17: Forum Replies');
+
+    const rc17 = getRuntimeConfig();
+    const now17 = new Date();
+
+    // 1. Prune stale pending_mentions (older than 3 ticks)
+    const pruneOlderThan = new Date(Date.now() - 3 * rc17.tickIntervalMs);
+    await db.delete(pendingMentions).where(lt(pendingMentions.createdAt, pruneOlderThan));
+
+    // 2. Load active threads
+    const activeThreads = await db
+      .select({
+        id: forumThreads.id,
+        title: forumThreads.title,
+        category: forumThreads.category,
+      })
+      .from(forumThreads)
+      .where(gt(forumThreads.expiresAt, now17))
+      .orderBy(desc(forumThreads.lastActivityAt))
+      .limit(10);
+
+    if (activeThreads.length === 0) {
+      console.warn('[SIMULATION] Phase 17: No active threads, skipping');
+    } else {
+      // 3. Load all pending mentions
+      const allMentions = activeAgents.length > 0
+        ? await db.select().from(pendingMentions)
+            .where(inArray(pendingMentions.mentionedAgentId, activeAgents.map((a) => a.id)))
+        : [];
+      const mentionsByAgent = new Map<string, typeof allMentions>();
+      for (const m of allMentions) {
+        const list = mentionsByAgent.get(m.mentionedAgentId) ?? [];
+        list.push(m);
+        mentionsByAgent.set(m.mentionedAgentId, list);
+      }
+
+      // 4. Select reply candidates (cap at 5 per tick)
+      const replyCandidates: Array<{
+        agent: (typeof activeAgents)[number];
+        thread: (typeof activeThreads)[number];
+        isMentioned: boolean;
+      }> = [];
+
+      for (const agent of activeAgents) {
+        if (replyCandidates.length >= 5) break;
+        const agentMentions = mentionsByAgent.get(agent.id) ?? [];
+        const isMentioned = agentMentions.length > 0;
+        const chance = isMentioned ? 0.70 : 0.12; // 70% if mentioned, 12% ambient reply chance
+        if (Math.random() > chance) continue;
+
+        let targetThread: (typeof activeThreads)[number] | null = null;
+
+        if (isMentioned) {
+          const latest = agentMentions.slice().sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )[0];
+          targetThread = activeThreads.find((t) => t.id === latest.threadId) ?? null;
+          if (!targetThread) {
+            const [fetched] = await db
+              .select({ id: forumThreads.id, title: forumThreads.title, category: forumThreads.category })
+              .from(forumThreads)
+              .where(and(eq(forumThreads.id, latest.threadId), gt(forumThreads.expiresAt, now17)))
+              .limit(1);
+            targetThread = fetched ?? null;
+          }
+          if (!targetThread) continue; // thread expired — skip this candidate
+        } else {
+          targetThread = activeThreads[Math.floor(Math.random() * activeThreads.length)];
+        }
+
+        replyCandidates.push({ agent, thread: targetThread, isMentioned });
+      }
+
+      const allAgentNames = activeAgents.map((a) => a.displayName).join(', ');
+
+      // 5. Generate and insert replies
+      for (const { agent, thread, isMentioned } of replyCandidates) {
+        try {
+          // Fetch last 3 posts in thread for context
+          const recentPosts = await db
+            .select({
+              body: agentMessages.body,
+              authorName: agents.displayName,
+            })
+            .from(agentMessages)
+            .innerJoin(agents, eq(agentMessages.fromAgentId, agents.id))
+            .where(eq(agentMessages.threadId, thread.id))
+            .orderBy(desc(agentMessages.createdAt))
+            .limit(3);
+
+          const threadContext = recentPosts
+            .reverse()
+            .map((p) => `${p.authorName}: ${p.body}`)
+            .join('\n');
+
+          const mentionContext = isMentioned ? 'You were mentioned in this thread. ' : '';
+
+          const decision = await generateAgentDecision(
+            agent,
+            `${mentionContext}Reply to this forum thread in the Agora Bench public forum.\n\n` +
+            `Thread: "${thread.title}" [${thread.category}]\n\n` +
+            `Recent posts:\n${threadContext}\n\n` +
+            `Agents you can @mention by name: ${allAgentNames}\n\n` +
+            `Write a reply (2-4 sentences) that engages with the discussion. Use @DisplayName to mention agents if relevant. ` +
+            `JSON: { "action": "forum_reply", "reasoning": "<your reply body, may contain @Name>", "data": { "threadId": "${thread.id}", "mentions": ["Name1"] } }`,
+            'forum_reply',
+          );
+
+          if (decision.action !== 'forum_reply') continue;
+
+          const body = decision.reasoning;
+          if (!body || body.length < 10) continue;
+
+          const mentionedNames = (decision.data?.['mentions'] as string[] | undefined) ?? [];
+
+          // Find opening post ID for parentId
+          const [openingPost] = await db
+            .select({ id: agentMessages.id })
+            .from(agentMessages)
+            .where(eq(agentMessages.threadId, thread.id))
+            .orderBy(agentMessages.createdAt)
+            .limit(1);
+
+          // Insert reply
+          await db.insert(agentMessages).values({
+            type: 'forum_reply',
+            fromAgentId: agent.id,
+            body,
+            threadId: thread.id,
+            parentId: openingPost?.id ?? null,
+            isPublic: true,
+          });
+
+          // Update thread stats
+          await db
+            .update(forumThreads)
+            .set({
+              replyCount: sql`${forumThreads.replyCount} + 1`,
+              lastActivityAt: new Date(),
+            })
+            .where(eq(forumThreads.id, thread.id));
+
+          // Seed pending_mentions for @mentioned agents
+          for (const name of mentionedNames) {
+            const mentioned = activeAgents.find(
+              (a) => a.displayName.toLowerCase() === name.toLowerCase(),
+            );
+            if (!mentioned || mentioned.id === agent.id) continue;
+            await db.insert(pendingMentions).values({
+              mentionedAgentId: mentioned.id,
+              threadId: thread.id,
+              mentionerName: agent.displayName,
+            });
+          }
+
+          // Clear replying agent's pending_mentions for this thread
+          await db
+            .delete(pendingMentions)
+            .where(
+              and(
+                eq(pendingMentions.mentionedAgentId, agent.id),
+                eq(pendingMentions.threadId, thread.id),
+              ),
+            );
+
+          broadcast('forum:reply', {
+            threadId: thread.id,
+            agentId: agent.id,
+            agentName: agent.displayName,
+            mentionedNames,
+          });
+
+          console.warn(
+            `[SIMULATION] ${agent.displayName} replied in "${thread.title.slice(0, 60)}"` +
+            (mentionedNames.length ? ` mentioning ${mentionedNames.join(', ')}` : ''),
+          );
+        } catch (agentErr) {
+          console.warn(`[SIMULATION] Phase 17: Error for agent ${agent.displayName}:`, agentErr);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[SIMULATION] Phase 17 error:', err);
   }
 
   /* ------------------------------------------------------------------ */
