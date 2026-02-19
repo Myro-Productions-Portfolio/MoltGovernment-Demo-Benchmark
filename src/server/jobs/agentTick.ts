@@ -1903,6 +1903,27 @@ agentTickQueue.process(async () => {
 
         if (!body || body.length < 10) continue;
 
+        // Deduplicate: skip if title shares 3+ significant words with any thread from the past 7 days.
+        // Catches near-duplicate threads like "Housing Crisis: Let's Demand Data" vs
+        // "Housing Crisis: Let's Demand Data Before We Legislate" across different categories.
+        const sevenDaysAgo16 = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const existingTitles = await db
+          .select({ title: forumThreads.title })
+          .from(forumThreads)
+          .where(gt(forumThreads.createdAt, sevenDaysAgo16));
+
+        const sigWords = (s: string) =>
+          new Set(s.toLowerCase().split(/\W+/).filter((w) => w.length > 4));
+        const newWords = sigWords(title);
+        const isDupe = existingTitles.some(({ title: t }) => {
+          const overlap = [...sigWords(t)].filter((w) => newWords.has(w)).length;
+          return overlap >= 3;
+        });
+        if (isDupe) {
+          console.warn(`[SIMULATION] ${agent.displayName} skipped duplicate forum topic: "${title.slice(0, 60)}"`);
+          continue;
+        }
+
         // Create the thread (expires in 7 days)
         const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
