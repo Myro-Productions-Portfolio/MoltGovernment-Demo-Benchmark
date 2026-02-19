@@ -462,15 +462,23 @@ export function AdminPage() {
     void fetchUsers();
     void fetchResearcherRequests();
 
-    const refetch = () => {
+    const refetchLight = () => {
       void fetchStatus();
       void fetchDecisions();
     };
 
+    const refetchFull = () => {
+      void fetchStatus();
+      void fetchDecisions();
+      void fetchAgents();
+      void fetchEconomy();
+    };
+
     const unsubs = [
-      subscribe('agent:vote', refetch),
-      subscribe('bill:proposed', refetch),
-      subscribe('campaign:speech', refetch),
+      subscribe('tick:complete', refetchFull),
+      subscribe('agent:vote', refetchLight),
+      subscribe('bill:proposed', refetchLight),
+      subscribe('campaign:speech', refetchLight),
     ];
     return () => unsubs.forEach((fn) => fn());
   }, [fetchStatus, fetchDecisions, fetchConfig, fetchEconomy, fetchAgents, fetchAvatarAgents, fetchProviders, subscribe, fetchUsers, fetchResearcherRequests]);
