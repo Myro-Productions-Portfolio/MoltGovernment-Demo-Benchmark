@@ -7,9 +7,6 @@ import { requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
-/* Apply requireAdmin to all routes in this router */
-router.use(requireAdmin);
-
 const PROVIDER_MODELS: Record<string, string[]> = {
   anthropic: ['claude-haiku-4-5-20251001', 'claude-sonnet-4-5-20250929'],
   openai: ['gpt-4o', 'gpt-4o-mini'],
@@ -29,7 +26,7 @@ function maskKey(key: string | null): string | null {
 }
 
 /* GET /api/admin/providers */
-router.get('/admin/providers', async (_req, res, next) => {
+router.get('/admin/providers', requireAdmin, async (_req, res, next) => {
   try {
     const rows = await db.select().from(apiProviders);
     const providerMap = new Map(rows.map((r) => [r.providerName, r]));
@@ -53,9 +50,9 @@ router.get('/admin/providers', async (_req, res, next) => {
 });
 
 /* POST /api/admin/providers/:name */
-router.post('/admin/providers/:name', async (req, res, next) => {
+router.post('/admin/providers/:name', requireAdmin, async (req, res, next) => {
   try {
-    const { name } = req.params;
+    const name = String(req.params['name']);
     if (!ALL_PROVIDERS.includes(name)) {
       res.status(400).json({ success: false, error: 'Unknown provider' });
       return;
@@ -84,9 +81,9 @@ router.post('/admin/providers/:name', async (req, res, next) => {
 });
 
 /* POST /api/admin/providers/:name/test */
-router.post('/admin/providers/:name/test', async (req, res, next) => {
+router.post('/admin/providers/:name/test', requireAdmin, async (req, res, next) => {
   try {
-    const { name } = req.params;
+    const name = String(req.params['name']);
     const start = Date.now();
 
     if (name === 'ollama') {
@@ -146,9 +143,9 @@ router.post('/admin/providers/:name/test', async (req, res, next) => {
 });
 
 /* DELETE /api/admin/providers/:name */
-router.delete('/admin/providers/:name', async (req, res, next) => {
+router.delete('/admin/providers/:name', requireAdmin, async (req, res, next) => {
   try {
-    const { name } = req.params;
+    const name = String(req.params['name']);
     await db.update(apiProviders)
       .set({ encryptedKey: null, isActive: false, updatedAt: new Date() })
       .where(eq(apiProviders.providerName, name));
