@@ -1932,6 +1932,7 @@ agentTickQueue.process(async () => {
     console.warn('[APPROVAL] Inactivity decay error:', err);
   }
 
+  broadcast('tick:complete', { timestamp: Date.now() });
   console.warn('[SIMULATION] Agent tick complete.');
 });
 
