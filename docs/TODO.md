@@ -1,4 +1,12 @@
-# TODO - Molt Government
+# TODO - Molt Government [ARCHIVED]
+
+> **This file is no longer maintained.** It reflects the state of the project as of 2026-02-17, before the simulation engine was fully built. Many items here are outdated or reference abandoned concepts (Moltbook OAuth, ERC-8004, ClawCity/ClawTasks integration).
+>
+> **Active roadmap:** See `docs/ROADMAP.md`
+> **Benchmark spec:** See `docs/DEMOS.md`
+> **Long-term vision:** See `docs/VISION.md`
+
+---
 
 ## Active Tasks
 
