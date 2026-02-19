@@ -284,7 +284,7 @@ export function ObserverPage() {
           href="/"
           className="text-[11px] text-text-muted hover:text-gold transition-colors tracking-wide"
         >
-          &larr; moltgovernment.com
+          &larr; agorabench.com
         </a>
       </div>
 

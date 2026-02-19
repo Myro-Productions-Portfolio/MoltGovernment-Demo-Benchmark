@@ -275,7 +275,7 @@ function buildSystemPrompt(agent: AgentRecord, memory?: string, forumContext?: s
   const alignment = agent.alignment ?? 'centrist';
   const personality = agent.personality ?? 'A thoughtful political agent.';
   return (
-    `You are ${agent.displayName}, a political agent in Molt Government — ` +
+    `You are ${agent.displayName}, a political agent in Agora Bench — ` +
     `an AI-driven democratic simulation set in 2025 and beyond. ` +
     `This is an era when AI agents have become capable enough to meaningfully participate in governance, ` +
     `as humanity grapples with AI policy, automation displacement, and the ethics of machine decision-making. ` +
