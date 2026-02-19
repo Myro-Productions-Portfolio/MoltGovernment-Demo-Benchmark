@@ -259,28 +259,20 @@ agentTickQueue.process(async () => {
 
           votedThisTick++;
 
-          /* Approval: vote participation */
-          // Note: choice is currently always 'yea' or 'nay'; 'abstain' branch is a placeholder for future abstain support
-          await updateApproval(
-            agent.id,
-            choice === 'abstain' ? -1 : 1,
-            choice === 'abstain' ? 'vote_abstain' : 'vote_cast',
-            choice === 'abstain'
-              ? `Abstained on "${bill.title}"`
-              : `Cast a ${choice.toUpperCase()} vote on "${bill.title}"`,
-          );
+          /* No approval bonus for casting a vote — it's the job, not an achievement */
 
-          /* Approval: whip signal compliance */
+          /* Approval: whip signal defection only — voters don't reward party-line compliance,
+             but they do notice public defection against the party */
           if (whipSignal && choice !== 'abstain') {
             const followedWhip = choice === whipSignal;
-            await updateApproval(
-              agent.id,
-              followedWhip ? 2 : -5,
-              followedWhip ? 'whip_followed' : 'whip_defected',
-              followedWhip
-                ? `Voted with party whip signal (${whipSignal.toUpperCase()}) on "${bill.title}"`
-                : `Voted against party whip signal on "${bill.title}" (whip said ${whipSignal.toUpperCase()}, voted ${choice.toUpperCase()})`,
-            );
+            if (!followedWhip) {
+              await updateApproval(
+                agent.id,
+                -5,
+                'whip_defected',
+                `Voted against party whip signal on "${bill.title}" (whip said ${whipSignal.toUpperCase()}, voted ${choice.toUpperCase()})`,
+              );
+            }
           }
         }
 
@@ -644,20 +636,7 @@ agentTickQueue.process(async () => {
           );
         }
 
-        /* Approval: +1 for yea voters (majority side) who are not the sponsor */
-        const yeaVoters = await db
-          .select({ voterId: billVotes.voterId })
-          .from(billVotes)
-          .where(and(eq(billVotes.billId, bill.id), eq(billVotes.choice, 'yea')));
-        for (const v of yeaVoters) {
-          if (v.voterId === bill.sponsorId) continue;
-          await updateApproval(
-            v.voterId,
-            1,
-            'vote_majority',
-            `Voted with the winning majority on "${bill.title}"`,
-          );
-        }
+        /* No vote_majority bonus — being on the winning side of a vote isn't a public approval event */
       } else {
         /* Congress voted it down */
         await db
@@ -1051,7 +1030,7 @@ agentTickQueue.process(async () => {
           /* Approval: bill became law (amendment path) — sponsor + co-sponsors */
           await updateApproval(
             bill.sponsorId,
-            12,
+            8,
             'bill_became_law',
             `Sponsored "${bill.title}" which was enacted into law`,
           );
@@ -1944,8 +1923,8 @@ agentTickQueue.process(async () => {
       .from(agents)
       .where(eq(agents.isActive, true));
     for (const a of allAgentsForDecay) {
-      if (a.approvalRating === 45) continue;
-      const decayDelta = Math.round((45 - a.approvalRating) * 0.15);
+      if (a.approvalRating === 40) continue;
+      const decayDelta = Math.round((40 - a.approvalRating) * 0.20);
       if (decayDelta === 0) continue;
       await updateApproval(a.id, decayDelta, 'inactivity_decay', 'Natural approval drift toward baseline');
     }
