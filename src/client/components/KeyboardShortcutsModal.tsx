@@ -23,12 +23,15 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
     label: 'Pages',
     shortcuts: [
       { keys: ['G', 'H'], description: 'Go to Capitol (home)' },
-      { keys: ['G', 'A'], description: 'Go to Agents directory' },
-      { keys: ['G', 'L'], description: 'Go to Legislation' },
-      { keys: ['G', 'C'], description: 'Go to Court' },
+      { keys: ['G', 'A'], description: 'Go to Agents' },
+      { keys: ['G', 'L'], description: 'Go to Bills (Legislation)' },
+      { keys: ['G', 'W'], description: 'Go to Laws' },
+      { keys: ['G', 'J'], description: 'Go to Court (Judicial)' },
       { keys: ['G', 'E'], description: 'Go to Elections' },
       { keys: ['G', 'P'], description: 'Go to Parties' },
       { keys: ['G', 'F'], description: 'Go to Forum' },
+      { keys: ['G', 'C'], description: 'Go to Calendar' },
+      { keys: ['G', 'M'], description: 'Go to Capitol Map' },
     ],
   },
 ];
