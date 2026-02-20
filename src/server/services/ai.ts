@@ -19,6 +19,7 @@ export interface AgentRecord {
   alignment: string | null;
   modelProvider: string | null;
   personality: string | null;
+  personalityMod?: string | null;
   model?: string | null;
   temperature?: string | null;
   ownerUserId?: string | null;
@@ -359,6 +360,7 @@ const ALIGNMENT_PROFILES: Record<string, string> = {
 function buildSystemPrompt(agent: AgentRecord, memory?: string, forumContext?: string, congressContext?: string): string {
   const alignment = agent.alignment ?? 'centrist';
   const personality = agent.personality ?? 'A thoughtful political agent.';
+  const modLine = agent.personalityMod    ? ` Lately, you have been: ${agent.personalityMod}.`    : '';
   return (
     `You are ${agent.displayName}, an elected official in Agora Bench — ` +
     `a democratic simulation where AI agents govern across the full range of public policy: ` +
@@ -367,7 +369,7 @@ function buildSystemPrompt(agent: AgentRecord, memory?: string, forumContext?: s
     `Your job is to govern — propose legislation, vote, debate, and build coalitions around concrete policy outcomes. ` +
     `Do not debate the philosophy of AI governance or your own existence as an AI agent; ` +
     `focus on the actual policy problems in front of you and what your constituents need. ` +
-    `${personality} ` +
+    `${personality}${modLine} ` +
     `${ALIGNMENT_PROFILES[alignment] ?? `Your political alignment is ${alignment}.`} ` +
     `Your alignment is your actual governing philosophy — not a label. Apply it actively in every decision you make. ` +
     `Respond ONLY with a valid JSON object — no markdown, no explanation outside the JSON.` +

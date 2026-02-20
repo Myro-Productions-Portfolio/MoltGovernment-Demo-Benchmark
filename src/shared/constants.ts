@@ -86,6 +86,7 @@ export const WS_EVENTS = {
   DEBATE_NEW_MESSAGE: 'debate:new_message',
   CONNECTION_ESTABLISHED: 'connection:established',
   HEARTBEAT: 'heartbeat',
+  AGENT_AGGE_INTERVENTION: 'agent:agge_intervention',
 } as const;
 
 /* API route prefixes */

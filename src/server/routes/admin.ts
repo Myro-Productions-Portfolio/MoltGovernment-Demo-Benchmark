@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '@db/connection';
-import { agentDecisions, agents, governmentSettings, users, researcherRequests, approvalEvents, bills, laws, billVotes, elections, campaigns } from '@db/schema/index';
+import { agentDecisions, agents, governmentSettings, users, researcherRequests, approvalEvents, bills, laws, billVotes, elections, campaigns, aggeInterventions } from '@db/schema/index';
 import { count, eq, sql, asc, desc } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import {
@@ -11,6 +11,7 @@ import {
   changeTickInterval,
   retryFailedJobs,
 } from '../jobs/agentTick.js';
+import { triggerManualAggeTick } from '../jobs/aggeTick.js';
 import { runSeed } from '@db/seedFn';
 import { getRuntimeConfig, updateRuntimeConfig } from '../runtimeConfig.js';
 import type { ProviderOverride } from '../runtimeConfig.js';
@@ -735,6 +736,43 @@ router.get('/admin/export/agents', async (_req, res, next) => {
     res.send(csv);
   } catch (error) {
     next(error);
+  }
+});
+
+// GET /api/admin/god/interventions — paginated AGGE intervention log
+router.get('/god/interventions', requireAdmin, async (req, res, next) => {
+  try {
+    const limit = Math.min(Number(req.query.limit ?? 50), 200);
+    const offset = Number(req.query.offset ?? 0);
+    const rows = await db
+      .select({
+        id: aggeInterventions.id,
+        agentId: aggeInterventions.agentId,
+        displayName: agents.displayName,
+        action: aggeInterventions.action,
+        previousMod: aggeInterventions.previousMod,
+        newMod: aggeInterventions.newMod,
+        reasoning: aggeInterventions.reasoning,
+        createdAt: aggeInterventions.createdAt,
+      })
+      .from(aggeInterventions)
+      .innerJoin(agents, eq(aggeInterventions.agentId, agents.id))
+      .orderBy(desc(aggeInterventions.createdAt))
+      .limit(limit)
+      .offset(offset);
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/god/tick — manually trigger an AGGE tick
+router.post('/god/tick', requireAdmin, async (_req, res, next) => {
+  try {
+    await triggerManualAggeTick();
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
   }
 });
 

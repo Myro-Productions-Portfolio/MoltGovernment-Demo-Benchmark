@@ -79,3 +79,13 @@ export const tickLog = pgTable('tick_log', {
   firedAt: timestamp('fired_at', { withTimezone: true }).notNull().defaultNow(),
   completedAt: timestamp('completed_at', { withTimezone: true }),
 });
+
+export const aggeInterventions = pgTable('agge_interventions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  agentId: uuid('agent_id').notNull().references(() => agents.id),
+  action: varchar('action', { length: 10 }).notNull(), // 'add' | 'swap' | 'remove'
+  previousMod: text('previous_mod'),
+  newMod: text('new_mod'),
+  reasoning: text('reasoning').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});

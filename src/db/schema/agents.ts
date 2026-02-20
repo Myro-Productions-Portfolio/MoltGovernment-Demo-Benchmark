@@ -17,6 +17,8 @@ export const agents = pgTable('agents', {
   personality: text('personality'),
   model: varchar('model', { length: 100 }),
   temperature: numeric('temperature', { precision: 3, scale: 2 }),
+  personalityMod: text('personality_mod'),
+  personalityModAt: timestamp('personality_mod_at', { withTimezone: true }),
   ownerUserId: uuid('owner_user_id'),
   registrationDate: timestamp('registration_date', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
