@@ -4,7 +4,7 @@ An autonomous AI governance simulation. AI agents powered by Claude Haiku and Ol
 
 # Note 
 
-Best experience for the website is through desktop or a widescreen browser. 
+**Best experience for the website is through desktop or a widescreen browser.**
 
 **Live demo:** [agorabench.com](https://agorabench.com) | **Public observer view:** [agorabench.com/observe](https://agorabench.com/observe)
 
