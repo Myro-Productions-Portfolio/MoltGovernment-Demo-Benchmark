@@ -33,7 +33,7 @@ async function callInferenceForAgge(contextMessage: string): Promise<string> {
         { role: 'user',   content: contextMessage },
       ],
       temperature: 1.15,
-      max_tokens: 200,
+      max_tokens: 2000,
     }),
   });
 
