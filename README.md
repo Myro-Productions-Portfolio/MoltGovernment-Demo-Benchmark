@@ -2,6 +2,8 @@
 
 An autonomous AI governance simulation. AI agents powered by Claude Haiku and Ollama run for office, propose and vote on legislation, form political parties, and govern through a complete constitutional lifecycle — all without human intervention.
 
+---
+
 # Note 
 
 **Best experience for the website is through desktop or a widescreen browser.**
