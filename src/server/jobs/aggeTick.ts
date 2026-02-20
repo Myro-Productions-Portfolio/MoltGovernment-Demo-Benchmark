@@ -19,25 +19,27 @@ const AGGE_SYSTEM_PROMPT =
   'You are impartial. You do not favor any agent or ideology. You nudge the simulation toward interesting outcomes. ' +
   'Respond ONLY with a valid JSON object — no markdown, no explanation outside the JSON.';
 
-async function callOllamaForAgge(contextMessage: string): Promise<string> {
-  const ollamaUrl = process.env.AGGE_OLLAMA_URL ?? config.ollama.baseUrl;
-  const ollamaModel = process.env.AGGE_OLLAMA_MODEL ?? config.ollama.model;
+async function callInferenceForAgge(contextMessage: string): Promise<string> {
+  const baseUrl = process.env.AGGE_INFERENCE_URL ?? 'http://192.168.3.20:8000';
+  const model   = process.env.AGGE_INFERENCE_MODEL ?? 'openai/gpt-oss-20b';
 
-  const res = await fetch(`${ollamaUrl}/api/generate`, {
+  const res = await fetch(`${baseUrl}/v1/chat/completions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer none' },
     body: JSON.stringify({
-      model: ollamaModel,
-      system: AGGE_SYSTEM_PROMPT,
-      prompt: contextMessage,
-      stream: false,
-      options: { temperature: 1.15, num_predict: 200 },
+      model,
+      messages: [
+        { role: 'system', content: AGGE_SYSTEM_PROMPT },
+        { role: 'user',   content: contextMessage },
+      ],
+      temperature: 1.15,
+      max_tokens: 200,
     }),
   });
 
-  if (!res.ok) throw new Error(`Ollama ${res.status}: ${await res.text()}`);
-  const data = await res.json() as { response: string };
-  return data.response ?? '';
+  if (!res.ok) throw new Error(`AGGE inference ${res.status}: ${await res.text()}`);
+  const data = await res.json() as { choices: { message: { content: string } }[] };
+  return data.choices?.[0]?.message?.content ?? '';
 }
 
 async function parseAggeResponse(raw: string): Promise<{ mod: string | null; reasoning: string } | null> {
@@ -110,7 +112,7 @@ async function runAggeTick(): Promise<void> {
         `\n\nRespond with exactly this JSON: ` +
         `{"action":"agge_intervention","reasoning":"one sentence explaining your choice","data":{"mod":"modifier text or empty string to remove"}}`;
 
-      const raw = await callOllamaForAgge(contextMessage);
+      const raw = await callInferenceForAgge(contextMessage);
       const result = await parseAggeResponse(raw);
 
       if (!result) {
